@@ -1,13 +1,10 @@
-import { Request, Response } from 'express';
-import { apiService } from '@/services/api.service';
+import axios from 'axios';
 
-export const apiController = {
-  async getAll(req: Request, res: Response) {
-    const result = await apiService.findAll(req.user);
-    res.json({ success: true, data: result });
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
+  headers: {
+    'Content-Type': 'application/json',
   },
-  async create(req: Request, res: Response) {
-    const created = await apiService.create(req.body);
-    res.status(201).json(created);
-  }
-};
+});
+
+export default api;

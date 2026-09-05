@@ -1,13 +1,12 @@
-import { Request, Response } from 'express';
-import { vite.configService } from '@/services/vite.config.service';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'node:path';
 
-export const vite.configController = {
-  async getAll(req: Request, res: Response) {
-    const result = await vite.configService.findAll(req.user);
-    res.json({ success: true, data: result });
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
   },
-  async create(req: Request, res: Response) {
-    const created = await vite.configService.create(req.body);
-    res.status(201).json(created);
-  }
-};
+});
