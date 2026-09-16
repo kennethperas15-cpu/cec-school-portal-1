@@ -21,5 +21,6 @@
     }
   },
   "include": ["src/main.tsx", "src/App.tsx", "src/vite-env.d.ts"],
+  "exclude": ["node_modules", "dist"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
