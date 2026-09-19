@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import api from './services/api';
 import './styles.css';
 import './login.css';
+import { AuthContainer, Register, ForgotPassword, ProfileManagement } from './components/auth';
 
 const assetUrl = (fileName: string) => `${import.meta.env.BASE_URL}${fileName}`;
 
@@ -121,10 +122,18 @@ const StudentRegistrationPage = ({ onNotify }: { onNotify: (text: string) => voi
 const authenticationPage = (
   page: string,
   onNotify: (text: string) => void,
+<<<<<<< HEAD
 ) => {
   if (page === 'Profile Management') return <section className="academic-card auth-card"><h1>Profile Management</h1><div className="form-grid"><label>NAME<input placeholder="Your full name" /></label><label>ID<input placeholder="Your account ID" /></label><label>COURSE<input placeholder="Your program" /></label><label>EMAIL<input placeholder="Your email address" /></label><label>PHONE<input placeholder="Enter phone number" /></label><label>ADDRESS<input placeholder="Enter address" /></label><label>GUARDIAN<input placeholder="Enter guardian name" /></label><label>EMERGENCY CONTACT<input placeholder="Enter emergency contact" /></label></div><button className="primary-button" onClick={() => onNotify('Profile changes saved')}>Save Changes</button></section>;
   if (page === 'Registration / Enrollment') return <StudentRegistrationPage onNotify={onNotify} />;
   return <section className="academic-card auth-card"><h1>Password Recovery</h1><p className="auth-description">Enter your email to receive reset instructions.</p><form className="recovery-form" onSubmit={(event) => { event.preventDefault(); onNotify('Reset instructions sent'); }}><input required type="email" placeholder="student@cec.edu.ph" /><button className="primary-button" type="submit">Send Reset Link</button></form></section>;
+=======
+  currentUser?: { firstName: string; lastName: string; role: string } | null,
+) => {
+  if (page === 'Profile Management') return <ProfileManagement onNotify={onNotify} currentUser={currentUser ?? undefined} />;
+  if (page === 'Registration / Enrollment') return <section className="academic-card auth-card"><Register embedded onNotify={onNotify} /></section>;
+  return <section className="academic-card auth-card"><ForgotPassword onNotify={onNotify} /></section>;
+>>>>>>> second-branch
 };
 
 const EnrollmentPage = ({ page, onNotify }: { page: string; onNotify: (text: string) => void }) => {
@@ -254,9 +263,15 @@ export const App = () => {
   const [hasEnrollment, setHasEnrollment] = useState(false);
   const [campusSlide, setCampusSlide] = useState(0);
   const campusSlides = [
+<<<<<<< HEAD
     { src: assetUrl('cec-campus-collage.png'), alt: 'Cebu Eastern College campus facilities' },
     { src: assetUrl('cec-campus-group.png'), alt: 'Cebu Eastern College faculty and staff' },
     { src: assetUrl('cec-campus-front.png'), alt: 'Cebu Eastern College building' },
+=======
+    { src: '/cec-campus-collage.png', alt: 'Cebu Eastern College campus facilities' },
+    { src: '/cec-campus-group.png', alt: 'Cebu Eastern College faculty and staff' },
+    { src: '/cec-campus-front.png', alt: 'Cebu Eastern College building' },
+>>>>>>> second-branch
   ];
 
   useEffect(() => {
@@ -346,6 +361,7 @@ export const App = () => {
 
   if (!isAuthenticated) {
     return (
+<<<<<<< HEAD
       <main className="login-page" style={{ backgroundImage: `url("${assetUrl('cec-login-banner.png')}")` }}>
         <section className="login-card">
           <div className="login-intro">
@@ -388,6 +404,17 @@ export const App = () => {
           </div>
         </section>
       </main>
+=======
+      <AuthContainer
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          setActiveNav(user.role === 'student' ? 'Registration / Enrollment' : 'Dashboard');
+          notify(`Welcome back, ${user.firstName}`);
+        }}
+        onNotify={notify}
+      />
+>>>>>>> second-branch
     );
   }
 
@@ -395,7 +422,11 @@ export const App = () => {
     <div className="portal-shell">
       <aside className="sidebar" style={{ backgroundImage: `url("${assetUrl('cec-building.png')}")` }}>
         <div className="brand">
+<<<<<<< HEAD
           <img className="brand-mark" src={assetUrl('cec-logo.png')} alt="Cebu Eastern College logo" />
+=======
+          <img className="brand-mark" src="/cec-logo.png" alt="Cebu Eastern College logo" />
+>>>>>>> second-branch
           <div>
             <strong>CEC Portal</strong>
             <span>Student workspace</span>
@@ -430,7 +461,11 @@ export const App = () => {
 
       <main className="main-content">
         <header className="topbar">
+<<<<<<< HEAD
           <div className="mobile-brand"><img className="brand-mark" src={assetUrl('cec-logo.png')} alt="Cebu Eastern College logo" /><strong>CEC Portal</strong></div>
+=======
+          <div className="mobile-brand"><img className="brand-mark" src="/cec-logo.png" alt="Cebu Eastern College logo" /><strong>CEC Portal</strong></div>
+>>>>>>> second-branch
           <div className="breadcrumb"><span>Student portal</span><b>/</b><strong>{activeNav}</strong></div>
           <div className="top-actions">
             <button className="icon-button notification-button" aria-label="Notifications" onClick={() => { setShowNotifications(!showNotifications); setNotificationCount(0); }}>♢{notificationCount > 0 && <span className="notification-dot" />}</button>
@@ -445,7 +480,11 @@ export const App = () => {
             <button className="primary-button" onClick={() => changeSection('Grades / Report Card')}>View academic records <span>→</span></button>
           </section>}
 
+<<<<<<< HEAD
           {activeNav !== 'Dashboard' ? (authenticationItems.some(([, item]) => item === activeNav) ? authenticationPage(activeNav, notify) : subsystemSubmenus.Enrollment.some(([, item]) => item === activeNav) ? <EnrollmentPage page={activeNav} onNotify={notify} /> : Object.values(subsystemSubmenus).some((items) => items.some(([, item]) => item === activeNav)) ? <StudentFunctionalPage page={activeNav} onNotify={notify} /> : academicPage(activeNav, notify, hasEnrollment, () => { setHasEnrollment(true); notify('Subjects enrolled successfully'); })) : hasEnrollment ? <>
+=======
+          {activeNav !== 'Dashboard' ? (authenticationItems.some(([, item]) => item === activeNav) ? authenticationPage(activeNav, notify, currentUser) : subsystemSubmenus.Enrollment.some(([, item]) => item === activeNav) ? <EnrollmentPage page={activeNav} onNotify={notify} /> : Object.values(subsystemSubmenus).some((items) => items.some(([, item]) => item === activeNav)) ? <StudentFunctionalPage page={activeNav} onNotify={notify} /> : academicPage(activeNav, notify, hasEnrollment, () => { setHasEnrollment(true); notify('Subjects enrolled successfully'); })) : hasEnrollment ? <>
+>>>>>>> second-branch
           <section className="metrics-grid">
             <article className="metric-card"><div className="metric-top"><span>Current average</span><span className="metric-icon blue">↗</span></div><strong>93.7<span>%</span></strong><div className="metric-foot positive">↑ 2.4% <em>from last term</em></div></article>
             <article className="metric-card"><div className="metric-top"><span>Attendance rate</span><span className="metric-icon green">✓</span></div><strong>96<span>%</span></strong><div className="progress-track"><div className="progress-fill green-fill" style={{ width: '96%' }} /></div><div className="metric-foot"><em>Excellent standing</em></div></article>
