@@ -2,9 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import api from './services/api';
 import './styles.css';
 import './login.css';
-import { AuthContainer, Register, ForgotPassword, ProfileManagement } from './components/auth';
-
-const assetUrl = (fileName: string) => `${import.meta.env.BASE_URL}${fileName}`;
 
 type Course = {
   code: string;
@@ -263,15 +260,9 @@ export const App = () => {
   const [hasEnrollment, setHasEnrollment] = useState(false);
   const [campusSlide, setCampusSlide] = useState(0);
   const campusSlides = [
-<<<<<<< HEAD
-    { src: assetUrl('cec-campus-collage.png'), alt: 'Cebu Eastern College campus facilities' },
-    { src: assetUrl('cec-campus-group.png'), alt: 'Cebu Eastern College faculty and staff' },
-    { src: assetUrl('cec-campus-front.png'), alt: 'Cebu Eastern College building' },
-=======
     { src: '/cec-campus-collage.png', alt: 'Cebu Eastern College campus facilities' },
     { src: '/cec-campus-group.png', alt: 'Cebu Eastern College faculty and staff' },
     { src: '/cec-campus-front.png', alt: 'Cebu Eastern College building' },
->>>>>>> second-branch
   ];
 
   useEffect(() => {
@@ -361,8 +352,7 @@ export const App = () => {
 
   if (!isAuthenticated) {
     return (
-<<<<<<< HEAD
-      <main className="login-page" style={{ backgroundImage: `url("${assetUrl('cec-login-banner.png')}")` }}>
+      <main className="login-page">
         <section className="login-card">
           <div className="login-intro">
             <div className="login-brand"><img className="brand-mark login-mark" src={assetUrl('cec-logo.png')} alt="Cebu Eastern College logo" /></div>
@@ -422,11 +412,7 @@ export const App = () => {
     <div className="portal-shell">
       <aside className="sidebar" style={{ backgroundImage: `url("${assetUrl('cec-building.png')}")` }}>
         <div className="brand">
-<<<<<<< HEAD
-          <img className="brand-mark" src={assetUrl('cec-logo.png')} alt="Cebu Eastern College logo" />
-=======
           <img className="brand-mark" src="/cec-logo.png" alt="Cebu Eastern College logo" />
->>>>>>> second-branch
           <div>
             <strong>CEC Portal</strong>
             <span>Student workspace</span>
@@ -461,11 +447,7 @@ export const App = () => {
 
       <main className="main-content">
         <header className="topbar">
-<<<<<<< HEAD
-          <div className="mobile-brand"><img className="brand-mark" src={assetUrl('cec-logo.png')} alt="Cebu Eastern College logo" /><strong>CEC Portal</strong></div>
-=======
           <div className="mobile-brand"><img className="brand-mark" src="/cec-logo.png" alt="Cebu Eastern College logo" /><strong>CEC Portal</strong></div>
->>>>>>> second-branch
           <div className="breadcrumb"><span>Student portal</span><b>/</b><strong>{activeNav}</strong></div>
           <div className="top-actions">
             <button className="icon-button notification-button" aria-label="Notifications" onClick={() => { setShowNotifications(!showNotifications); setNotificationCount(0); }}>♢{notificationCount > 0 && <span className="notification-dot" />}</button>
