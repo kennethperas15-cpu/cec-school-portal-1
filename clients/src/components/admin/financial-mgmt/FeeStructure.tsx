@@ -7,11 +7,11 @@ interface Props {
 
 export const FeeStructure = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch FeeStructure data
-    api.get('/feestructure').then(setData);
+    api.get('/feestructure').then((response) => setData(response.data));
   }, []);
 
   return (

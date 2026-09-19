@@ -7,11 +7,11 @@ interface Props {
 
 export const SecurityMonitoring = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch SecurityMonitoring data
-    api.get('/securitymonitoring').then(setData);
+    api.get('/securitymonitoring').then((response) => setData(response.data));
   }, []);
 
   return (

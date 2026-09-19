@@ -7,11 +7,11 @@ interface Props {
 
 export const GuidanceAppointment = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch GuidanceAppointment data
-    api.get('/guidanceappointment').then(setData);
+    api.get('/guidanceappointment').then((response) => setData(response.data));
   }, []);
 
   return (

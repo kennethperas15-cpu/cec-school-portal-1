@@ -7,11 +7,11 @@ interface Props {
 
 export const ClassList = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch ClassList data
-    api.get('/classlist').then(setData);
+    api.get('/classlist').then((response) => setData(response.data));
   }, []);
 
   return (

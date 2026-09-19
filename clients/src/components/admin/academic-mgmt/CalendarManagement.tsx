@@ -7,11 +7,11 @@ interface Props {
 
 export const CalendarManagement = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch CalendarManagement data
-    api.get('/calendarmanagement').then(setData);
+    api.get('/calendarmanagement').then((response) => setData(response.data));
   }, []);
 
   return (

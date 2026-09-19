@@ -7,11 +7,11 @@ interface Props {
 
 export const BillingInvoice = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch BillingInvoice data
-    api.get('/billinginvoice').then(setData);
+    api.get('/billinginvoice').then((response) => setData(response.data));
   }, []);
 
   return (

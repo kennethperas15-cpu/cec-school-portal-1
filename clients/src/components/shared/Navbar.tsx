@@ -7,11 +7,11 @@ interface Props {
 
 export const Navbar = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch Navbar data
-    api.get('/navbar').then(setData);
+    api.get('/navbar').then((response) => setData(response.data));
   }, []);
 
   return (

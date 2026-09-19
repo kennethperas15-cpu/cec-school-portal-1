@@ -7,11 +7,11 @@ interface Props {
 
 export const ConsultationSlots = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch ConsultationSlots data
-    api.get('/consultationslots').then(setData);
+    api.get('/consultationslots').then((response) => setData(response.data));
   }, []);
 
   return (

@@ -7,11 +7,11 @@ interface Props {
 
 export const ReportCardGen = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch ReportCardGen data
-    api.get('/reportcardgen').then(setData);
+    api.get('/reportcardgen').then((response) => setData(response.data));
   }, []);
 
   return (

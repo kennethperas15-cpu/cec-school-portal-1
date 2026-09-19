@@ -7,11 +7,11 @@ interface Props {
 
 export const GradeFinalization = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch GradeFinalization data
-    api.get('/gradefinalization').then(setData);
+    api.get('/gradefinalization').then((response) => setData(response.data));
   }, []);
 
   return (

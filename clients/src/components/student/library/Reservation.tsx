@@ -7,11 +7,11 @@ interface Props {
 
 export const Reservation = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch Reservation data
-    api.get('/reservation').then(setData);
+    api.get('/reservation').then((response) => setData(response.data));
   }, []);
 
   return (

@@ -7,11 +7,11 @@ interface Props {
 
 export const AuditLog = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AuditLog data
-    api.get('/auditlog').then(setData);
+    api.get('/auditlog').then((response) => setData(response.data));
   }, []);
 
   return (

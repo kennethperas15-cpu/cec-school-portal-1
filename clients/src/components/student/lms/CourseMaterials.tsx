@@ -7,11 +7,11 @@ interface Props {
 
 export const CourseMaterials = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch CourseMaterials data
-    api.get('/coursematerials').then(setData);
+    api.get('/coursematerials').then((response) => setData(response.data));
   }, []);
 
   return (

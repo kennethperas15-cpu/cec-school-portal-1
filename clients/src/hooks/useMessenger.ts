@@ -1,26 +1,35 @@
-// useMessenger.ts - Messenger-style (NEW)
-// CEC Portal • Real-time messaging
-import { useMessenger } from '@/hooks/useMessenger';
-import { useMessageStore } from '@/store/messageStore';
-import { SocketEvent } from '@/types/socket';
+import { useMemo } from 'react';
 
-export const Messenger = () => {
-  const { sendMessage, conversations } = useMessenger();
-  const { activeConversation } = useMessageStore();
+export type Conversation = {
+  id: string;
+  title: string;
+  lastMessage: string;
+  unread: number;
+};
 
-  // Socket.io real-time
-  const handleSend = (text: string) => {
-    sendMessage({
-      conversationId: activeConversation.id,
-      content: text,
-      type: 'text'
-    });
+export function useMessenger() {
+  const conversations = useMemo<Conversation[]>(() => [
+    { id: '1', title: 'Academic Affairs', lastMessage: 'Your transcript has been processed.', unread: 2 },
+    { id: '2', title: 'Campus Services', lastMessage: 'The library reservation is confirmed.', unread: 1 },
+  ], []);
+
+  const sendMessage = ({ conversationId, content }: { conversationId: string; content: string; type: 'text' }) => {
+    console.info(`Sending message to ${conversationId}: ${content}`);
   };
 
-  return (
-    <div className="messenger-layout">
-      <ConversationList />
-      <ChatWindow onSend={handleSend} />
-    </div>
-  );
+  return { conversations, sendMessage };
+}
+
+export const Messenger = () => {
+  const { conversations, sendMessage } = useMessenger();
+
+  const handleSend = () => {
+    sendMessage({ conversationId: '1', content: 'Hello from CEC portal.', type: 'text' });
+  };
+
+  return {
+    conversations,
+    handleSend,
+    title: 'Messages',
+  };
 };

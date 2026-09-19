@@ -7,11 +7,11 @@ interface Props {
 
 export const FinancialReport = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch FinancialReport data
-    api.get('/financialreport').then(setData);
+    api.get('/financialreport').then((response) => setData(response.data));
   }, []);
 
   return (

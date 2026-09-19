@@ -7,11 +7,11 @@ interface Props {
 
 export const RBAC = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch RBAC data
-    api.get('/rbac').then(setData);
+    api.get('/rbac').then((response) => setData(response.data));
   }, []);
 
   return (

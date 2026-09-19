@@ -7,11 +7,11 @@ interface Props {
 
 export const CapacityControl = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch CapacityControl data
-    api.get('/capacitycontrol').then(setData);
+    api.get('/capacitycontrol').then((response) => setData(response.data));
   }, []);
 
   return (

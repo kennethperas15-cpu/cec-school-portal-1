@@ -7,11 +7,11 @@ interface Props {
 
 export const MaterialUpload = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch MaterialUpload data
-    api.get('/materialupload').then(setData);
+    api.get('/materialupload').then((response) => setData(response.data));
   }, []);
 
   return (

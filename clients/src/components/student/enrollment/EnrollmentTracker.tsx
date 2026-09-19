@@ -7,11 +7,11 @@ interface Props {
 
 export const EnrollmentTracker = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch EnrollmentTracker data
-    api.get('/enrollmenttracker').then(setData);
+    api.get('/enrollmenttracker').then((response) => setData(response.data));
   }, []);
 
   return (

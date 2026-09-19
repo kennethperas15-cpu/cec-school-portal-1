@@ -20,11 +20,7 @@
       "@/*": ["src/*"]
     }
   },
-<<<<<<< HEAD
-  "include": ["src/main.tsx", "src/App.tsx", "src/vite-env.d.ts"],
-=======
-  "include": ["src/main.tsx", "src/App.tsx", "src/vite-env.d.ts", "src/components/auth/**/*"],
->>>>>>> second-branch
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -1,13 +1,23 @@
-import { Request, Response } from 'express';
-import { message.serviceService } from '@/services/message.service.service';
-
-export const message.serviceController = {
-  async getAll(req: Request, res: Response) {
-    const result = await message.serviceService.findAll(req.user);
-    res.json({ success: true, data: result });
-  },
-  async create(req: Request, res: Response) {
-    const created = await message.serviceService.create(req.body);
-    res.status(201).json(created);
-  }
+export type MessagePayload = {
+  conversationId?: string;
+  content?: string;
+  type?: 'text';
 };
+
+export const messageService = {
+  async findAll() {
+    return [
+      { id: 'm-1', conversationId: '1', content: 'Welcome to CEC portal', type: 'text' },
+      { id: 'm-2', conversationId: '2', content: 'Your schedule has been updated', type: 'text' },
+    ];
+  },
+  async create(payload: MessagePayload) {
+    return {
+      id: `msg-${Date.now()}`,
+      ...payload,
+      createdAt: new Date().toISOString(),
+    };
+  },
+};
+
+export default messageService;

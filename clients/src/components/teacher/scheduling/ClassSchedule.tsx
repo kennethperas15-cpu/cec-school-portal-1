@@ -7,11 +7,11 @@ interface Props {
 
 export const ClassSchedule = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch ClassSchedule data
-    api.get('/classschedule').then(setData);
+    api.get('/classschedule').then((response) => setData(response.data));
   }, []);
 
   return (

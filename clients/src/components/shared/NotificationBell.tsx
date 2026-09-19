@@ -1,17 +1,22 @@
-// NotificationBell.tsx - Notification System (NEW)
 import { useNotifications } from '@/hooks/useNotifications';
-import { Bell, CheckCheck } from 'lucide-react';
 
 export const NotificationBell = () => {
   const { notifications, unreadCount, markAllRead } = useNotifications();
 
   return (
-    <div className="relative">
-      <Bell className="w-6 h-6" />
-      {unreadCount > 0 && (
-        <span className="badge">{unreadCount}</span>
-      )}
-      <NotificationDropdown items={notifications} />
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <strong>Notifications</strong>
+        <button type="button" onClick={markAllRead} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
+          Mark all read
+        </button>
+      </div>
+      <span>🔔 {unreadCount} unread</span>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {notifications.map((notification) => (
+          <li key={notification.id}>{notification.title}</li>
+        ))}
+      </ul>
     </div>
   );
 };

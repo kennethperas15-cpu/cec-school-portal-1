@@ -7,11 +7,11 @@ interface Props {
 
 export const DocumentSubmission = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch DocumentSubmission data
-    api.get('/documentsubmission').then(setData);
+    api.get('/documentsubmission').then((response) => setData(response.data));
   }, []);
 
   return (

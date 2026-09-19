@@ -7,11 +7,11 @@ interface Props {
 
 export const ComplaintFeedback = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch ComplaintFeedback data
-    api.get('/complaintfeedback').then(setData);
+    api.get('/complaintfeedback').then((response) => setData(response.data));
   }, []);
 
   return (

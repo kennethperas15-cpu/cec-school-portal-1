@@ -7,11 +7,11 @@ interface Props {
 
 export const StatusMonitoring = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch StatusMonitoring data
-    api.get('/statusmonitoring').then(setData);
+    api.get('/statusmonitoring').then((response) => setData(response.data));
   }, []);
 
   return (

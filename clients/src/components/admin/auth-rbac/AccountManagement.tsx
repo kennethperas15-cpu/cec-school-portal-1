@@ -7,11 +7,11 @@ interface Props {
 
 export const AccountManagement = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AccountManagement data
-    api.get('/accountmanagement').then(setData);
+    api.get('/accountmanagement').then((response) => setData(response.data));
   }, []);
 
   return (

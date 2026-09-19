@@ -7,11 +7,11 @@ interface Props {
 
 export const AssignmentChecking = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AssignmentChecking data
-    api.get('/assignmentchecking').then(setData);
+    api.get('/assignmentchecking').then((response) => setData(response.data));
   }, []);
 
   return (
