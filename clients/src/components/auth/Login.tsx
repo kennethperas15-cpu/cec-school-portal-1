@@ -20,4 +20,6 @@ export const Login = ({ className }: Props) => {
       {/* Thesis-ready implementation */}
     </div>
   );
+
+  export default Login;
 };
