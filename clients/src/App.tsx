@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import api from './services/api';
 import './styles.css';
 import './login.css';
+import { AuthContainer, Register, ForgotPassword, ProfileManagement } from './components/auth';
 
 type Course = {
   code: string;
@@ -119,10 +120,11 @@ const StudentRegistrationPage = ({ onNotify }: { onNotify: (text: string) => voi
 const authenticationPage = (
   page: string,
   onNotify: (text: string) => void,
+  currentUser?: { firstName: string; lastName: string; role: string } | null,
 ) => {
-  if (page === 'Profile Management') return <section className="academic-card auth-card"><h1>Profile Management</h1><div className="form-grid"><label>NAME<input placeholder="Your full name" /></label><label>ID<input placeholder="Your account ID" /></label><label>COURSE<input placeholder="Your program" /></label><label>EMAIL<input placeholder="Your email address" /></label><label>PHONE<input placeholder="Enter phone number" /></label><label>ADDRESS<input placeholder="Enter address" /></label><label>GUARDIAN<input placeholder="Enter guardian name" /></label><label>EMERGENCY CONTACT<input placeholder="Enter emergency contact" /></label></div><button className="primary-button" onClick={() => onNotify('Profile changes saved')}>Save Changes</button></section>;
-  if (page === 'Registration / Enrollment') return <StudentRegistrationPage onNotify={onNotify} />;
-  return <section className="academic-card auth-card"><h1>Password Recovery</h1><p className="auth-description">Enter your email to receive reset instructions.</p><form className="recovery-form" onSubmit={(event) => { event.preventDefault(); onNotify('Reset instructions sent'); }}><input required type="email" placeholder="student@cec.edu.ph" /><button className="primary-button" type="submit">Send Reset Link</button></form></section>;
+  if (page === 'Profile Management') return <ProfileManagement onNotify={onNotify} currentUser={currentUser ?? undefined} />;
+  if (page === 'Registration / Enrollment') return <section className="academic-card auth-card"><Register embedded onNotify={onNotify} /></section>;
+  return <section className="academic-card auth-card"><ForgotPassword onNotify={onNotify} /></section>;
 };
 
 const EnrollmentPage = ({ page, onNotify }: { page: string; onNotify: (text: string) => void }) => {
@@ -344,48 +346,15 @@ export const App = () => {
 
   if (!isAuthenticated) {
     return (
-      <main className="login-page">
-        <section className="login-card">
-          <div className="login-intro">
-            <div className="login-brand"><img className="brand-mark login-mark" src="/cec-logo.png" alt="Cebu Eastern College logo" /></div>
-            <h1>Cebu Eastern College Portal</h1>
-            <div className="campus-slideshow" aria-label="Cebu Eastern College campus gallery">
-              <img className="campus-slide-image" src={campusSlides[campusSlide].src} alt={campusSlides[campusSlide].alt} />
-              <div className="campus-slide-dots">{campusSlides.map((slide, index) => <button key={slide.src} type="button" className={index === campusSlide ? 'campus-dot active' : 'campus-dot'} onClick={() => setCampusSlide(index)} aria-label={`Show campus image ${index + 1}`} />)}</div>
-            </div>
-          </div>
-          <div className="login-form-panel">
-            <div className="login-heading"><h2>Login to CEC Portal</h2></div>
-            <div className="role-tabs">{['Student', 'Teacher', 'Admin'].map((role) => <button type="button" className={loginRole === role ? 'role-tab selected' : 'role-tab'} key={role} onClick={() => { setLoginRole(role); setLoginError(''); }}>{role}</button>)}</div>
-            {loginRole === 'Student' && googleEnrollmentToken && !enrollmentSubmitted ? <form onSubmit={submitEnrollment} className="login-form">
-              <h3>Apply for a {loginRole} account</h3>
-              <p className="login-help">Submit your Gmail and details. Your CEC account will be created and sent to that Gmail immediately.</p>
-              <label htmlFor="enrollment-name">FULL NAME</label>
-              <input id="enrollment-name" required value={enrollmentName} onChange={(event) => setEnrollmentName(event.target.value)} placeholder="Your full name" />
-              <label htmlFor="enrollment-email">PERSONAL EMAIL</label>
-              <input id="enrollment-email" required type="email" value={enrollmentEmail} onChange={(event) => setEnrollmentEmail(event.target.value)} placeholder="your Gmail address" />
-              <label htmlFor="enrollment-phone">CONTACT NUMBER</label>
-              <input id="enrollment-phone" required value={enrollmentPhone} onChange={(event) => setEnrollmentPhone(event.target.value)} placeholder="09XXXXXXXXX" />
-              <label htmlFor="enrollment-program">PROGRAM</label>
-              <select id="enrollment-program" value={enrollmentProgram} onChange={(event) => setEnrollmentProgram(event.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select>
-              <label htmlFor="enrollment-year">YEAR LEVEL</label>
-              <select id="enrollment-year" value={enrollmentYear} onChange={(event) => setEnrollmentYear(event.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select>
-              {loginError && <p className="login-error" role="alert">{loginError}</p>}
-              <button className="login-button" type="submit">Submit Enrollment</button>
-            </form> : <form onSubmit={handleLogin} className="login-form">
-              <label htmlFor="email">ID / USERNAME</label>
-              <input id="email" type="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Your issued school account" autoComplete="username" />
-              <label htmlFor="password">PASSWORD</label>
-              <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••" autoComplete="current-password" />
-              <div className="login-options"><span /> <button type="button" className="text-button" onClick={() => setLoginError('Please contact support@cec.edu to reset your password.')}>Forgot Password?</button></div>
-              {loginError && <p className="login-error" role="alert">{loginError}</p>}
-              <button className="login-button" type="submit">Login to Portal</button>
-              <button type="button" className="text-button" onClick={() => { setEnrollmentSubmitted(false); setLoginError(''); }}>Submit another application</button>
-            </form>}
-            <p className="login-help">Need help signing in? <a href="mailto:support@cec.edu">Contact support</a></p>
-          </div>
-        </section>
-      </main>
+      <AuthContainer
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          setActiveNav(user.role === 'student' ? 'Registration / Enrollment' : 'Dashboard');
+          notify(`Welcome back, ${user.firstName}`);
+        }}
+        onNotify={notify}
+      />
     );
   }
 
@@ -443,7 +412,7 @@ export const App = () => {
             <button className="primary-button" onClick={() => changeSection('Grades / Report Card')}>View academic records <span>→</span></button>
           </section>}
 
-          {activeNav !== 'Dashboard' ? (authenticationItems.some(([, item]) => item === activeNav) ? authenticationPage(activeNav, notify) : subsystemSubmenus.Enrollment.some(([, item]) => item === activeNav) ? <EnrollmentPage page={activeNav} onNotify={notify} /> : Object.values(subsystemSubmenus).some((items) => items.some(([, item]) => item === activeNav)) ? <StudentFunctionalPage page={activeNav} onNotify={notify} /> : academicPage(activeNav, notify, hasEnrollment, () => { setHasEnrollment(true); notify('Subjects enrolled successfully'); })) : hasEnrollment ? <>
+          {activeNav !== 'Dashboard' ? (authenticationItems.some(([, item]) => item === activeNav) ? authenticationPage(activeNav, notify, currentUser) : subsystemSubmenus.Enrollment.some(([, item]) => item === activeNav) ? <EnrollmentPage page={activeNav} onNotify={notify} /> : Object.values(subsystemSubmenus).some((items) => items.some(([, item]) => item === activeNav)) ? <StudentFunctionalPage page={activeNav} onNotify={notify} /> : academicPage(activeNav, notify, hasEnrollment, () => { setHasEnrollment(true); notify('Subjects enrolled successfully'); })) : hasEnrollment ? <>
           <section className="metrics-grid">
             <article className="metric-card"><div className="metric-top"><span>Current average</span><span className="metric-icon blue">↗</span></div><strong>93.7<span>%</span></strong><div className="metric-foot positive">↑ 2.4% <em>from last term</em></div></article>
             <article className="metric-card"><div className="metric-top"><span>Attendance rate</span><span className="metric-icon green">✓</span></div><strong>96<span>%</span></strong><div className="progress-track"><div className="progress-fill green-fill" style={{ width: '96%' }} /></div><div className="metric-foot"><em>Excellent standing</em></div></article>
