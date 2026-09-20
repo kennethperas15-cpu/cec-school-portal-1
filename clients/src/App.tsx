@@ -1,8 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { AuthContainer, ProfileManagement, Register, ForgotPassword } from './components/auth';
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
 import api from './services/api';
 import './styles.css';
 import './login.css';
+import { AuthContainer } from './components/auth/AuthContainer';
+
+const Register = lazy(() => import('./components/auth/Register').then(({ Register: component }) => ({ default: component })));
+const ForgotPassword = lazy(() => import('./components/auth/ForgotPassword').then(({ ForgotPassword: component }) => ({ default: component })));
+const ProfileManagement = lazy(() => import('./components/auth/ProfileManagement').then(({ ProfileManagement: component }) => ({ default: component })));
 
 type Course = {
   code: string;
@@ -139,21 +143,29 @@ const StudentFunctionalPage = ({ page, onNotify }: { page: string; onNotify: (te
 
 const authenticationPage = (page: string, onNotify: (text: string) => void, currentUser?: PortalUser | null) => {
   if (page === 'Profile Management') {
-    return <ProfileManagement onNotify={onNotify} currentUser={currentUser ?? undefined} />;
+    return (
+      <Suspense fallback={<section className="academic-card auth-card">Loading...</section>}>
+        <ProfileManagement onNotify={onNotify} currentUser={currentUser ?? undefined} />
+      </Suspense>
+    );
   }
 
   if (page === 'Registration / Enrollment') {
     return (
-      <section className="academic-card auth-card">
-        <Register embedded onNotify={onNotify} />
-      </section>
+      <Suspense fallback={<section className="academic-card auth-card">Loading...</section>}>
+        <section className="academic-card auth-card">
+          <Register embedded onNotify={onNotify} />
+        </section>
+      </Suspense>
     );
   }
 
   return (
-    <section className="academic-card auth-card">
-      <ForgotPassword onNotify={onNotify} />
-    </section>
+    <Suspense fallback={<section className="academic-card auth-card">Loading...</section>}>
+      <section className="academic-card auth-card">
+        <ForgotPassword onNotify={onNotify} />
+      </section>
+    </Suspense>
   );
 };
 
