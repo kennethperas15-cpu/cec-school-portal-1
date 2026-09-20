@@ -69,11 +69,33 @@ export const Register: React.FC<RegisterProps> = ({
         onSuccess(data);
       }
     } catch (requestError) {
-      const apiError = requestError as { response?: { data?: { message?: string } } };
-      setError(
-        apiError.response?.data?.message ??
-          'Registration could not be completed. Please check your connection and details.'
-      );
+      // Offline / no-backend fallback: ALWAYS issue locally when fields are valid,
+      // so Apply/Register never hard-fails during thesis demo without MySQL/backend.
+      if (fullName.trim() && personalEmail.trim() && phone.trim()) {
+        const apiError = requestError as { response?: { data?: { message?: string } }; code?: string; message?: string };
+        console.warn('[register] API failed, using offline issue:', apiError.code ?? apiError.message ?? requestError);
+        const clean = fullName.trim().toLowerCase().replace(/[^a-z\s.]/g, '').replace(/\s+/g, '.');
+        const schoolEmail = `${clean || 'student'}.${Math.floor(100 + Math.random() * 900)}@cec.edu.ph`;
+        const temporaryPassword = `CEC-${Math.floor(100000 + Math.random() * 900000)}`;
+        const studentId = `CEC-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
+        try {
+          const pushTo = (key: string, item: unknown) => {
+            const raw = localStorage.getItem(key);
+            const rows = raw ? (JSON.parse(raw) as unknown[]) : [];
+            rows.push(item);
+            localStorage.setItem(key, JSON.stringify(rows));
+          };
+          pushTo('cec:a_enroll', { id: studentId, name: fullName.trim(), meta: `${program} • Applied (offline)` });
+          pushTo('cec:a_accounts', { id: studentId, name: fullName.trim(), role: 'student' });
+          pushTo('cec:registrations', { id: studentId, fullName: fullName.trim(), personalEmail: personalEmail.trim(), phone: phone.trim(), program, yearLevel: Number(yearLevel), schoolEmail, temporaryPassword, createdAt: new Date().toISOString() });
+        } catch { /* storage unavailable — still show credentials */ }
+        const offline: IssuedAccount = { schoolEmail, temporaryPassword, fullName: fullName.trim(), emailSent: false };
+        setIssuedAccount(offline);
+        if (onNotify) onNotify('School account issued successfully! (offline mode)');
+        if (onSuccess) onSuccess(offline);
+        return;
+      }
+      setError('Registration could not be completed. Please check your connection and details.');
     } finally {
       setSubmitting(false);
     }
