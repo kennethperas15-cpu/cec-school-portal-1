@@ -1,13 +1,23 @@
-import { Request, Response } from 'express';
-import { notification.serviceService } from '@/services/notification.service.service';
-
-export const notification.serviceController = {
-  async getAll(req: Request, res: Response) {
-    const result = await notification.serviceService.findAll(req.user);
-    res.json({ success: true, data: result });
-  },
-  async create(req: Request, res: Response) {
-    const created = await notification.serviceService.create(req.body);
-    res.status(201).json(created);
-  }
+export type NotificationPayload = {
+  title?: string;
+  message?: string;
+  type?: 'info' | 'success' | 'warning';
 };
+
+export const notificationService = {
+  async findAll() {
+    return [
+      { id: 'n-1', title: 'Enrollment update', message: 'Your enrollment review has been scheduled.', type: 'info' },
+      { id: 'n-2', title: 'Fee reminder', message: 'Tuition payment is due this Friday.', type: 'warning' },
+    ];
+  },
+  async create(payload: NotificationPayload) {
+    return {
+      id: `notice-${Date.now()}`,
+      ...payload,
+      createdAt: new Date().toISOString(),
+    };
+  },
+};
+
+export default notificationService;

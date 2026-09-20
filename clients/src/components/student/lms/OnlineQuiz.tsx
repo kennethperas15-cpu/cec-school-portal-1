@@ -7,11 +7,11 @@ interface Props {
 
 export const OnlineQuiz = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch OnlineQuiz data
-    api.get('/onlinequiz').then(setData);
+    api.get('/onlinequiz').then((response) => setData(response.data));
   }, []);
 
   return (

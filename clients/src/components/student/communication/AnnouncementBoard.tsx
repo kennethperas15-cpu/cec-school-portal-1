@@ -7,11 +7,11 @@ interface Props {
 
 export const AnnouncementBoard = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AnnouncementBoard data
-    api.get('/announcementboard').then(setData);
+    api.get('/announcementboard').then((response) => setData(response.data));
   }, []);
 
   return (

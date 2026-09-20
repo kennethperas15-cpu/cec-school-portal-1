@@ -7,11 +7,11 @@ interface Props {
 
 export const SectionAssignment = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch SectionAssignment data
-    api.get('/sectionassignment').then(setData);
+    api.get('/sectionassignment').then((response) => setData(response.data));
   }, []);
 
   return (

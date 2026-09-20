@@ -7,11 +7,11 @@ interface Props {
 
 export const Forum = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch Forum data
-    api.get('/forum').then(setData);
+    api.get('/forum').then((response) => setData(response.data));
   }, []);
 
   return (

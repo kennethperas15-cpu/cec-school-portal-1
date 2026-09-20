@@ -7,11 +7,11 @@ interface Props {
 
 export const Toast = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch Toast data
-    api.get('/toast').then(setData);
+    api.get('/toast').then((response) => setData(response.data));
   }, []);
 
   return (

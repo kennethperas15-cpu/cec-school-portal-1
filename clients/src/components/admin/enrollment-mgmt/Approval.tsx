@@ -7,11 +7,11 @@ interface Props {
 
 export const Approval = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch Approval data
-    api.get('/approval').then(setData);
+    api.get('/approval').then((response) => setData(response.data));
   }, []);
 
   return (

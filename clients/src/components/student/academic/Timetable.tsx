@@ -7,11 +7,11 @@ interface Props {
 
 export const Timetable = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch Timetable data
-    api.get('/timetable').then(setData);
+    api.get('/timetable').then((response) => setData(response.data));
   }, []);
 
   return (

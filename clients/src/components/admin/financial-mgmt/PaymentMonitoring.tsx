@@ -7,11 +7,11 @@ interface Props {
 
 export const PaymentMonitoring = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch PaymentMonitoring data
-    api.get('/paymentmonitoring').then(setData);
+    api.get('/paymentmonitoring').then((response) => setData(response.data));
   }, []);
 
   return (

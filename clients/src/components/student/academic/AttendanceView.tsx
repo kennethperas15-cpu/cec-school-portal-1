@@ -7,11 +7,11 @@ interface Props {
 
 export const AttendanceView = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AttendanceView data
-    api.get('/attendanceview').then(setData);
+    api.get('/attendanceview').then((response) => setData(response.data));
   }, []);
 
   return (

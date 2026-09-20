@@ -7,11 +7,11 @@ interface Props {
 
 export const ExamCreation = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch ExamCreation data
-    api.get('/examcreation').then(setData);
+    api.get('/examcreation').then((response) => setData(response.data));
   }, []);
 
   return (

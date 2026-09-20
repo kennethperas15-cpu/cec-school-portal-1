@@ -7,11 +7,11 @@ interface Props {
 
 export const CurriculumSetup = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch CurriculumSetup data
-    api.get('/curriculumsetup').then(setData);
+    api.get('/curriculumsetup').then((response) => setData(response.data));
   }, []);
 
   return (

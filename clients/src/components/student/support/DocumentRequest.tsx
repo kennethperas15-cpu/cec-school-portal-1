@@ -7,11 +7,11 @@ interface Props {
 
 export const DocumentRequest = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch DocumentRequest data
-    api.get('/documentrequest').then(setData);
+    api.get('/documentrequest').then((response) => setData(response.data));
   }, []);
 
   return (

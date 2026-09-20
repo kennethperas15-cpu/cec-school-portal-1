@@ -1,0 +1,22 @@
+/* /client/src/components/auth/Register.css */
+.Register {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+
+.Register-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  color: var(--cec-blue);
+  font-weight: 600;
+}
+
+/* CEC Blue & Gold accents */
+.Register-accent {
+  border-left: 3px solid var(--cec-gold);
+  background: var(--cec-blue-50);
+}

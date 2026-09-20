@@ -7,11 +7,11 @@ interface Props {
 
 export const OnlineEnrollment = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch OnlineEnrollment data
-    api.get('/onlineenrollment').then(setData);
+    api.get('/onlineenrollment').then((response) => setData(response.data));
   }, []);
 
   return (

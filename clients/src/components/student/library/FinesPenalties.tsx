@@ -7,11 +7,11 @@ interface Props {
 
 export const FinesPenalties = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch FinesPenalties data
-    api.get('/finespenalties').then(setData);
+    api.get('/finespenalties').then((response) => setData(response.data));
   }, []);
 
   return (

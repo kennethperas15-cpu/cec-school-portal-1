@@ -7,11 +7,11 @@ interface Props {
 
 export const StudentLookup = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch StudentLookup data
-    api.get('/studentlookup').then(setData);
+    api.get('/studentlookup').then((response) => setData(response.data));
   }, []);
 
   return (

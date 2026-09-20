@@ -7,11 +7,11 @@ interface Props {
 
 export const AttendanceHistory = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AttendanceHistory data
-    api.get('/attendancehistory').then(setData);
+    api.get('/attendancehistory').then((response) => setData(response.data));
   }, []);
 
   return (

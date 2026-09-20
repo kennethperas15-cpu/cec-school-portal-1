@@ -7,11 +7,11 @@ interface Props {
 
 export const SectionSelection = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch SectionSelection data
-    api.get('/sectionselection').then(setData);
+    api.get('/sectionselection').then((response) => setData(response.data));
   }, []);
 
   return (

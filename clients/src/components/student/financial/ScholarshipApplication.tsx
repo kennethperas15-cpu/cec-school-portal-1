@@ -7,11 +7,11 @@ interface Props {
 
 export const ScholarshipApplication = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch ScholarshipApplication data
-    api.get('/scholarshipapplication').then(setData);
+    api.get('/scholarshipapplication').then((response) => setData(response.data));
   }, []);
 
   return (

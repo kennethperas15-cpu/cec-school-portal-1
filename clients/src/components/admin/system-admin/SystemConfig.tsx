@@ -7,11 +7,11 @@ interface Props {
 
 export const SystemConfig = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch SystemConfig data
-    api.get('/systemconfig').then(setData);
+    api.get('/systemconfig').then((response) => setData(response.data));
   }, []);
 
   return (

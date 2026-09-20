@@ -7,11 +7,11 @@ interface Props {
 
 export const BorrowingTracker = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch BorrowingTracker data
-    api.get('/borrowingtracker').then(setData);
+    api.get('/borrowingtracker').then((response) => setData(response.data));
   }, []);
 
   return (

@@ -1,13 +1,19 @@
-import { Request, Response } from 'express';
-import { messageStoreService } from '@/services/messagestore.service';
+import { create } from 'zustand';
 
-export const messageStoreController = {
-  async getAll(req: Request, res: Response) {
-    const result = await messageStoreService.findAll(req.user);
-    res.json({ success: true, data: result });
-  },
-  async create(req: Request, res: Response) {
-    const created = await messageStoreService.create(req.body);
-    res.status(201).json(created);
-  }
+export type MessageThread = {
+  id: string;
+  title: string;
+  lastMessage: string;
 };
+
+type MessageStore = {
+  activeConversation: MessageThread | null;
+  setActiveConversation: (conversation: MessageThread | null) => void;
+};
+
+export const useMessageStore = create<MessageStore>((set) => ({
+  activeConversation: { id: '1', title: 'Academic Affairs', lastMessage: 'Your schedule is ready.' },
+  setActiveConversation: (conversation) => set({ activeConversation: conversation }),
+}));
+
+export default useMessageStore;

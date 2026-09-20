@@ -1,13 +1,21 @@
-import { Request, Response } from 'express';
-import { authStoreService } from '@/services/authstore.service';
+import { create } from 'zustand';
 
-export const authStoreController = {
-  async getAll(req: Request, res: Response) {
-    const result = await authStoreService.findAll(req.user);
-    res.json({ success: true, data: result });
-  },
-  async create(req: Request, res: Response) {
-    const created = await authStoreService.create(req.body);
-    res.status(201).json(created);
-  }
+export type AuthSession = {
+  isAuthenticated: boolean;
+  userName: string;
+  role: 'student' | 'teacher' | 'admin';
 };
+
+type AuthStore = {
+  session: AuthSession;
+  signIn: (userName: string, role: AuthSession['role']) => void;
+  signOut: () => void;
+};
+
+export const useAuthStore = create<AuthStore>((set) => ({
+  session: { isAuthenticated: false, userName: '', role: 'student' },
+  signIn: (userName, role) => set({ session: { isAuthenticated: true, userName, role } }),
+  signOut: () => set({ session: { isAuthenticated: false, userName: '', role: 'student' } }),
+}));
+
+export default useAuthStore;

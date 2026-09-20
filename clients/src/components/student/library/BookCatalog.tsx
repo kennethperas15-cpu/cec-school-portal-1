@@ -7,11 +7,11 @@ interface Props {
 
 export const BookCatalog = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch BookCatalog data
-    api.get('/bookcatalog').then(setData);
+    api.get('/bookcatalog').then((response) => setData(response.data));
   }, []);
 
   return (

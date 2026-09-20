@@ -7,11 +7,11 @@ interface Props {
 
 export const GradeEncoding = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch GradeEncoding data
-    api.get('/gradeencoding').then(setData);
+    api.get('/gradeencoding').then((response) => setData(response.data));
   }, []);
 
   return (

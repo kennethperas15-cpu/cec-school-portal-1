@@ -20,7 +20,7 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/main.tsx", "src/App.tsx", "src/vite-env.d.ts", "src/components/auth/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

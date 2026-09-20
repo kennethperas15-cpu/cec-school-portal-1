@@ -243,3 +243,4 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
 };
 
 export default AuthContainer;
+

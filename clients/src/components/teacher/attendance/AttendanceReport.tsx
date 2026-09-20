@@ -7,11 +7,11 @@ interface Props {
 
 export const AttendanceReport = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AttendanceReport data
-    api.get('/attendancereport').then(setData);
+    api.get('/attendancereport').then((response) => setData(response.data));
   }, []);
 
   return (

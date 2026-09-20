@@ -1,26 +1,19 @@
-// Messenger.tsx - Messenger-style (NEW)
-// CEC Portal • Real-time messaging
 import { useMessenger } from '@/hooks/useMessenger';
-import { useMessageStore } from '@/store/messageStore';
-import { SocketEvent } from '@/types/socket';
 
 export const Messenger = () => {
-  const { sendMessage, conversations } = useMessenger();
-  const { activeConversation } = useMessageStore();
-
-  // Socket.io real-time
-  const handleSend = (text: string) => {
-    sendMessage({
-      conversationId: activeConversation.id,
-      content: text,
-      type: 'text'
-    });
-  };
+  const { conversations, sendMessage } = useMessenger();
 
   return (
-    <div className="messenger-layout">
-      <ConversationList />
-      <ChatWindow onSend={handleSend} />
+    <div style={{ display: 'grid', gap: 10 }}>
+      <h3>Student messaging</h3>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {conversations.map((conversation) => (
+          <li key={conversation.id}>{conversation.title}: {conversation.lastMessage}</li>
+        ))}
+      </ul>
+      <button type="button" onClick={() => sendMessage({ conversationId: '1', content: 'Hello!', type: 'text' })}>
+        Send reply
+      </button>
     </div>
   );
 };

@@ -7,11 +7,11 @@ interface Props {
 
 export const SeatingChart = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch SeatingChart data
-    api.get('/seatingchart').then(setData);
+    api.get('/seatingchart').then((response) => setData(response.data));
   }, []);
 
   return (

@@ -7,11 +7,11 @@ interface Props {
 
 export const Sidebar = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch Sidebar data
-    api.get('/sidebar').then(setData);
+    api.get('/sidebar').then((response) => setData(response.data));
   }, []);
 
   return (

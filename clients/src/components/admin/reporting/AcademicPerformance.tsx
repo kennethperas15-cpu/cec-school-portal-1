@@ -7,11 +7,11 @@ interface Props {
 
 export const AcademicPerformance = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch AcademicPerformance data
-    api.get('/academicperformance').then(setData);
+    api.get('/academicperformance').then((response) => setData(response.data));
   }, []);
 
   return (

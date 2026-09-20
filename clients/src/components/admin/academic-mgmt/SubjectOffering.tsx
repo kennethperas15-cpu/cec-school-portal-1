@@ -7,11 +7,11 @@ interface Props {
 
 export const SubjectOffering = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch SubjectOffering data
-    api.get('/subjectoffering').then(setData);
+    api.get('/subjectoffering').then((response) => setData(response.data));
   }, []);
 
   return (

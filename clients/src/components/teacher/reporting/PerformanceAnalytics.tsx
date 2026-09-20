@@ -7,11 +7,11 @@ interface Props {
 
 export const PerformanceAnalytics = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch PerformanceAnalytics data
-    api.get('/performanceanalytics').then(setData);
+    api.get('/performanceanalytics').then((response) => setData(response.data));
   }, []);
 
   return (

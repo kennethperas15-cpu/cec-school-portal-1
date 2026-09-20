@@ -1,13 +1,24 @@
-import { Request, Response } from 'express';
-import { auth.serviceService } from '@/services/auth.service.service';
-
-export const auth.serviceController = {
-  async getAll(req: Request, res: Response) {
-    const result = await auth.serviceService.findAll(req.user);
-    res.json({ success: true, data: result });
-  },
-  async create(req: Request, res: Response) {
-    const created = await auth.serviceService.create(req.body);
-    res.status(201).json(created);
-  }
+export type AuthPayload = {
+  email?: string;
+  password?: string;
+  role?: 'student' | 'teacher' | 'admin';
 };
+
+export const authService = {
+  async findAll() {
+    return [
+      { id: 'demo-student', email: 'student@cec.edu.ph', role: 'student' },
+      { id: 'demo-teacher', email: 'teacher@cec.edu.ph', role: 'teacher' },
+      { id: 'demo-admin', email: 'admin@cec.edu.ph', role: 'admin' },
+    ];
+  },
+  async create(payload: AuthPayload) {
+    return {
+      id: `auth-${Date.now()}`,
+      ...payload,
+      createdAt: new Date().toISOString(),
+    };
+  },
+};
+
+export default authService;

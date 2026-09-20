@@ -7,11 +7,11 @@ interface Props {
 
 export const CredentialTracking = ({ className }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch CredentialTracking data
-    api.get('/credentialtracking').then(setData);
+    api.get('/credentialtracking').then((response) => setData(response.data));
   }, []);
 
   return (
