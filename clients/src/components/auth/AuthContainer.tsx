@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Login, type UserAuthData } from './Login';
-import { Register } from './Register';
-import { ForgotPassword } from './ForgotPassword';
 import './Login.css';
+
+const Register = lazy(() => import('./Register').then(({ Register: component }) => ({ default: component })));
+const ForgotPassword = lazy(() => import('./ForgotPassword').then(({ ForgotPassword: component }) => ({ default: component })));
 
 interface AuthContainerProps {
   onLoginSuccess: (user: UserAuthData) => void;
@@ -37,6 +38,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [prefilledIdentifier, setPrefilledIdentifier] = useState('');
   const [prefilledPassword, setPrefilledPassword] = useState('');
+  const activeSlide = campusSlides[currentSlide];
 
   // Auto-advance campus slideshow
   useEffect(() => {
@@ -63,6 +65,9 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
                 className="auth-hero-logo"
                 src="/cec-logo.png"
                 alt="Cebu Eastern College Official Crest"
+                width="96"
+                height="96"
+                decoding="async"
               />
               <div>
                 <span className="auth-hero-est">ESTABLISHED 1915</span>
@@ -77,23 +82,25 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
           {/* Slideshow Showcase */}
           <div className="auth-slideshow" aria-label="Campus photography gallery">
             <div className="auth-slide-window">
-              {campusSlides.map((slide, idx) => (
-                <div
-                  key={slide.src}
-                  className={`auth-slide-item ${idx === currentSlide ? 'active' : ''}`}
-                >
-                  <img
-                    src={slide.src}
-                    alt={slide.title}
-                    className="auth-slide-img"
-                  />
-                  <div className="auth-slide-caption">
-                    <span className="auth-slide-badge">Campus Life</span>
-                    <h3>{slide.title}</h3>
-                    <p>{slide.subtitle}</p>
-                  </div>
+              <div
+                key={activeSlide.src}
+                className="auth-slide-item active"
+              >
+                <img
+                  src={activeSlide.src}
+                  alt={activeSlide.title}
+                  className="auth-slide-img"
+                  width="1200"
+                  height="675"
+                  loading="eager"
+                    decoding="async"
+                />
+                <div className="auth-slide-caption">
+                  <span className="auth-slide-badge">Campus Life</span>
+                  <h3>{activeSlide.title}</h3>
+                  <p>{activeSlide.subtitle}</p>
                 </div>
-              ))}
+              </div>
             </div>
 
             {/* Slideshow Controls */}
@@ -194,30 +201,32 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
 
           {/* Active View */}
           <div className="auth-tab-body">
-            {activeTab === 'login' && (
-              <Login
-                onSuccess={onLoginSuccess}
-                onSwitchToRegister={() => setActiveTab('register')}
-                onSwitchToForgotPassword={() => setActiveTab('forgot')}
-                prefillIdentifier={prefilledIdentifier}
-                prefillPassword={prefilledPassword}
-                onNotify={onNotify}
-              />
-            )}
+            <Suspense fallback={<div className="auth-loading">Loading...</div>}>
+              {activeTab === 'login' && (
+                <Login
+                  onSuccess={onLoginSuccess}
+                  onSwitchToRegister={() => setActiveTab('register')}
+                  onSwitchToForgotPassword={() => setActiveTab('forgot')}
+                  prefillIdentifier={prefilledIdentifier}
+                  prefillPassword={prefilledPassword}
+                  onNotify={onNotify}
+                />
+              )}
 
-            {activeTab === 'register' && (
-              <Register
-                onSwitchToLogin={(email, pass) => handleRegistrationComplete(email, pass)}
-                onNotify={onNotify}
-              />
-            )}
+              {activeTab === 'register' && (
+                <Register
+                  onSwitchToLogin={(email, pass) => handleRegistrationComplete(email, pass)}
+                  onNotify={onNotify}
+                />
+              )}
 
-            {activeTab === 'forgot' && (
-              <ForgotPassword
-                onSwitchToLogin={() => setActiveTab('login')}
-                onNotify={onNotify}
-              />
-            )}
+              {activeTab === 'forgot' && (
+                <ForgotPassword
+                  onSwitchToLogin={() => setActiveTab('login')}
+                  onNotify={onNotify}
+                />
+              )}
+            </Suspense>
           </div>
 
           <div className="auth-column-footer">
