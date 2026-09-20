@@ -70,18 +70,18 @@ export const Login: React.FC<LoginProps> = ({
     setError('');
     setLoading(true);
 
-    // Check demo match first
-    const demo = DEMO_ACCOUNTS[role];
-    if (
-      demo &&
-      identifier.trim().toUpperCase() === demo.identifier.toUpperCase() &&
-      password === demo.password
-    ) {
+    // Check demo match first (role-agnostic: accept any demo ID regardless of selected tab)
+    const demoEntries = Object.entries(DEMO_ACCOUNTS) as ['Student' | 'Teacher' | 'Admin', { identifier: string; password: string; name: string }][];
+    const anyDemo = demoEntries.find(
+      ([, d]) => identifier.trim().toUpperCase() === d.identifier.toUpperCase() && password === d.password
+    );
+    if (anyDemo) {
+      const [demoRole] = anyDemo;
       const names =
-        role === 'Student'
+        demoRole === 'Student'
           ? { firstName: 'Demo', lastName: 'Student' }
-          : { firstName: role, lastName: 'User' };
-      const userData: UserAuthData = { ...names, role: role.toLowerCase() };
+          : { firstName: demoRole, lastName: 'User' };
+      const userData: UserAuthData = { ...names, role: demoRole.toLowerCase() };
 
       if (rememberMe) {
         localStorage.setItem('cec_remember_identifier', identifier.trim());
@@ -94,6 +94,31 @@ export const Login: React.FC<LoginProps> = ({
       if (onSuccess) onSuccess(userData);
       return;
     }
+    const demo = DEMO_ACCOUNTS[role];
+
+    // Offline-issued accounts (Apply/Register without backend) — check localStorage first
+    try {
+      const raw = localStorage.getItem('cec:registrations');
+      const regs = raw ? (JSON.parse(raw) as { schoolEmail?: string; temporaryPassword?: string; fullName?: string; id?: string }[]) : [];
+      const hit = regs.find(
+        (r) =>
+          (r.schoolEmail?.toLowerCase() === identifier.trim().toLowerCase() ||
+            r.id?.toUpperCase() === identifier.trim().toUpperCase()) &&
+          r.temporaryPassword === password
+      );
+      if (hit) {
+        const parts = (hit.fullName ?? 'New Student').trim().split(/\s+/);
+        const offlineUser: UserAuthData = {
+          firstName: parts[0] ?? 'New',
+          lastName: parts.slice(1).join(' ') || 'Student',
+          role: 'student',
+        };
+        setLoading(false);
+        if (onNotify) onNotify(`Welcome back, ${offlineUser.firstName}!`);
+        if (onSuccess) onSuccess(offlineUser);
+        return;
+      }
+    } catch { /* ignore storage errors, fall through to API */ }
 
     try {
       const response = await api.post('/auth/login', {
