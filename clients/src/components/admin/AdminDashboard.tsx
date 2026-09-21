@@ -5,6 +5,7 @@ import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
+import { AdminReports } from './reporting/AdminReports';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 const NAVY = '#0B3D91';
@@ -103,6 +104,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
 
   const render = () => {
     if (active === 'Dashboard') return <RoleDashboardHome role="admin" name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'} onNavigate={navigate} />;
+    if (active === 'Enrollment Stats' || active === 'Academic Performance' || active === 'Revenue Dashboard') return <AdminReports onNotify={onNotify} />;
     if (active === 'Enrollment Approval') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Enrollment Approval (CRUD)</h1>
         <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div><strong>Auto-approve new applications: {autoApprove ? 'ON' : 'OFF'}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>Student Online Enrollment + Registration write to this queue. Approvals sync back to the student Status Tracker.</div></div><button style={autoApprove ? ghost : btn} onClick={toggleAuto}>{autoApprove ? 'Turn OFF' : 'Turn ON'}</button></div>

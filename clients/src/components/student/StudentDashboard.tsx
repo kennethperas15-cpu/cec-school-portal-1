@@ -5,6 +5,7 @@ import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
+import { WorkflowTracker, type WorkflowStep } from '../shared/WorkflowTracker';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 type Rec = { id: string; name: string; role: string };
@@ -120,6 +121,26 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     ...docs.list.map((item) => ({ title: item.name, detail: item.role, target: 'Document Submission' })),
     ...charges.list.map((item) => ({ title: item.name, detail: item.role, target: 'Payment Portal' })),
   ];
+  const enrollmentSteps: WorkflowStep[] = [
+    { label: 'Application Started', updatedAt: 'Sep 2, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Online enrollment application created.', nextAction: 'Submit all required documents', documents: ['Application form'] },
+    { label: 'Documents Submitted', updatedAt: 'Sep 3, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Identity and academic documents uploaded.', nextAction: 'Registrar validation', documents: ['Valid ID', 'Report card'] },
+    { label: 'Under Review', updatedAt: 'Sep 4, 2026', updatedBy: 'Registrar Office', notes: 'Application is being validated by the registrar.', nextAction: 'Wait for approval decision', documents: ['Application checklist'] },
+    { label: 'Approved', updatedAt: 'Sep 5, 2026', updatedBy: 'Registrar Admin', notes: 'Enrollment requirements approved.', nextAction: 'Complete registration and assessment', documents: ['Approval notice'] },
+    { label: 'Registered', nextAction: 'Keep your student records updated' },
+  ];
+  const documentSteps: WorkflowStep[] = [
+    { label: 'Request Submitted', updatedAt: 'Sep 8, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Certificate of enrollment request submitted.', nextAction: 'Records office processing', documents: ['Request form'] },
+    { label: 'Processing', updatedAt: 'Sep 9, 2026', updatedBy: 'Records Office', notes: 'Request is being prepared and verified.', nextAction: 'Wait for release notice', documents: ['Student record'] },
+    { label: 'Ready for Pickup', nextAction: 'Bring a valid ID to the records office' },
+    { label: 'Released', nextAction: 'Keep the released document safely' },
+  ];
+  const paymentSteps: WorkflowStep[] = [
+    { label: 'Assessment Created', updatedAt: 'Sep 1, 2026', updatedBy: 'Finance Office', notes: 'Tuition and applicable fees assessed.', nextAction: 'Review balance and choose payment method', documents: ['Assessment statement'] },
+    { label: 'Payment Pending', updatedAt: 'Sep 1, 2026', updatedBy: 'Finance Office', notes: 'No payment has been posted yet.', nextAction: 'Submit payment before the deadline', documents: ['Billing statement'] },
+    { label: 'Partially Paid', nextAction: 'Settle the remaining balance' },
+    { label: 'Fully Paid', nextAction: 'Wait for receipt issuance' },
+    { label: 'Receipt Issued', nextAction: 'Download and retain your official receipt' },
+  ];
 
   const render = () => {
     if (active === 'Dashboard') return <RoleDashboardHome role="student" name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'} onNavigate={navigate} />;
@@ -145,12 +166,12 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       const catalog = ['BSIT-3A — Data Structures', 'BSIT-3B — Web Development', 'BSCS-3A — Operating Systems'];
       return (<section style={card}><h1 style={{ margin: 0 }}>Section Selection</h1><div style={box}>{catalog.map((c) => <label key={c} style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><input type="checkbox" checked={secSel.includes(c)} onChange={() => setSecSel((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]))} />{c}</label>)}</div><div style={{ marginTop: 12 }}><button style={btn} onClick={() => { secSel.forEach((s) => subjects.create({ id: uid('CS'), name: s, role: 'Selected • Enrolled' })); setSecSel([]); onNotify(`${secSel.length} sections saved`); }}>Save Selection (Create)</button></div><Footer /></section>);
     }
-    if (active === 'Status Tracker') return <TwoFieldForm title="Status Tracker" col={enrollApps} onNotify={onNotify} ph1="Application ref" ph2="Status" />;
-    if (active === 'Document Submission') return <TwoFieldForm title="Document Submission" col={docs} onNotify={onNotify} ph1="Document name" ph2="Status" />;
+    if (active === 'Status Tracker') return <WorkflowTracker title="Student enrollment" reference="CEC-2026-0015 • BSIT • 3rd Year" steps={enrollmentSteps} currentIndex={3} />;
+    if (active === 'Document Submission') return <WorkflowTracker title="Certificate of enrollment request" reference="Document request • DOC-2026-0091" steps={documentSteps} currentIndex={1} />;
     if (active === 'Tuition Assessment') return <TwoFieldForm title="Tuition Assessment" col={charges} onNotify={onNotify} ph1="Charge" ph2="Amount • Status" />;
     if (active === 'Payment Portal') {
       const methodHint: Record<string, string> = { GCash: 'GCash wallet • 0917-XXX-XXXX • reference no.', Maya: 'Maya wallet • reference no.', 'GoTyme Bank': 'GoTyme • account no. 0100-XXXX-XXXX', UnionBank: 'UnionBank • account no. 1093-XXXX-XXXX', Metrobank: 'Metrobank • account no. 305-XXXX-XXXX', BPI: 'BPI • account no. 1234-XXXX-XX', Cashier: 'Pay at CEC cashier • Window 3' };
-      return (<section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
+      return (<><WorkflowTracker title="Tuition payment" reference="Assessment • AY 2026–2027 • BSIT" steps={paymentSteps} currentIndex={1} /><section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>{['GCash', 'Maya', 'GoTyme Bank', 'UnionBank', 'Metrobank', 'BPI', 'Cashier'].map((m) => <button key={m} type="button" onClick={() => setPayMethod(m)} style={{ border: payMethod === m ? '2px solid #0B3D91' : '1px solid #e2e7ef', background: payMethod === m ? '#e8f1ff' : '#fff', borderRadius: 10, padding: '10px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{m}</button>)}</div>
         <div style={{ color: '#6b7890', fontSize: 13, marginTop: 10 }}>{methodHint[payMethod]}</div>
         <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!payAmt.trim()) return; history.create({ id: uid('OR'), name: `OR — ₱${payAmt.trim()} via ${payMethod}${payRef.trim() ? ` • Ref ${payRef.trim()}` : ''}`, role: 'Today • Tuition • Paid' }); charges.setList((rows) => rows.map((r) => ({ ...r, role: r.role.replace('Outstanding', 'Partially paid') }))); setPayAmt(''); setPayRef(''); onNotify(`Payment recorded via ${payMethod}`); }}>
@@ -158,7 +179,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           <input style={inp} placeholder={payMethod === 'Cashier' ? 'OR number (optional)' : 'Reference / account no.'} value={payRef} onChange={(e) => setPayRef(e.target.value)} aria-label="Reference" />
           <select style={inp} value={payMethod} onChange={(e) => setPayMethod(e.target.value)} aria-label="Payment method"><option>GCash</option><option>Maya</option><option>GoTyme Bank</option><option>UnionBank</option><option>Metrobank</option><option>BPI</option><option>Cashier</option></select>
           <button style={btn} type="submit">Pay now</button>
-        </form><Footer /></section>);
+        </form><Footer />        </section></>);
     }
     if (active === 'Billing History') return <CrudSection title="Billing History" col={history} onNotify={onNotify} hint="Tuition" />;
     if (active === 'Scholarship Application') return <TwoFieldForm title="Scholarship Application" col={scholar} onNotify={onNotify} ph1="Scholarship name" ph2="Status" />;
