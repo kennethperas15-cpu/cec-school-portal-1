@@ -2,6 +2,9 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../config/database.js';
+import { authmiddlewareMiddleware } from '../middleware/auth.middleware.js';
+import { requireRoles } from '../middleware/rbac.middleware.js';
+import { writeAuditLog } from '../services/audit.service.js';
 
 const router = Router();
 
@@ -48,8 +51,9 @@ router.post('/enrollments', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.post('/enrollments/:id/decide', async (req, res, next) => {
+router.post('/enrollments/:id/decide', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
   try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const { decision } = req.body as { decision?: string };
     if (decision !== 'approved' && decision !== 'rejected') {
       res.status(400).json({ success: false, message: 'Decision must be approved or rejected' });
@@ -57,9 +61,10 @@ router.post('/enrollments/:id/decide', async (req, res, next) => {
     }
     await sequelize.query(
       `UPDATE enrollment_applications SET status = ?, reviewed_at = NOW() WHERE id = ? AND status = 'pending'`,
-      { replacements: [decision, req.params.id], type: QueryTypes.UPDATE }
+      { replacements: [decision, id], type: QueryTypes.UPDATE }
     );
-    res.json({ success: true, data: { id: req.params.id, status: decision } });
+    await writeAuditLog(req, { action: `Enrollment ${decision}`, targetType: 'EnrollmentApplication', targetId: id, newValue: { status: decision } });
+    res.json({ success: true, data: { id, status: decision } });
   } catch (error) { next(error); }
 });
 
@@ -78,7 +83,7 @@ router.get('/items', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.post('/items', async (req, res, next) => {
+router.post('/items', authmiddlewareMiddleware, requireRoles('admin', 'teacher'), async (req, res, next) => {
   try {
     const { portal, module, title, detail, status, owner } = req.body as {
       portal?: string; module?: string; title?: string; detail?: string; status?: string; owner?: string;
@@ -92,25 +97,30 @@ router.post('/items', async (req, res, next) => {
       `INSERT INTO portal_items (id, portal, module, title, detail, status, owner) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       { replacements: [id, portal.trim(), module.trim(), title.trim(), detail ?? null, status ?? 'New', owner ?? null], type: QueryTypes.INSERT }
     );
+    await writeAuditLog(req, { action: 'Portal item created', targetType: 'PortalItem', targetId: id, newValue: { portal, module, title, status } });
     res.status(201).json({ success: true, data: { id } });
   } catch (error) { next(error); }
 });
 
-router.put('/items/:id', async (req, res, next) => {
+router.put('/items/:id', authmiddlewareMiddleware, requireRoles('admin', 'teacher'), async (req, res, next) => {
   try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const { title, detail, status, owner } = req.body as { title?: string; detail?: string; status?: string; owner?: string };
     await sequelize.query(
       `UPDATE portal_items SET title = COALESCE(?, title), detail = COALESCE(?, detail), status = COALESCE(?, status), owner = COALESCE(?, owner) WHERE id = ?`,
-      { replacements: [title ?? null, detail ?? null, status ?? null, owner ?? null, req.params.id], type: QueryTypes.UPDATE }
+      { replacements: [title ?? null, detail ?? null, status ?? null, owner ?? null, id], type: QueryTypes.UPDATE }
     );
-    res.json({ success: true, data: { id: req.params.id } });
+    await writeAuditLog(req, { action: 'Portal item updated', targetType: 'PortalItem', targetId: id, newValue: { title, detail, status, owner } });
+    res.json({ success: true, data: { id } });
   } catch (error) { next(error); }
 });
 
-router.delete('/items/:id', async (req, res, next) => {
+router.delete('/items/:id', authmiddlewareMiddleware, requireRoles('admin', 'teacher'), async (req, res, next) => {
   try {
-    await sequelize.query(`DELETE FROM portal_items WHERE id = ?`, { replacements: [req.params.id], type: QueryTypes.UPDATE });
-    res.json({ success: true, data: { id: req.params.id } });
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await sequelize.query(`DELETE FROM portal_items WHERE id = ?`, { replacements: [id], type: QueryTypes.UPDATE });
+    await writeAuditLog(req, { action: 'Portal item deleted', targetType: 'PortalItem', targetId: id });
+    res.json({ success: true, data: { id } });
   } catch (error) { next(error); }
 });
 

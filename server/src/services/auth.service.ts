@@ -162,7 +162,7 @@ export const authService = {
     const accessToken = jwt.sign(
       { sub: users[0].id, role: users[0].role, email: users[0].email },
       env.jwtSecret,
-      { expiresIn: '8h' }
+      { expiresIn: env.accessTokenTtl as jwt.SignOptions['expiresIn'] }
     );
     return {
       accessToken,

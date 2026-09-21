@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authService } from '../services/auth.service.js';
 import { env } from '../config/env.js';
+import { loginRateLimit } from '../middleware/rate-limit.middleware.js';
 
 const router = Router();
 
@@ -55,7 +56,7 @@ router.post('/enrollment', async (req, res, next) => {
   }
 });
 
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginRateLimit(), async (req, res, next) => {
   try {
     const { identifier, password } = req.body as { identifier?: string; password?: string };
     if (!identifier?.trim() || !password) {

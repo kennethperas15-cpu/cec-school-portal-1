@@ -5,6 +5,9 @@ export interface UserAuthData {
   firstName: string;
   lastName: string;
   role: string;
+  id?: string;
+  email?: string;
+  program?: string;
 }
 
 interface LoginProps {
@@ -40,6 +43,16 @@ export const Login: React.FC<LoginProps> = ({
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    try {
+      const savedIdentifier = localStorage.getItem('cec_remember_identifier');
+      if (savedIdentifier && !prefillIdentifier) setIdentifier(savedIdentifier);
+      setRememberMe(Boolean(savedIdentifier));
+    } catch {
+      // Storage is optional; the form remains usable when it is unavailable.
+    }
+  }, [prefillIdentifier]);
 
   useEffect(() => {
     if (prefillIdentifier) {
@@ -90,6 +103,7 @@ export const Login: React.FC<LoginProps> = ({
       }
 
       setLoading(false);
+      localStorage.setItem('cec_session_user', JSON.stringify(userData));
       if (onNotify) onNotify(`Welcome back, ${userData.firstName}!`);
       if (onSuccess) onSuccess(userData);
       return;
@@ -114,6 +128,7 @@ export const Login: React.FC<LoginProps> = ({
           role: 'student',
         };
         setLoading(false);
+        localStorage.setItem('cec_session_user', JSON.stringify(offlineUser));
         if (onNotify) onNotify(`Welcome back, ${offlineUser.firstName}!`);
         if (onSuccess) onSuccess(offlineUser);
         return;
@@ -135,6 +150,7 @@ export const Login: React.FC<LoginProps> = ({
       if (response.data?.data?.token) {
         localStorage.setItem('cec_access_token', response.data.data.token);
       }
+      localStorage.setItem('cec_session_user', JSON.stringify(user));
 
       if (rememberMe) {
         localStorage.setItem('cec_remember_identifier', identifier.trim());

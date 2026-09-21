@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { useCollection, uid } from '../../services/crud';
 import { portalApi } from '../../services/portal';
+import { RoleDashboardHome } from '../shared/RoleDashboardHome';
+import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
+import { NotificationCenter } from '../shared/NotificationCenter';
+import { openEditDialog } from '../shared/EditDialog';
+import { WorkflowTracker, type WorkflowStep } from '../shared/WorkflowTracker';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 type Rec = { id: string; name: string; role: string };
@@ -33,7 +38,7 @@ const CrudSection = ({ title, col, onNotify, hint }: { title: string; col: Col; 
     <form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); if (!v.trim()) return; col.create({ id: uid('s'), name: v.trim(), role: hint }); setV(''); onNotify(`${title} created`); }}>
       <input style={inp} placeholder={`New ${title}`} value={v} onChange={(e) => setV(e.target.value)} aria-label={title} /><button style={btn} type="submit">Add</button>
     </form>
-    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.id} • {r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { const nv = prompt('Edit', r.name); if (nv) { col.update(r.id, { name: nv }); onNotify('Updated'); } }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></div>)}{!col.list.length && <div style={{ color: '#6b7890' }}>No records yet — add one above.</div>}</div><Footer /></section>);
+    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.id} • {r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Edit record', r.name, (nv) => { col.update(r.id, { name: nv }); onNotify('Updated'); })}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}{!col.list.length && <div style={{ color: '#6b7890' }}>No records yet — add one above.</div>}</div><Footer /></section>);
 };
 
 const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: Col; onNotify: (t: string) => void; ph1: string; ph2: string }) => {
@@ -42,11 +47,11 @@ const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: 
     <form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!a.trim()) return; col.create({ id: uid('s'), name: a.trim(), role: b.trim() || 'New' }); setA(''); setB(''); onNotify(`${title} created`); }}>
       <input style={inp} placeholder={ph1} value={a} onChange={(e) => setA(e.target.value)} /><input style={inp} placeholder={ph2} value={b} onChange={(e) => setB(e.target.value)} /><button style={btn} type="submit">Add</button>
     </form>
-    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { const nv = prompt('Edit status/detail', r.role); if (nv !== null) { col.update(r.id, { role: nv }); onNotify('Updated'); } }}>Update</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
+    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Update status/detail', r.role, (nv) => { col.update(r.id, { role: nv }); onNotify('Updated'); })}>Update</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}</div><Footer /></section>);
 };
 
 export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
-  const [active, setActive] = useState('Profile Management');
+  const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('auth');
   const [collapsed, setCollapsed] = useState(false);
   const [profile, setProfile] = useState({ name: 'Juan Dela Cruz', id: 'CEC-2024-0015', course: 'BSIT - 3rd Year', email: 'juan.delacruz@cec.edu.ph', phone: '0917-123-4567', address: 'Colon St., Cebu City', guardian: 'Maria Dela Cruz - 0917-999-0000', emergency: 'Maria Dela Cruz (Mother) - 0917-999-0000 - Brgy. Tejero' });
@@ -107,8 +112,38 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   };
   const [enrPg, setEnrPg] = useState('BSIT'); const [enrYr, setEnrYr] = useState('3rd Year'); const [enrSm, setEnrSm] = useState('1st Semester');
   const route = GROUPS.flatMap((g) => g.items).find((i) => i.label === active)?.route ?? 's_dashboard';
+  const moduleItems = ['Dashboard', ...GROUPS.flatMap((g) => g.items.map((item) => item.label))];
+  const navigate = (label: string) => setActive(moduleItems.includes(label) ? label : 'Dashboard');
+  const searchRecords = [
+    { title: 'Juan Dela Cruz', detail: 'CEC-2024-0015 • BSIT-3A • juan.delacruz@cec.edu.ph', target: 'Profile Management' },
+    ...subjects.list.map((item) => ({ title: item.name, detail: item.role, target: 'Grades / Report Card' })),
+    ...assigns.list.map((item) => ({ title: item.name, detail: item.role, target: 'Assignments' })),
+    ...docs.list.map((item) => ({ title: item.name, detail: item.role, target: 'Document Submission' })),
+    ...charges.list.map((item) => ({ title: item.name, detail: item.role, target: 'Payment Portal' })),
+  ];
+  const enrollmentSteps: WorkflowStep[] = [
+    { label: 'Application Started', updatedAt: 'Sep 2, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Online enrollment application created.', nextAction: 'Submit all required documents', documents: ['Application form'] },
+    { label: 'Documents Submitted', updatedAt: 'Sep 3, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Identity and academic documents uploaded.', nextAction: 'Registrar validation', documents: ['Valid ID', 'Report card'] },
+    { label: 'Under Review', updatedAt: 'Sep 4, 2026', updatedBy: 'Registrar Office', notes: 'Application is being validated by the registrar.', nextAction: 'Wait for approval decision', documents: ['Application checklist'] },
+    { label: 'Approved', updatedAt: 'Sep 5, 2026', updatedBy: 'Registrar Admin', notes: 'Enrollment requirements approved.', nextAction: 'Complete registration and assessment', documents: ['Approval notice'] },
+    { label: 'Registered', nextAction: 'Keep your student records updated' },
+  ];
+  const documentSteps: WorkflowStep[] = [
+    { label: 'Request Submitted', updatedAt: 'Sep 8, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Certificate of enrollment request submitted.', nextAction: 'Records office processing', documents: ['Request form'] },
+    { label: 'Processing', updatedAt: 'Sep 9, 2026', updatedBy: 'Records Office', notes: 'Request is being prepared and verified.', nextAction: 'Wait for release notice', documents: ['Student record'] },
+    { label: 'Ready for Pickup', nextAction: 'Bring a valid ID to the records office' },
+    { label: 'Released', nextAction: 'Keep the released document safely' },
+  ];
+  const paymentSteps: WorkflowStep[] = [
+    { label: 'Assessment Created', updatedAt: 'Sep 1, 2026', updatedBy: 'Finance Office', notes: 'Tuition and applicable fees assessed.', nextAction: 'Review balance and choose payment method', documents: ['Assessment statement'] },
+    { label: 'Payment Pending', updatedAt: 'Sep 1, 2026', updatedBy: 'Finance Office', notes: 'No payment has been posted yet.', nextAction: 'Submit payment before the deadline', documents: ['Billing statement'] },
+    { label: 'Partially Paid', nextAction: 'Settle the remaining balance' },
+    { label: 'Fully Paid', nextAction: 'Wait for receipt issuance' },
+    { label: 'Receipt Issued', nextAction: 'Download and retain your official receipt' },
+  ];
 
   const render = () => {
+    if (active === 'Dashboard') return <RoleDashboardHome role="student" name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'} onNavigate={navigate} />;
     if (active === 'Profile Management') {
       const F = (k: keyof typeof profile, label: string) => (<div><span style={lbl}>{label}</span><input style={inp} value={profile[k]} onChange={(e) => setProfile({ ...profile, [k]: e.target.value })} aria-label={label} /></div>);
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Profile Management</h1><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>{F('name', 'NAME')}{F('id', 'ID')}{F('course', 'COURSE')}{F('email', 'EMAIL')}{F('phone', 'PHONE')}{F('address', 'ADDRESS')}{F('guardian', 'GUARDIAN')}{F('emergency', 'EMERGENCY')}</div><div style={{ marginTop: 18 }}><button style={{ ...btn, borderRadius: 10 }} onClick={() => onNotify('Profile changes saved (Update)')}>Save Changes</button></div><Footer /></section>);
@@ -131,12 +166,12 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       const catalog = ['BSIT-3A — Data Structures', 'BSIT-3B — Web Development', 'BSCS-3A — Operating Systems'];
       return (<section style={card}><h1 style={{ margin: 0 }}>Section Selection</h1><div style={box}>{catalog.map((c) => <label key={c} style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><input type="checkbox" checked={secSel.includes(c)} onChange={() => setSecSel((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]))} />{c}</label>)}</div><div style={{ marginTop: 12 }}><button style={btn} onClick={() => { secSel.forEach((s) => subjects.create({ id: uid('CS'), name: s, role: 'Selected • Enrolled' })); setSecSel([]); onNotify(`${secSel.length} sections saved`); }}>Save Selection (Create)</button></div><Footer /></section>);
     }
-    if (active === 'Status Tracker') return <TwoFieldForm title="Status Tracker" col={enrollApps} onNotify={onNotify} ph1="Application ref" ph2="Status" />;
-    if (active === 'Document Submission') return <TwoFieldForm title="Document Submission" col={docs} onNotify={onNotify} ph1="Document name" ph2="Status" />;
+    if (active === 'Status Tracker') return <WorkflowTracker title="Student enrollment" reference="CEC-2026-0015 • BSIT • 3rd Year" steps={enrollmentSteps} currentIndex={3} />;
+    if (active === 'Document Submission') return <WorkflowTracker title="Certificate of enrollment request" reference="Document request • DOC-2026-0091" steps={documentSteps} currentIndex={1} />;
     if (active === 'Tuition Assessment') return <TwoFieldForm title="Tuition Assessment" col={charges} onNotify={onNotify} ph1="Charge" ph2="Amount • Status" />;
     if (active === 'Payment Portal') {
       const methodHint: Record<string, string> = { GCash: 'GCash wallet • 0917-XXX-XXXX • reference no.', Maya: 'Maya wallet • reference no.', 'GoTyme Bank': 'GoTyme • account no. 0100-XXXX-XXXX', UnionBank: 'UnionBank • account no. 1093-XXXX-XXXX', Metrobank: 'Metrobank • account no. 305-XXXX-XXXX', BPI: 'BPI • account no. 1234-XXXX-XX', Cashier: 'Pay at CEC cashier • Window 3' };
-      return (<section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
+      return (<><WorkflowTracker title="Tuition payment" reference="Assessment • AY 2026–2027 • BSIT" steps={paymentSteps} currentIndex={1} /><section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>{['GCash', 'Maya', 'GoTyme Bank', 'UnionBank', 'Metrobank', 'BPI', 'Cashier'].map((m) => <button key={m} type="button" onClick={() => setPayMethod(m)} style={{ border: payMethod === m ? '2px solid #0B3D91' : '1px solid #e2e7ef', background: payMethod === m ? '#e8f1ff' : '#fff', borderRadius: 10, padding: '10px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{m}</button>)}</div>
         <div style={{ color: '#6b7890', fontSize: 13, marginTop: 10 }}>{methodHint[payMethod]}</div>
         <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!payAmt.trim()) return; history.create({ id: uid('OR'), name: `OR — ₱${payAmt.trim()} via ${payMethod}${payRef.trim() ? ` • Ref ${payRef.trim()}` : ''}`, role: 'Today • Tuition • Paid' }); charges.setList((rows) => rows.map((r) => ({ ...r, role: r.role.replace('Outstanding', 'Partially paid') }))); setPayAmt(''); setPayRef(''); onNotify(`Payment recorded via ${payMethod}`); }}>
@@ -144,7 +179,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           <input style={inp} placeholder={payMethod === 'Cashier' ? 'OR number (optional)' : 'Reference / account no.'} value={payRef} onChange={(e) => setPayRef(e.target.value)} aria-label="Reference" />
           <select style={inp} value={payMethod} onChange={(e) => setPayMethod(e.target.value)} aria-label="Payment method"><option>GCash</option><option>Maya</option><option>GoTyme Bank</option><option>UnionBank</option><option>Metrobank</option><option>BPI</option><option>Cashier</option></select>
           <button style={btn} type="submit">Pay now</button>
-        </form><Footer /></section>);
+        </form><Footer />        </section></>);
     }
     if (active === 'Billing History') return <CrudSection title="Billing History" col={history} onNotify={onNotify} hint="Tuition" />;
     if (active === 'Scholarship Application') return <TwoFieldForm title="Scholarship Application" col={scholar} onNotify={onNotify} ph1="Scholarship name" ph2="Status" />;
@@ -175,16 +210,17 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
-      <header style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
+    <div className="role-dashboard" style={{ minHeight: '100vh', background: '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
+      <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><div style={{ width: 38, height: 38, borderRadius: 10, background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>CEC</div><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • 1ST SEM 2024-2025</div></div></div>
         <button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer' }} aria-label="Toggle sidebar">☰</button>
-        <span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{route}</span>
-        <div style={{ marginLeft: 'auto' }}><div style={{ width: 36, height: 36, borderRadius: '50%', background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>S</div></div>
+        <button className="dashboard-home-link" type="button" onClick={() => setActive('Dashboard')}>⌂ Dashboard</button><span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
+        <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />
+        <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><NotificationCenter role="student" onNavigate={navigate} /><div className="dashboard-avatar" style={{ width: 36, height: 36, borderRadius: '50%', background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>{currentUser?.firstName?.[0] ?? 'S'}</div></div>
       </header>
       <div style={{ display: 'flex' }}>
-        {!collapsed && (<aside style={{ width: 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{GROUPS.map((g) => { const open = expanded === g.id; return (<div key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => setExpanded(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button key={it.label} onClick={() => setActive(it.label)} style={{ textAlign: 'left', border: active === it.label ? '2px solid #111' : 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 400 }}>{it.label}</button>)}</div>}</div>); })}<div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><div><div style={{ fontWeight: 700, fontSize: 13 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Demo Student'}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>student</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div></aside>)}
-        <main style={{ flex: 1, padding: 24, minWidth: 0 }}>{render()}</main>
+        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{GROUPS.map((g) => { const open = expanded === g.id; return (<div className={`dashboard-nav-group ${open ? 'is-open' : ''}`} key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => setExpanded(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button key={it.label} onClick={() => setActive(it.label)} style={{ textAlign: 'left', border: active === it.label ? '2px solid #111' : 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 400 }}>{it.label}</button>)}</div>}</div>); })}<div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><div><div style={{ fontWeight: 700, fontSize: 13 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Demo Student'}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>student</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div></aside>)}
+        <main className="dashboard-main" style={{ flex: 1, padding: 24, minWidth: 0 }}>{render()}</main>
       </div>
     </div>
   );
