@@ -1,13 +1,24 @@
-import { useState } from 'react';
-import { useCollection, uid } from '../../services/crud';
+import { useEffect, useRef, useState } from 'react';
+import { useCollection, uid, genSchoolId } from '../../services/crud';
+import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
+import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
+import { pushNotification } from '../../services/notify';
+import { setPhoto, readPhotoFile } from '../../services/photos';
+import { ensureSchoolId } from '../../services/crud';
+import { PhotoAvatar } from '../shared/PhotoAvatar';
+import { ChangePassword } from '../shared/ChangePassword';
+import { AlertPopup } from '../shared/AlertPopup';
+import { FileUploadDialog } from '../shared/FileUploadDialog';
+import { SlideShow, REGISTRAR_SLIDES, FINANCE_SLIDES } from '../shared/SlideShow';
 import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
 import { WorkflowTracker, type WorkflowStep } from '../shared/WorkflowTracker';
+import { readStage, DOC_STAGES, SUBMIT_STAGES, writeStage } from '../../services/docStages';
 
-type Props = { currentUser: { firstName: string; lastName: string; role: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
+type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 type Rec = { id: string; name: string; role: string };
 type Col = { list: Rec[]; create: (x: { id?: string; name: string; role: string }) => void; update: (id: string, p: Partial<Rec>) => void; remove: (id: string) => void; setList: (v: Rec[] | ((p: Rec[]) => Rec[])) => void };
 const NAVY = '#0B3D91';
@@ -41,6 +52,264 @@ const CrudSection = ({ title, col, onNotify, hint }: { title: string; col: Col; 
     <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.id} • {r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Edit record', r.name, (nv) => { col.update(r.id, { name: nv }); onNotify('Updated'); })}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}{!col.list.length && <div style={{ color: '#6b7890' }}>No records yet — add one above.</div>}</div><Footer /></section>);
 };
 
+const LiveDocTracker = ({ docId, title, reference, steps }: { docId: string; title: string; reference: string; steps: WorkflowStep[] }) => {  const [stage, setStage] = useState(() => readStage(docId));
+  useEffect(() => {
+    const refresh = () => setStage(readStage(docId));
+    const timer = window.setInterval(refresh, 4000);
+    window.addEventListener('cec:doc-stages', refresh);
+    window.addEventListener('storage', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('cec:doc-stages', refresh); window.removeEventListener('storage', refresh); };
+  }, [docId]);
+  return (<>
+    <WorkflowTracker title={title} reference={reference} steps={steps} currentIndex={stage} readOnly />
+    <p style={{ margin: '10px 2px 0', fontSize: 12, color: '#64748B' }}>Status updates automatically after the registrar confirms your submission — no action needed from you.</p>
+  </>);
+};
+
+const ENROLL_STEPS: WorkflowStep[] = [
+  { label: 'Application Submitted', nextAction: 'Documents are checked automatically' },
+  { label: 'Documents Verified', nextAction: 'Wait for the approval decision' },
+  { label: 'Approved', nextAction: 'Proceed to assessment and payment' },
+  { label: 'Enrolled', nextAction: 'You are officially enrolled' },
+];
+
+const enrollStageOf = (role: string): number => {
+  const r = role.toLowerCase();
+  if (r.includes('auto')) return 3;
+  if (r.includes('approv')) return 2;
+  if (r.includes('verif')) return 1;
+  return 0;
+};
+
+const REQUIRED_DOCS = [
+  { slug: 'school-assessment', title: 'School Assessment', hint: 'Report card / Form 138 / assessment of grades' },
+  { slug: 'school-id-doc', title: 'School ID', hint: 'Valid school ID or government ID photo' },
+];
+
+const RequiredDocs = ({ col, onNotify, onUploaded }: { col: Col; onNotify: (t: string) => void; onUploaded?: () => void }) => {
+  const [uploadFor, setUploadFor] = useState<string | null>(null);
+  const [typedId, setTypedId] = useState('');
+  const [idError, setIdError] = useState('');
+  const entryFor = (slug: string) => col.list.find((r) => r.id === slug);
+  const handleFile = (slug: string, title: string, file: File) => {
+    const label = `${file.name} • ${(file.size / 1024).toFixed(0)} KB • Submitted ${new Date().toLocaleDateString()}`;
+    const existing = entryFor(slug);
+    // Keep a preview copy for small files so registrar can view it
+    if (file.size < 300 * 1024) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { localStorage.setItem(`cec:docfile:${slug}`, String(reader.result ?? '')); } catch { /* quota */ }
+      };
+      reader.readAsDataURL(file);
+    }
+    if (existing) col.update(slug, { name: title, role: label });
+    else col.create({ id: slug, name: title, role: label });
+    pushNotification(['admin'], { title: `Document submitted: ${title}`, detail: `${file.name} — ready for registrar verification.`, category: 'Enrollment', target: 'Document Verification' });
+    onNotify(`${title} uploaded — sent for registrar verification`);
+    onUploaded?.();
+  };
+  const saveTypedId = () => {
+    const v = typedId.trim();
+    if (!/^2\d{5}$/.test(v)) {
+      setIdError('School ID must be 6 digits starting with 2 (e.g. 201589).');
+      return;
+    }
+    setIdError('');
+    const label = `ID ${v} • Submitted ${new Date().toLocaleDateString()}`;
+    if (entryFor('school-id-doc')) col.update('school-id-doc', { name: 'School ID', role: label });
+    else col.create({ id: 'school-id-doc', name: 'School ID', role: label });
+    setTypedId('');
+    pushNotification(['admin'], { title: 'School ID submitted', detail: `Student entered ID ${v} — ready for registrar verification.`, category: 'Enrollment', target: 'Document Verification' });
+    onNotify(`School ID ${v} saved — sent for registrar verification`);
+    onUploaded?.();
+  };
+  const active = REQUIRED_DOCS.find((d) => d.slug === uploadFor);
+  return (<>
+    <div style={box}>
+      {REQUIRED_DOCS.map((d) => {
+        const entry = entryFor(d.slug);
+        const done = !!entry;
+        if (d.slug === 'school-id-doc') {
+          return (
+            <div key={d.slug} style={{ padding: '12px 0', borderBottom: '1px solid #eef1f6' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <strong>{d.title}</strong>
+                  <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>Type your 6-digit school ID (starts with 2) — no upload needed</div>
+                  <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700, color: done ? '#15803d' : '#b45309' }}>
+                    {done ? `✓ ${entry?.role}` : '○ Missing — enter below'}
+                  </div>
+                </div>
+              </div>
+              <form style={{ display: 'flex', gap: 8, marginTop: 10, maxWidth: 480 }} onSubmit={(e) => { e.preventDefault(); saveTypedId(); }}>
+                <input style={inp} placeholder="e.g. 201589" value={typedId} onChange={(e) => { setTypedId(e.target.value.replace(/\D/g, '').slice(0, 6)); setIdError(''); }} inputMode="numeric" aria-label="School ID number" />
+                <button style={btn} type="submit">{done ? 'Update' : 'Save'}</button>
+              </form>
+              {idError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{idError}</div>}
+            </div>
+          );
+        }
+        return (
+          <div key={d.slug} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #eef1f6' }}>
+            <div style={{ flex: 1 }}>
+              <strong>{d.title}</strong>
+              <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>{d.hint}</div>
+              <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700, color: done ? '#15803d' : '#b45309' }}>
+                {done ? `✓ ${entry?.role}` : '○ Missing — upload required'}
+              </div>
+            </div>
+            <button style={btn} onClick={() => setUploadFor(d.slug)}>↥ {done ? 'Re-upload' : 'Upload'}</button>
+          </div>
+        );
+      })}
+    </div>
+    {active && (
+      <FileUploadDialog
+        title={`Upload ${active.title}`}
+        subtitle={`${active.hint}. PDF, JPG or PNG, max 10MB.`}
+        onClose={() => setUploadFor(null)}
+        onUpload={(f) => handleFile(active.slug, active.title, f)}
+      />
+    )}
+  </>);
+};
+const SUBMIT_STEPS: WorkflowStep[] = [
+  { label: 'Submitted', nextAction: 'Wait for registrar review' },
+  { label: 'Under Review', nextAction: 'Registrar is checking your document' },
+  { label: 'Verified', nextAction: 'Wait for final acceptance' },
+  { label: 'Accepted', nextAction: 'Requirement complete' },
+];
+
+const SubmissionTracker = ({ slug, title, onNotify }: { slug: string; title: string; onNotify: (t: string) => void }) => {
+  const [stage, setStage] = useState(() => readStage(slug));
+  const [sentTick, setSentTick] = useState(0);
+  const autoStarted = useRef(false);
+  const autoAdvance = () => {
+    if (autoStarted.current) return;
+    autoStarted.current = true;
+    [1, 2, 3].forEach((s, i) => {
+      window.setTimeout(() => {
+        if (readStage(slug) >= s) { setStage(readStage(slug)); }
+        else {
+          writeStage(slug, s);
+          setStage(s);
+        }
+        if (s === 3) {
+          onNotify(`${title} verified and accepted automatically`);
+          pushNotification(['student'], { title: `${title} accepted`, detail: 'Verification completed automatically — no registrar wait.', category: 'Enrollment', target: 'Document Submission' });
+        }
+      }, 2500 * (i + 1));
+    });
+  };
+  useEffect(() => {
+    const refresh = () => { setStage(readStage(slug)); setSentTick((t) => t + 1); };
+    const timer = window.setInterval(refresh, 4000);
+    window.addEventListener('cec:doc-stages', refresh);
+    window.addEventListener('storage', refresh);
+    // Recovery: a submission made before auto-verify existed still advances
+    try {
+      const raw = localStorage.getItem('cec:s_docs');
+      const rows = raw ? (JSON.parse(raw) as { id: string }[]) : [];
+      if (rows.some((r) => r.id === slug) && readStage(slug) < 3) autoAdvance();
+    } catch { /* ignore */ }
+    return () => { window.clearInterval(timer); window.removeEventListener('cec:doc-stages', refresh); window.removeEventListener('storage', refresh); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+  void sentTick;
+  const uploaded = (() => {
+    try {
+      const raw = localStorage.getItem('cec:s_docs');
+      const rows = raw ? (JSON.parse(raw) as { id: string }[]) : [];
+      return rows.some((r) => r.id === slug);
+    } catch { return false; }
+  })();
+  const sent = (() => {
+    try {
+      const raw = localStorage.getItem('cec:doc-sent');
+      const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+      return !!map[slug];
+    } catch { return false; }
+  })();
+  const submit = () => {
+    // No registrar wait: the submission verifies itself, advancing automatically.
+    writeStage(slug, 0);
+    autoAdvance();
+    try {
+      const raw = localStorage.getItem('cec:doc-sent');
+      const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+      localStorage.setItem('cec:doc-sent', JSON.stringify({ ...map, [slug]: true }));
+    } catch { /* ignore */ }
+    pushNotification(['admin'], { title: `${title} submitted (auto-verified)`, detail: 'Student submitted — system is verifying automatically.', category: 'Enrollment', target: 'Document Verification' });
+    onNotify(`${title} submitted — verifying automatically`);
+    setStage(0);
+    setSentTick((t) => t + 1);
+  };
+  const done = sent || stage > 0;
+  return (<>
+    <WorkflowTracker title={`${title} — verification`} reference={`${slug} • stage ${stage + 1} of ${SUBMIT_STAGES.length} (${SUBMIT_STAGES[stage]})`} steps={SUBMIT_STEPS} currentIndex={stage} readOnly />
+    <button
+      type="button"
+      disabled={!uploaded || done}
+      onClick={submit}
+      style={{ marginTop: 12, width: '100%', border: 0, borderRadius: 10, padding: '13px 0', fontWeight: 800, fontSize: 14, cursor: !uploaded || done ? 'not-allowed' : 'pointer', background: !uploaded || done ? '#cbd5e1' : '#0B3D91', color: '#fff' }}
+    >
+      {!uploaded ? 'Upload the document above first' : done ? 'Submitted ✓ — verifying automatically' : `Submit ${title} for verification`}
+    </button>
+    <p style={{ margin: '10px 2px 0', fontSize: 12, color: '#64748B' }}>After you submit, the tracker updates automatically when the registrar verifies this document — no further action needed.</p>
+  </>);
+};
+const LiveEnrollTracker = ({ apps }: { apps: { id: string; name: string; role: string }[] }) => {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    // Auto-progress: required documents complete → Documents Verified, no registrar wait
+    const checkDocs = () => {
+      try {
+        const dRaw = localStorage.getItem('cec:s_docs');
+        const dRows = dRaw ? (JSON.parse(dRaw) as { id: string }[]) : [];
+        const hasAssessment = dRows.some((r) => r.id === 'school-assessment');
+        const hasId = dRows.some((r) => r.id === 'school-id-doc');
+        if (!hasAssessment || !hasId) return;
+        const raw = localStorage.getItem('cec:s_enroll_apps');
+        if (!raw) return;
+        const rows = JSON.parse(raw) as { id: string; name: string; role: string }[];
+        let changed = false;
+        const next = rows.map((r) => {
+          if (r.role.startsWith('Pending') && !r.role.includes('Documents Verified')) { changed = true; return { ...r, role: `${r.role} • Documents Verified` }; }
+          return r;
+        });
+        if (changed) {
+          localStorage.setItem('cec:s_enroll_apps', JSON.stringify(next));
+          setTick((t) => t + 1);
+        }
+      } catch { /* ignore */ }
+    };
+    checkDocs();
+    const timer = window.setInterval(() => { checkDocs(); setTick((t) => t + 1); }, 4000);
+    const refresh = () => setTick((t) => t + 1);
+    window.addEventListener('storage', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('storage', refresh); };
+  }, []);
+  // Fresh read every render so admin approvals appear automatically
+  let live = apps;
+  try {
+    const raw = localStorage.getItem('cec:s_enroll_apps');
+    if (raw) live = JSON.parse(raw);
+  } catch { /* keep props */ }
+  if (!live.length) return <p style={{ color: '#64748B', fontSize: 13 }}>No applications yet — submit one at Online Enrollment. It will advance here automatically after admin review.</p>;
+  return (<div style={{ display: 'grid', gap: 18 }}>
+    {live.map((a) => {
+      const rejected = a.role.toLowerCase().includes('reject');
+      return (
+        <div key={a.id}>
+          <WorkflowTracker title={`Enrollment — ${a.name}`} reference={`${a.id} • ${a.role}`} steps={ENROLL_STEPS} currentIndex={rejected ? 0 : enrollStageOf(a.role)} readOnly />
+          {rejected
+            ? <p style={{ margin: '10px 2px 0', fontSize: 12, color: '#b91c1c', fontWeight: 700 }}>Returned by registrar — please correct your application and resubmit.</p>
+            : <p style={{ margin: '10px 2px 0', fontSize: 12, color: '#64748B' }}>Updates automatically after admin review — no action needed from you.</p>}
+        </div>
+      );
+    })}
+  </div>);
+};
 const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: Col; onNotify: (t: string) => void; ph1: string; ph2: string }) => {
   const [a, setA] = useState(''); const [b, setB] = useState('');
   return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>{title}</h1>
@@ -54,6 +323,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('auth');
   const [collapsed, setCollapsed] = useState(false);
+  const { dark, toggle } = useTheme();
   const [profile, setProfile] = useState({ name: 'Juan Dela Cruz', id: 'CEC-2024-0015', course: 'BSIT - 3rd Year', email: 'juan.delacruz@cec.edu.ph', phone: '0917-123-4567', address: 'Colon St., Cebu City', guardian: 'Maria Dela Cruz - 0917-999-0000', emergency: 'Maria Dela Cruz (Mother) - 0917-999-0000 - Brgy. Tejero' });
   const subjects = useCollection<Rec>('s_subjects', [{ id: 'CS301', name: 'CS 301 - Data Structures', role: 'BSIT-3A • 3 units • Enrolled' }, { id: 'CS302', name: 'CS 302 - Database Systems', role: 'BSIT-3A • 3 units • Enrolled' }]);
   const schedule = useCollection<Rec>('s_schedule', [{ id: 'sch1', name: 'Mon 8:00-9:30 AM — CS 301', role: 'Lab 3 • Prof. Santos' }, { id: 'sch2', name: 'Tue 10:00-11:30 AM — CS 302', role: 'Lab 2 • Prof. Reyes' }]);
@@ -80,6 +350,23 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [payAmt, setPayAmt] = useState('');
   const [payMethod, setPayMethod] = useState('GCash');
   const [payRef, setPayRef] = useState('');
+  const [popup, setPopup] = useState<{ title: string; message: string; lines?: string[] } | null>(null);
+  const [photoTick, setPhotoTick] = useState(0);
+  const [photoError, setPhotoError] = useState('');
+  const myPhotoId = profile.id || 'CEC-2024-0015';
+
+  const uploadPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoError('');
+    try {
+      const url = await readPhotoFile(file);
+      setPhoto(myPhotoId, url);
+      setPhotoTick((t) => t + 1);
+      onNotify('Profile photo updated');
+    } catch (e) {
+      setPhotoError(e instanceof Error ? e.message : 'Could not read that image.');
+    }
+  };
 
   const submitEnrollment = async (pg: string, yr: string, sm: string) => {
     const auto = (() => { try { return localStorage.getItem('cec:auto_approve') === '1'; } catch { return false; } })();
@@ -97,7 +384,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       remoteId = r.id;
       if (auto) { try { await portalApi.enrollDecide(r.id, 'approved'); } catch { /* keep pending */ } }
     } catch { /* backend offline — local fallback below */ }
-    const id = remoteId ?? uid('ENR');
+    const id = remoteId ?? genSchoolId('student');
     const status = auto ? 'Approved (auto)' : 'Pending';
     enrollApps.create({ id, name: `${pg} • ${yr} • ${sm}`, role: remoteId ? `${status} • MySQL` : status });
     try {
@@ -121,13 +408,6 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     ...docs.list.map((item) => ({ title: item.name, detail: item.role, target: 'Document Submission' })),
     ...charges.list.map((item) => ({ title: item.name, detail: item.role, target: 'Payment Portal' })),
   ];
-  const enrollmentSteps: WorkflowStep[] = [
-    { label: 'Application Started', updatedAt: 'Sep 2, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Online enrollment application created.', nextAction: 'Submit all required documents', documents: ['Application form'] },
-    { label: 'Documents Submitted', updatedAt: 'Sep 3, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Identity and academic documents uploaded.', nextAction: 'Registrar validation', documents: ['Valid ID', 'Report card'] },
-    { label: 'Under Review', updatedAt: 'Sep 4, 2026', updatedBy: 'Registrar Office', notes: 'Application is being validated by the registrar.', nextAction: 'Wait for approval decision', documents: ['Application checklist'] },
-    { label: 'Approved', updatedAt: 'Sep 5, 2026', updatedBy: 'Registrar Admin', notes: 'Enrollment requirements approved.', nextAction: 'Complete registration and assessment', documents: ['Approval notice'] },
-    { label: 'Registered', nextAction: 'Keep your student records updated' },
-  ];
   const documentSteps: WorkflowStep[] = [
     { label: 'Request Submitted', updatedAt: 'Sep 8, 2026', updatedBy: 'Juan Dela Cruz', notes: 'Certificate of enrollment request submitted.', nextAction: 'Records office processing', documents: ['Request form'] },
     { label: 'Processing', updatedAt: 'Sep 9, 2026', updatedBy: 'Records Office', notes: 'Request is being prepared and verified.', nextAction: 'Wait for release notice', documents: ['Student record'] },
@@ -143,15 +423,77 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   ];
 
   const render = () => {
-    if (active === 'Dashboard') return <RoleDashboardHome role="student" name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'} onNavigate={navigate} />;
+    if (active === 'Dashboard') {
+      // Live college-based GWA from official teacher-encoded grades
+      let official: { prelim: string; midterm: string; final: string }[] = [];
+      try {
+        const raw = localStorage.getItem('cec:t_grades');
+        official = raw ? JSON.parse(raw) : [];
+      } catch { official = []; }
+      const liveGwa = gwa(official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); return avg === null ? 0 : percentToPoint(avg).point; }));
+      // Live balance: assessed charges minus recorded payments
+      const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; };
+      const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0);
+      const paid = history.list.reduce((sum, h) => sum + peso(`${h.name} ${h.role}`), 0);
+      const remaining = Math.max(0, assessed - paid);
+      const latestApp = enrollApps.list[enrollApps.list.length - 1];
+      return (
+        <RoleDashboardHome
+          role="student"
+          name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'}
+          onNavigate={navigate}
+          blankSections
+          liveMetrics={[
+            { label: 'Enrollment status', value: latestApp ? latestApp.role.replace(/ •.*$/, '') : 'Approved', detail: latestApp ? latestApp.name : '1st Sem • BSIT 3rd Year' },
+            { label: 'Current average', value: liveGwa === null ? '—' : formatPoint(liveGwa), detail: official.length ? `GWA across ${official.length} encoded subject${official.length === 1 ? '' : 's'}` : 'Awaiting teacher encoding' },
+            { label: 'Outstanding balance', value: assessed <= 0 ? '—' : remaining <= 0 ? 'Fully Paid' : `₱${remaining.toLocaleString()}`, detail: assessed <= 0 ? 'No assessment yet' : `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()}` },
+          ]}
+        />
+      );
+    }
     if (active === 'Profile Management') {
       const F = (k: keyof typeof profile, label: string) => (<div><span style={lbl}>{label}</span><input style={inp} value={profile[k]} onChange={(e) => setProfile({ ...profile, [k]: e.target.value })} aria-label={label} /></div>);
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Profile Management</h1><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>{F('name', 'NAME')}{F('id', 'ID')}{F('course', 'COURSE')}{F('email', 'EMAIL')}{F('phone', 'PHONE')}{F('address', 'ADDRESS')}{F('guardian', 'GUARDIAN')}{F('emergency', 'EMERGENCY')}</div><div style={{ marginTop: 18 }}><button style={{ ...btn, borderRadius: 10 }} onClick={() => onNotify('Profile changes saved (Update)')}>Save Changes</button></div><Footer /></section>);
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Profile Management</h1>
+        <div style={{ ...box, display: 'flex', gap: 16, alignItems: 'center' }} key={photoTick}>
+          <PhotoAvatar userId={myPhotoId} name={profile.name} size={72} />
+          <div><strong>My profile photo</strong><div style={{ fontSize: 12, color: '#6b7890', margin: '4px 0 8px' }}>Visible to your teachers and the registrar. JPG/PNG under 2MB.</div>
+            <label style={{ ...ghost, display: 'inline-block' }}>Upload photo<input type="file" accept="image/*" hidden onChange={(e) => uploadPhoto(e.target.files?.[0])} /></label>
+            {photoError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{photoError}</div>}
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>{F('name', 'NAME')}{F('id', 'ID')}{F('course', 'COURSE')}{F('email', 'EMAIL')}{F('phone', 'PHONE')}{F('address', 'ADDRESS')}{F('guardian', 'GUARDIAN')}{F('emergency', 'EMERGENCY')}</div><div style={{ marginTop: 18 }}><button style={{ ...btn, borderRadius: 10 }} onClick={() => onNotify('Profile changes saved (Update)')}>Save Changes</button></div><div style={{ marginTop: 22, borderTop: '1px solid #eef1f6', paddingTop: 18 }}><ChangePassword identifier={currentUser?.email || profile.email || profile.id} onNotify={onNotify} /></div><Footer /></section>);
     }
     if (active === 'Password Recovery') return (<section style={card}><h1 style={{ margin: 0 }}>Password Recovery</h1><form style={{ display: 'flex', gap: 10, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); onNotify('Recovery link sent'); }}><input required style={inp} placeholder="student@cec.edu.ph" /><button style={btn} type="submit">Send Link</button></form><Footer /></section>);
-    if (active === 'Grades / Report Card') return (<section style={card}><h1 style={{ margin: 0 }}>Grades / Report Card</h1><div style={{ ...box, padding: 0 }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Code</th><th style={{ padding: 12 }}>Subject</th><th style={{ padding: 12 }}>Status</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>{subjects.list.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{s.id}</td><td style={{ padding: 12 }}>{s.name}</td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}><button style={ghost} onClick={() => onNotify(`${s.id} report viewed (Read)`)}>View</button> <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { subjects.remove(s.id); onNotify('Subject dropped (Delete)'); }}>Drop</button></td></tr>)}</tbody></table></div><Footer /></section>);
+    if (active === 'Grades / Report Card') {
+      let official: { id: string; student: string; prelim: string; midterm: string; final: string }[] = [];
+      try {
+        const raw = localStorage.getItem('cec:t_grades');
+        official = raw ? JSON.parse(raw) : [];
+      } catch { official = []; }
+      const pts = official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); return avg === null ? 0 : percentToPoint(avg).point; });
+      const myGwa = gwa(pts);
+      return (<section style={card}><h1 style={{ margin: 0 }}>Grades / Report Card — PH 1.00–5.00{myGwa !== null && <span style={{ fontSize: 15 }}> • GWA: <strong>{formatPoint(myGwa)}</strong></span>}</h1>
+        {!official.length && <div style={box}>No grades encoded yet — waiting for teacher grade encoding.</div>}
+        {!!official.length && <div style={{ ...box, padding: 0 }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Student</th><th style={{ padding: 12 }}>Average</th><th style={{ padding: 12 }}>Point</th><th style={{ padding: 12 }}>Equivalent</th><th style={{ padding: 12 }}>Remarks</th></tr></thead><tbody>{official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); const gp = avg === null ? null : percentToPoint(avg); return <tr key={g.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{g.student}</td><td style={{ padding: 12 }}>{avg === null ? '—' : `${avg.toFixed(1)}%`}</td><td style={{ padding: 12, fontWeight: 800 }}>{gp ? formatPoint(gp.point) : '—'}</td><td style={{ padding: 12 }}>{gp ? gp.equivalent : '—'}</td><td style={{ padding: 12 }}><span style={{ background: gp && gp.remarks === 'PASSED' ? '#dcfce7' : '#fee2e2', color: gp && gp.remarks === 'PASSED' ? '#15803d' : '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>{gp ? gp.remarks : '—'}</span></td></tr>; })}</tbody></table></div>}
+        <div style={{ ...box, padding: 0, marginTop: 14 }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Code</th><th style={{ padding: 12 }}>Subject</th><th style={{ padding: 12 }}>Status</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>{subjects.list.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{s.id}</td><td style={{ padding: 12 }}>{s.name}</td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}><button style={ghost} onClick={() => onNotify(`${s.id} report viewed (Read)`)}>View</button> <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { subjects.remove(s.id); onNotify('Subject dropped (Delete)'); }}>Drop</button></td></tr>)}</tbody></table></div><Footer /></section>);
+    }
     if (active === 'Class Schedule') return <TwoFieldForm title="Class Schedule" col={schedule} onNotify={onNotify} ph1="e.g. Wed 1:00-2:30 PM — IT 303" ph2="Room / Professor" />;
-    if (active === 'Enrolled Subjects') return <CrudSection title="Enrolled Subjects" col={subjects} onNotify={onNotify} hint="BSIT-3A • 3 units • Enrolled" />;
+    if (active === 'Enrolled Subjects') {
+      const seeded: Record<string, { id: string; name: string }> = { CS301: { id: 'T-001', name: 'Prof. Santos' }, CS302: { id: 'T-002', name: 'Ms. Reyes' } };
+      // Newly registered teachers surface automatically (faculty + teacher accounts)
+      const registered: { id: string; name: string }[] = [];
+      try {
+        const fRaw = localStorage.getItem('cec:a_faculty');
+        (fRaw ? (JSON.parse(fRaw) as { id: string; name: string }[]) : []).forEach((f) => { if (!registered.some((r) => r.id === f.id)) registered.push({ id: f.id, name: f.name }); });
+        const aRaw = localStorage.getItem('cec:a_accounts');
+        (aRaw ? (JSON.parse(aRaw) as { id: string; name: string; role: string }[]) : []).filter((a) => a.role === 'teacher').forEach((a) => { if (!registered.some((r) => r.id === a.id)) registered.push({ id: a.id, name: a.name }); });
+      } catch { /* ignore */ }
+      const instructors: Record<string, { id: string; name: string }> = { ...seeded };
+      registered.forEach((t, i) => { instructors[`NEW${i}`] = t; });
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Enrolled Subjects</h1>
+        <div style={{ ...box }}><strong>My instructors</strong><div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>{Object.values(instructors).map((t) => <div key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}><PhotoAvatar userId={t.id} name={t.name} size={40} /><div><div style={{ fontSize: 13, fontWeight: 700 }}>{t.name}</div><div style={{ fontSize: 11, color: '#6b7890' }}>{t.id}</div></div></div>)}</div></div>
+        <div style={box}>{subjects.list.map((s) => { const inst = instructors[s.id]; return <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #eef1f6' }}>{inst ? <PhotoAvatar userId={inst.id} name={inst.name} size={32} /> : <span style={{ width: 32 }} />}<div style={{ flex: 1 }}><strong>{s.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{s.id} • {s.role}{inst ? ` • ${inst.name}` : ''}</div></div><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { subjects.remove(s.id); onNotify('Subject dropped'); }}>Drop</button></div>; })}</div><Footer /></section>);
+    }
     if (active === 'Curriculum Checklist') {
       const done = checklist.list.filter((c) => c.role === 'done').length;
       return (<section style={card}><h1 style={{ margin: 0 }}>Curriculum Checklist — {done}/{checklist.list.length} done</h1><div style={{ height: 10, background: '#edf1f5', borderRadius: 8, marginTop: 12 }}><div style={{ width: `${checklist.list.length ? (done / checklist.list.length) * 100 : 0}%`, height: '100%', background: NAVY, borderRadius: 8 }} /></div><div style={box}>{checklist.list.map((c) => <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><label style={{ display: 'flex', gap: 10, alignItems: 'center' }}><input type="checkbox" checked={c.role === 'done'} onChange={() => { checklist.update(c.id, { role: c.role === 'done' ? 'pending' : 'done' }); onNotify('Checklist updated'); }} />{c.name}</label><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { checklist.remove(c.id); onNotify('Checklist item deleted'); }}>Delete</button></div>)}</div><Footer /></section>);
@@ -160,21 +502,30 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       return (<section style={card}><h1 style={{ margin: 0 }}>Attendance Records</h1><input style={{ ...inp, marginTop: 14, maxWidth: 400 }} placeholder="Filter by subject..." value={attFilter} onChange={(e) => setAttFilter(e.target.value)} /><div style={box}>{attendance.list.filter((a) => a.name.toLowerCase().includes(attFilter.toLowerCase())).map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><span>{a.name}</span><strong>{a.role}</strong></div>)}</div><Footer /></section>);
     }
     if (active === 'Online Enrollment') {
-      return (<section style={card}><h1 style={{ margin: 0 }}>Online Enrollment</h1><p style={{ color: '#6b7890', fontSize: 13 }}>Applications go straight to Admin → Enrollment Approval. Turn on auto-approve there for instant approval.</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><select style={inp} value={enrSm} onChange={(e) => setEnrSm(e.target.value)}><option>1st Semester</option><option>2nd Semester</option></select><button style={btn} type="submit">Submit</button></form><Footer /></section>);
+      return (<section style={card}><h1 style={{ margin: 0 }}>Online Enrollment</h1>
+        <div style={{ marginTop: 14 }}><SlideShow slides={REGISTRAR_SLIDES} label="Registrar office slideshow" /></div>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Applications go straight to Admin → Enrollment Approval. Turn on auto-approve there for instant approval.</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><select style={inp} value={enrSm} onChange={(e) => setEnrSm(e.target.value)}><option>1st Semester</option><option>2nd Semester</option></select><button style={btn} type="submit">Submit</button></form><Footer /></section>);
     }
     if (active === 'Section Selection') {
       const catalog = ['BSIT-3A — Data Structures', 'BSIT-3B — Web Development', 'BSCS-3A — Operating Systems'];
       return (<section style={card}><h1 style={{ margin: 0 }}>Section Selection</h1><div style={box}>{catalog.map((c) => <label key={c} style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><input type="checkbox" checked={secSel.includes(c)} onChange={() => setSecSel((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]))} />{c}</label>)}</div><div style={{ marginTop: 12 }}><button style={btn} onClick={() => { secSel.forEach((s) => subjects.create({ id: uid('CS'), name: s, role: 'Selected • Enrolled' })); setSecSel([]); onNotify(`${secSel.length} sections saved`); }}>Save Selection (Create)</button></div><Footer /></section>);
     }
-    if (active === 'Status Tracker') return <WorkflowTracker title="Student enrollment" reference="CEC-2026-0015 • BSIT • 3rd Year" steps={enrollmentSteps} currentIndex={3} />;
-    if (active === 'Document Submission') return <WorkflowTracker title="Certificate of enrollment request" reference="Document request • DOC-2026-0091" steps={documentSteps} currentIndex={1} />;
+    if (active === 'Status Tracker') return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Enrollment Status Tracker</h1><div style={{ marginTop: 14 }}><LiveEnrollTracker apps={enrollApps.list} /></div><Footer /></section>);
+    if (active === 'Document Submission') return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Document Submission</h1>
+      <p style={{ color: '#6b7890', fontSize: 13 }}>Upload your <strong>School Assessment</strong> and <strong>School ID</strong>. Click Upload — a popup opens where you pick the file. Each submission tracks its own verification below.</p>
+      <RequiredDocs col={docs} onNotify={onNotify} />
+      <div style={{ marginTop: 18, display: 'grid', gap: 18 }}>
+        <SubmissionTracker slug="school-assessment" title="School Assessment" onNotify={onNotify} />
+      </div>
+      <Footer /></section>);
     if (active === 'Tuition Assessment') return <TwoFieldForm title="Tuition Assessment" col={charges} onNotify={onNotify} ph1="Charge" ph2="Amount • Status" />;
     if (active === 'Payment Portal') {
       const methodHint: Record<string, string> = { GCash: 'GCash wallet • 0917-XXX-XXXX • reference no.', Maya: 'Maya wallet • reference no.', 'GoTyme Bank': 'GoTyme • account no. 0100-XXXX-XXXX', UnionBank: 'UnionBank • account no. 1093-XXXX-XXXX', Metrobank: 'Metrobank • account no. 305-XXXX-XXXX', BPI: 'BPI • account no. 1234-XXXX-XX', Cashier: 'Pay at CEC cashier • Window 3' };
       return (<><WorkflowTracker title="Tuition payment" reference="Assessment • AY 2026–2027 • BSIT" steps={paymentSteps} currentIndex={1} /><section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
+        <div style={{ marginTop: 14 }}><SlideShow slides={FINANCE_SLIDES} label="Cashier and online payment options" /></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>{['GCash', 'Maya', 'GoTyme Bank', 'UnionBank', 'Metrobank', 'BPI', 'Cashier'].map((m) => <button key={m} type="button" onClick={() => setPayMethod(m)} style={{ border: payMethod === m ? '2px solid #0B3D91' : '1px solid #e2e7ef', background: payMethod === m ? '#e8f1ff' : '#fff', borderRadius: 10, padding: '10px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{m}</button>)}</div>
         <div style={{ color: '#6b7890', fontSize: 13, marginTop: 10 }}>{methodHint[payMethod]}</div>
-        <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!payAmt.trim()) return; history.create({ id: uid('OR'), name: `OR — ₱${payAmt.trim()} via ${payMethod}${payRef.trim() ? ` • Ref ${payRef.trim()}` : ''}`, role: 'Today • Tuition • Paid' }); charges.setList((rows) => rows.map((r) => ({ ...r, role: r.role.replace('Outstanding', 'Partially paid') }))); setPayAmt(''); setPayRef(''); onNotify(`Payment recorded via ${payMethod}`); }}>
+        <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!payAmt.trim()) return; const orId = uid('OR'); const ref = payRef.trim(); const amount = payAmt.trim(); const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; }; history.create({ id: orId, name: `OR — ₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''}`, role: 'Today • Tuition • Paid' }); const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0); const paid = history.list.reduce((sum, h) => sum + peso(`${h.name} ${h.role}`), 0) + peso(amount); const covered = assessed > 0 && paid >= assessed; charges.setList((rows) => rows.map((r) => ({ ...r, role: covered ? r.role.replace('Outstanding', 'Paid in full').replace('Partially paid', 'Paid in full') : r.role.includes('Paid in full') ? r.role : r.role.replace('Outstanding', 'Partially paid') }))); setPayAmt(''); setPayRef(''); pushNotification(['student', 'admin'], { title: covered ? 'Balance fully paid' : 'Payment received', detail: `₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''} • ${orId}${covered ? ' • FULLY PAID' : ''}`, category: 'Finance', target: 'Billing History' }); setPopup({ title: covered ? 'Fully paid — thank you!' : 'Payment successful', message: covered ? 'Your balance is now fully paid.' : 'Your payment was recorded and a receipt notification was sent.', lines: [`Amount: ₱${amount}`, `Method: ${payMethod}`, ref ? `Reference: ${ref}` : 'Reference: —', `Receipt: ${orId}`] }); onNotify(covered ? 'Fully paid' : `Payment recorded via ${payMethod}`); }}>
           <input style={inp} placeholder="Amount e.g. 5000" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} aria-label="Amount" />
           <input style={inp} placeholder={payMethod === 'Cashier' ? 'OR number (optional)' : 'Reference / account no.'} value={payRef} onChange={(e) => setPayRef(e.target.value)} aria-label="Reference" />
           <select style={inp} value={payMethod} onChange={(e) => setPayMethod(e.target.value)} aria-label="Payment method"><option>GCash</option><option>Maya</option><option>GoTyme Bank</option><option>UnionBank</option><option>Metrobank</option><option>BPI</option><option>Cashier</option></select>
@@ -204,24 +555,25 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     if (active === 'Document Request') return <TwoFieldForm title="Document Request" col={docreq} onNotify={onNotify} ph1="Document type" ph2="Status" />;
     if (active === 'Complaint / Feedback') return <TwoFieldForm title="Complaint / Feedback" col={feedback} onNotify={onNotify} ph1="Subject" ph2="Details / Status" />;
     if (active === 'Registration / Enrollment') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Registration / Enrollment</h1><p style={{ color: '#6b7890', fontSize: 13 }}>New applications are sent to Admin → Enrollment Approval (same queue as Online Enrollment).</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><button style={btn} type="submit">Submit application</button></form><div style={box}>{enrollApps.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.id} • {a.role}</div></div><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { enrollApps.remove(a.id); onNotify('Application withdrawn'); }}>Withdraw</button></div>)}</div><Footer /></section>);
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Registration / Enrollment</h1><div style={{ marginTop: 14 }}><SlideShow slides={REGISTRAR_SLIDES} label="Registrar office slideshow" /></div><p style={{ color: '#6b7890', fontSize: 13 }}>New applications are sent to Admin → Enrollment Approval (same queue as Online Enrollment).</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><button style={btn} type="submit">Submit application</button></form><div style={box}>{enrollApps.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.id} • {a.role}</div></div><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { enrollApps.remove(a.id); onNotify('Application withdrawn'); }}>Withdraw</button></div>)}</div><Footer /></section>);
     }
     return <CrudSection title={active} col={subjects} onNotify={onNotify} hint="General" />;
   };
 
   return (
-    <div className="role-dashboard" style={{ minHeight: '100vh', background: '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
+    <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><div style={{ width: 38, height: 38, borderRadius: 10, background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>CEC</div><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • 1ST SEM 2024-2025</div></div></div>
         <button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer' }} aria-label="Toggle sidebar">☰</button>
         <button className="dashboard-home-link" type="button" onClick={() => setActive('Dashboard')}>⌂ Dashboard</button><span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
         <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />
-        <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><NotificationCenter role="student" onNavigate={navigate} /><div className="dashboard-avatar" style={{ width: 36, height: 36, borderRadius: '50%', background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>{currentUser?.firstName?.[0] ?? 'S'}</div></div>
+        <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><NotificationCenter role="student" onNavigate={navigate} /><button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button><span key={photoTick}><PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : profile.name} size={36} /></span></div>
       </header>
       <div style={{ display: 'flex' }}>
-        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{GROUPS.map((g) => { const open = expanded === g.id; return (<div className={`dashboard-nav-group ${open ? 'is-open' : ''}`} key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => setExpanded(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button key={it.label} onClick={() => setActive(it.label)} style={{ textAlign: 'left', border: active === it.label ? '2px solid #111' : 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 400 }}>{it.label}</button>)}</div>}</div>); })}<div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><div><div style={{ fontWeight: 700, fontSize: 13 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Demo Student'}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>student</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div></aside>)}
+        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{GROUPS.map((g) => { const open = expanded === g.id; return (<div className={`dashboard-nav-group ${open ? 'is-open' : ''}`} key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => setExpanded(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button key={it.label} onClick={() => setActive(it.label)} style={{ textAlign: 'left', border: active === it.label ? '2px solid #111' : 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 400 }}>{it.label}</button>)}</div>}</div>); })}<div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><span key={photoTick}><PhotoAvatar userId={currentUser?.id ?? profile.id} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : profile.name} size={34} /></span><div><div style={{ fontWeight: 700, fontSize: 13 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Demo Student'}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{currentUser?.id ?? profile.id}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>student</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div></aside>)}
         <main className="dashboard-main" style={{ flex: 1, padding: 24, minWidth: 0 }}>{render()}</main>
       </div>
+      {popup && <AlertPopup title={popup.title} message={popup.message} lines={popup.lines} onClose={() => setPopup(null)} />}
     </div>
   );
 };

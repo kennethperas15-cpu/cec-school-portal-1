@@ -1,8 +1,11 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
 import api from './services/api';
+import { ensureSchoolId } from './services/crud';
 import './styles.css';
 import './login.css';
 import { AuthContainer } from './components/auth/AuthContainer';
+import { LoadingScreen } from './components/shared/LoadingScreen';
+import { AISupport } from './components/shared/AISupport';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { StudentDashboard } from './components/student/StudentDashboard';
@@ -400,6 +403,7 @@ const academicPage = (page: string, onNotify: (text: string) => void, hasEnrollm
 export const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<PortalUser | null>(null);
+  const [pendingUser, setPendingUser] = useState<PortalUser | null>(null);
   const [activeNav, setActiveNav] = useState('Dashboard');
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -421,6 +425,11 @@ export const App = () => {
       if (storedUser) {
         const user = JSON.parse(storedUser) as PortalUser;
         if (user?.role && ['student', 'teacher', 'admin'].includes(user.role)) {
+          // Migrate pre-rule IDs (e.g. CEC-2026-xxxx) to 6-digit role IDs
+          if (user.role === 'student' || user.role === 'teacher' || user.role === 'admin') {
+            user.id = ensureSchoolId(user.id, user.role);
+            try { localStorage.setItem('cec_session_user', JSON.stringify(user)); } catch { /* ignore */ }
+          }
           setCurrentUser(user);
           setIsAuthenticated(true);
           setActiveNav(user.role === 'student' ? 'Registration / Enrollment' : 'Dashboard');
@@ -455,6 +464,19 @@ export const App = () => {
   };
 
   const handleLoginSuccess = (user: PortalUser) => {
+    // Show the branded loading screen before entering the portal
+    setPendingUser(user);
+  };
+
+  const handleLoadingDone = () => {
+    if (!pendingUser) return;
+    const user = pendingUser;
+    // Enforce 6-digit role IDs (Google-provisioned UUIDs, legacy formats)
+    if (user.role === 'student' || user.role === 'teacher' || user.role === 'admin') {
+      user.id = ensureSchoolId(user.id, user.role);
+      try { localStorage.setItem('cec_session_user', JSON.stringify(user)); } catch { /* ignore */ }
+    }
+    setPendingUser(null);
     setCurrentUser(user);
     setIsAuthenticated(true);
     setActiveNav(user.role === 'student' ? 'Registration / Enrollment' : 'Dashboard');
@@ -465,22 +487,32 @@ export const App = () => {
     localStorage.removeItem('cec_access_token');
     localStorage.removeItem('cec_session_user');
     setCurrentUser(null);
+    setPendingUser(null);
     setIsAuthenticated(false);
     setActiveNav('Dashboard');
     setShowNotifications(false);
   };
 
   if (!isAuthenticated) {
+    if (pendingUser) {
+      return (
+        <LoadingScreen
+          name={`${pendingUser.firstName} ${pendingUser.lastName}`}
+          role={pendingUser.role}
+          onDone={handleLoadingDone}
+        />
+      );
+    }
     return <AuthContainer onLoginSuccess={handleLoginSuccess} onNotify={notify} />;
   }
 
   if (currentUser?.role === 'teacher') {
-    return <><EditDialog /><TeacherDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /></>;
+    return <><EditDialog /><TeacherDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /><AISupport role="teacher" /></>;
   }
 
   if (currentUser?.role === 'admin') {
-    return <><EditDialog /><AdminDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /></>;
+    return <><EditDialog /><AdminDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /><AISupport role="admin" /></>;
   }
 
-  return <><EditDialog /><StudentDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /></>;
+  return <><EditDialog /><StudentDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /><AISupport role="student" /></>;
 };

@@ -6,6 +6,8 @@ type Props = {
   role: DashboardRole;
   name: string;
   onNavigate: (label: string) => void;
+  liveMetrics?: { label: string; value: string; detail: string }[];
+  blankSections?: boolean;
 };
 
 const roleContent: Record<DashboardRole, {
@@ -87,17 +89,21 @@ const roleContent: Record<DashboardRole, {
   },
 };
 
-export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate }) => {
+export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate, liveMetrics, blankSections }) => {
   const content = roleContent[role];
+  const metrics = content.metrics.map((m) => {
+    const live = liveMetrics?.find((l) => l.label === m.label);
+    return live ? { ...m, value: live.value, detail: live.detail } : m;
+  });
   return (
     <section className="role-home">
       <div className="role-home-heading">
         <div><span className="role-home-eyebrow">{content.eyebrow}</span><h1>{content.title}, {name.split(' ')[0]} <span>✦</span></h1><p>{content.description}</p></div>
         <span className="role-home-date">CEC Portal • 1st Semester 2024–2025</span>
       </div>
-      <div className="role-home-metrics">{content.metrics.map((metric) => <div className={`role-home-metric ${metric.tone}`} key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small></div>)}</div>
+      <div className="role-home-metrics">{metrics.map((metric) => <div className={`role-home-metric ${metric.tone}`} key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small></div>)}</div>
       <div className="role-home-actions"><strong>Quick actions</strong>{content.actions.map((action) => <button key={action.label} type="button" onClick={() => onNavigate(action.target)}><span>{action.icon}</span>{action.label}<b>→</b></button>)}</div>
-      <div className="role-home-columns">{content.sections.map((section) => <div className="role-home-panel" key={section.title}><div className="role-home-panel-heading"><h2>{section.title}</h2><button type="button" onClick={() => onNavigate(section.title)}>View all</button></div>{section.items.map((item) => <button type="button" className="role-home-item" key={item.title} onClick={() => onNavigate(item.title)}><span className="role-home-item-icon">{item.title[0]}</span><span><strong>{item.title}</strong><small>{item.detail}</small></span>{item.status && <em>{item.status}</em>}</button>)}</div>)}</div>
+      <div className="role-home-columns">{content.sections.map((section) => <div className="role-home-panel" key={section.title}><div className="role-home-panel-heading"><h2>{section.title}</h2><button type="button" onClick={() => onNavigate(section.title)}>View all</button></div>{blankSections ? <p style={{ margin: '6px 0', color: '#94a1b0', fontSize: 12 }}>No data yet — waiting for admin to provide subjects.</p> : section.items.map((item) => <button type="button" className="role-home-item" key={item.title} onClick={() => onNavigate(item.title)}><span className="role-home-item-icon">{item.title[0]}</span><span><strong>{item.title}</strong><small>{item.detail}</small></span>{item.status && <em>{item.status}</em>}</button>)}</div>)}</div>
     </section>
   );
 };

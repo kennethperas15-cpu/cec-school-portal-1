@@ -86,7 +86,7 @@ export const authService = {
     if (!role.length) throw new Error('Requested account role is not configured');
 
     const userId = crypto.randomUUID();
-    const schoolEmail = `${firstName}.${lastName}.${userId.slice(0, 6)}@cebueasterncollege.com`
+    const schoolEmail = `${firstName}.${lastName}.${userId.slice(0, 6)}@cec.edu.ph`
       .toLowerCase().replace(/[^a-z0-9.@]/g, '');
     const temporaryPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
@@ -242,7 +242,7 @@ export const authService = {
       .replace(/[^a-z0-9.]/g, '')
       .replace(/\.+/g, '.')
       .replace(/^\.|\.$/g, '');
-    const schoolEmail = `${localPart || 'student'}.${userId.slice(0, 6)}@cebueasterncollege.com`;
+    const schoolEmail = `${localPart || 'student'}.${userId.slice(0, 6)}@cec.edu.ph`;
     const token = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashToken(token);
     const role = await sequelize.query<{ id: number }>(
@@ -316,5 +316,78 @@ export const authService = {
       );
     });
     return { email: records[0].email };
-  }
+  },
+
+  async loginWithGoogleIdToken(idToken: string) {
+    if (!env.googleClientId) throw new Error('Google OAuth is not configured');
+    const ticket = await googleClient.verifyIdToken({ idToken, audience: env.googleClientId });
+    const profile = ticket.getPayload();
+    if (!profile?.sub || !profile.email || profile.email_verified === false) {
+      throw new Error('A verified Google account is required');
+    }
+    const email = profile.email.trim();
+    const existing = await sequelize.query<{
+      id: string; email: string; first_name: string; last_name: string; role: string;
+    }>(
+      `SELECT u.id, u.email, u.first_name, u.last_name, r.name AS role
+       FROM users u JOIN roles r ON r.id = u.role_id
+       WHERE LOWER(u.email) = LOWER(?) AND u.is_active = TRUE LIMIT 1`,
+      { replacements: [email], type: QueryTypes.SELECT }
+    );
+    let user = existing[0];
+    const googlePicture = profile.picture ?? null;
+    if (!user) {
+      const role = await sequelize.query<{ id: number }>(
+        'SELECT id FROM roles WHERE name = ? LIMIT 1',
+        { replacements: ['student'], type: QueryTypes.SELECT }
+      );
+      if (!role.length) throw new Error('Student role is missing; run seed.sql');
+      const userId = crypto.randomUUID();
+      const firstName = profile.given_name?.trim() || email.split('@')[0];
+      const lastName = profile.family_name?.trim() || firstName;
+      const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 12);
+      await sequelize.query(
+        `INSERT INTO users (id, role_id, email, password_hash, first_name, last_name, avatar_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        { replacements: [userId, role[0].id, email, passwordHash, firstName, lastName, googlePicture], type: QueryTypes.INSERT }
+      );
+      user = { id: userId, email, first_name: firstName, last_name: lastName, role: 'student' };
+    }
+    await sequelize.query('UPDATE users SET last_login_at = NOW(), avatar_url = COALESCE(?, avatar_url) WHERE id = ?', {
+      replacements: [googlePicture, user.id], type: QueryTypes.UPDATE,
+    });
+    const accessToken = jwt.sign(
+      { sub: user.id, role: user.role, email: user.email },
+      env.jwtSecret,
+      { expiresIn: '8h' }
+    );
+    return {
+      accessToken,
+      token: accessToken,
+      user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, role: user.role, picture: googlePicture ?? undefined },
+    };
+  },
+
+  async changePassword(identifier: string, currentPassword: string, newPassword: string) {
+    if (!identifier?.trim() || !currentPassword || !newPassword) {
+      throw new Error('Current and new passwords are required');
+    }
+    if (newPassword.length < 8) throw new Error('New password must be at least 8 characters');
+    if (newPassword === currentPassword) throw new Error('New password must be different from the current one');
+    const users = await sequelize.query<{ id: string; password_hash: string }>(
+      `SELECT id, password_hash FROM users
+       WHERE (LOWER(email) = LOWER(?) OR id = ?) AND is_active = TRUE LIMIT 1`,
+      { replacements: [identifier.trim(), identifier.trim()], type: QueryTypes.SELECT }
+    );
+    if (!users.length || users[0].password_hash === 'ACTIVATION_PENDING') {
+      throw new Error('Account not found');
+    }
+    const valid = await bcrypt.compare(currentPassword, users[0].password_hash);
+    if (!valid) throw new Error('Current password is incorrect');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await sequelize.query('UPDATE users SET password_hash = ? WHERE id = ?', {
+      replacements: [passwordHash, users[0].id], type: QueryTypes.UPDATE,
+    });
+    return { id: users[0].id };
+  },
 };

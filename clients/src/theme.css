@@ -1,0 +1,34 @@
+/* CEC portal dark mode: invert UI surfaces, restore photos/images to normal. */
+.role-dashboard.cec-dark {
+  background: linear-gradient(135deg, #0b1220 0%, #0e1628 100%) !important;
+}
+.cec-dark header.dashboard-topbar,
+.cec-dark aside.dashboard-sidebar,
+.cec-dark main.dashboard-main {
+  filter: invert(1) hue-rotate(180deg);
+}
+.cec-dark header.dashboard-topbar img,
+.cec-dark aside.dashboard-sidebar img,
+.cec-dark main.dashboard-main img {
+  filter: invert(1) hue-rotate(180deg);
+}
+.cec-invert-self {
+  filter: invert(1) hue-rotate(180deg);
+}
+.cec-invert-self img {
+  filter: invert(1) hue-rotate(180deg);
+}
+.theme-toggle {
+  border: 1px solid #e2e7ef;
+  background: #fff;
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  font-size: 17px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.theme-toggle:hover {
+  background: #eef4ff;
+}

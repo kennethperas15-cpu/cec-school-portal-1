@@ -74,6 +74,39 @@ router.post('/login', loginRateLimit(), async (req, res, next) => {
   }
 });
 
+router.post('/google/id-token', async (req, res, next) => {
+  try {
+    const { idToken } = req.body as { idToken?: string };
+    if (!idToken) {
+      res.status(400).json({ success: false, message: 'Google ID token is required' });
+      return;
+    }
+    const result = await authService.loginWithGoogleIdToken(idToken);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/change-password', async (req, res, next) => {
+  try {
+    const { identifier, currentPassword, newPassword } = req.body as {
+      identifier?: string; currentPassword?: string; newPassword?: string;
+    };
+    const result = await authService.changePassword(identifier ?? '', currentPassword ?? '', newPassword ?? '');
+    res.json({ success: true, data: result });
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes('required') || error.message.includes('at least 8') ||
+      error.message.includes('different') || error.message.includes('incorrect') || error.message.includes('not found')
+    )) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
 router.post('/google/enrollment-url', (req, res, next) => {
   try {
     const { program, yearLevel, phone } = req.body as { program?: string; yearLevel?: number; phone?: string };

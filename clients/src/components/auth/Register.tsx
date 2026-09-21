@@ -4,6 +4,7 @@ import api from '@/services/api';
 interface IssuedAccount {
   schoolEmail: string;
   temporaryPassword: string;
+  schoolId?: string;
   fullName?: string;
   emailSent?: boolean;
 }
@@ -26,8 +27,15 @@ export const Register: React.FC<RegisterProps> = ({
   const [fullName, setFullName] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [schoolId, setSchoolId] = useState('');
+  const [address, setAddress] = useState('');
   const [program, setProgram] = useState('BSIT');
   const [yearLevel, setYearLevel] = useState('1');
+  const [department, setDepartment] = useState('BSIT Department');
+  const [position, setPosition] = useState('');
+  const [licenseNo, setLicenseNo] = useState('');
+  const [office, setOffice] = useState('Registrar Office');
+  const [accountRole, setAccountRole] = useState<'student' | 'teacher' | 'admin'>('student');
   const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -49,9 +57,14 @@ export const Register: React.FC<RegisterProps> = ({
         fullName: fullName.trim(),
         personalEmail: personalEmail.trim(),
         phone: phone.trim(),
-        program,
-        yearLevel: Number(yearLevel),
-        requestedRole: 'student',
+        schoolId: schoolId.trim() || undefined,
+        address: address.trim(),
+        program: accountRole === 'student' ? program : department,
+        yearLevel: accountRole === 'student' ? Number(yearLevel) : 1,
+        position: accountRole === 'student' ? undefined : position.trim() || undefined,
+        licenseNo: accountRole === 'teacher' ? licenseNo.trim() || undefined : undefined,
+        office: accountRole === 'admin' ? office : undefined,
+        requestedRole: accountRole,
       });
 
       const data: IssuedAccount = response.data?.data || {
@@ -77,7 +90,13 @@ export const Register: React.FC<RegisterProps> = ({
         const clean = fullName.trim().toLowerCase().replace(/[^a-z\s.]/g, '').replace(/\s+/g, '.');
         const schoolEmail = `${clean || 'student'}.${Math.floor(100 + Math.random() * 900)}@cec.edu.ph`;
         const temporaryPassword = `CEC-${Math.floor(100000 + Math.random() * 900000)}`;
-        const studentId = `CEC-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
+        // Keep a provided 6-digit ID (2 student • 3 teacher • 4 admin); otherwise issue one
+        const lead = accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2';
+        let studentId = schoolId.trim();
+        if (!new RegExp(`^${lead}\\d{5}$`).test(studentId)) {
+          studentId = lead;
+          for (let i = 0; i < 5; i++) studentId += Math.floor(Math.random() * 10).toString();
+        }
         try {
           const pushTo = (key: string, item: unknown) => {
             const raw = localStorage.getItem(key);
@@ -85,11 +104,16 @@ export const Register: React.FC<RegisterProps> = ({
             rows.push(item);
             localStorage.setItem(key, JSON.stringify(rows));
           };
-          pushTo('cec:a_enroll', { id: studentId, name: fullName.trim(), meta: `${program} • Applied (offline)` });
-          pushTo('cec:a_accounts', { id: studentId, name: fullName.trim(), role: 'student' });
-          pushTo('cec:registrations', { id: studentId, fullName: fullName.trim(), personalEmail: personalEmail.trim(), phone: phone.trim(), program, yearLevel: Number(yearLevel), schoolEmail, temporaryPassword, createdAt: new Date().toISOString() });
+          // Names surface automatically: students see teachers, admin sees everyone
+          const roleDetail = accountRole === 'student' ? program : accountRole === 'teacher' ? `${department} • ${position.trim() || 'Faculty applicant'}` : `${office} • ${position.trim() || 'Staff applicant'}`;
+          pushTo('cec:a_enroll', { id: studentId, name: fullName.trim(), meta: `${roleDetail} • Applied (offline)` });
+          pushTo('cec:a_accounts', { id: studentId, name: fullName.trim(), role: accountRole });
+          if (accountRole === 'teacher') {
+            pushTo('cec:a_faculty', { id: studentId, name: fullName.trim(), role: `${department} • ${position.trim() || '6 units'}` });
+          }
+          pushTo('cec:registrations', { id: studentId, fullName: fullName.trim(), personalEmail: personalEmail.trim(), phone: phone.trim(), address: address.trim(), program: accountRole === 'student' ? program : department, yearLevel: accountRole === 'student' ? Number(yearLevel) : 1, position: position.trim(), licenseNo: licenseNo.trim(), office, requestedRole: accountRole, schoolEmail, temporaryPassword, createdAt: new Date().toISOString() });
         } catch { /* storage unavailable — still show credentials */ }
-        const offline: IssuedAccount = { schoolEmail, temporaryPassword, fullName: fullName.trim(), emailSent: false };
+        const offline: IssuedAccount = { schoolEmail, temporaryPassword, schoolId: studentId, fullName: fullName.trim(), emailSent: false };
         setIssuedAccount(offline);
         if (onNotify) onNotify('School account issued successfully! (offline mode)');
         if (onSuccess) onSuccess(offline);
@@ -115,6 +139,10 @@ export const Register: React.FC<RegisterProps> = ({
     setFullName('');
     setPersonalEmail('');
     setPhone('');
+    setSchoolId('');
+    setAddress('');
+    setPosition('');
+    setLicenseNo('');
     setError('');
   };
 
@@ -132,7 +160,7 @@ export const Register: React.FC<RegisterProps> = ({
 
           <h2 className="issued-title">School Account Issued!</h2>
           <p className="issued-subtitle">
-            Welcome to Cebu Eastern College, <strong>{issuedAccount.fullName || fullName}</strong>. Your official institutional credentials have been generated.
+            Welcome to Cebu Eastern College, <strong>{issuedAccount.fullName || fullName}</strong>. Your official {accountRole} account credentials have been generated.
           </p>
 
           <div className="credentials-box">
@@ -155,6 +183,30 @@ export const Register: React.FC<RegisterProps> = ({
                     </svg>
                   )}
                 </button>
+              </div>
+            </div>
+
+            <div className="credential-row">
+              <span className="credential-label">School ID (6 digits)</span>
+              <div className="credential-value-wrap">
+                <code className="credential-value">{issuedAccount.schoolId ?? '—'}</code>
+                {issuedAccount.schoolId && (
+                  <button
+                    type="button"
+                    className="credential-copy-btn"
+                    onClick={() => copyToClipboard(issuedAccount.schoolId as string, 'School ID')}
+                    title="Copy School ID"
+                  >
+                    {copiedField === 'School ID' ? (
+                      <span className="copied-text">✓ Copied</span>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -240,6 +292,19 @@ export const Register: React.FC<RegisterProps> = ({
 
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="auth-field">
+          <label>Applying as <span className="required-star">*</span></label>
+          <div className="role-pills" role="tablist" aria-label="Account role">
+            {(['student', 'teacher', 'admin'] as const).map((r) => (
+              <button key={r} type="button" role="tab" aria-selected={accountRole === r}
+                className={`role-pill ${accountRole === r ? 'active' : ''}`}
+                onClick={() => setAccountRole(r)}>
+                {r === 'student' ? 'Student' : r === 'teacher' ? 'Teacher' : 'Admin'}
+              </button>
+            ))}
+          </div>
+          <span className="field-hint">Teachers get a 3xxxxx ID, admins 4xxxxx — names appear automatically in every portal</span>
+        </div>
+        <div className="auth-field">
           <label htmlFor="reg-fullname">
             Full Name <span className="required-star">*</span>
           </label>
@@ -313,37 +378,185 @@ export const Register: React.FC<RegisterProps> = ({
 
         <div className="auth-form-row">
           <div className="auth-field">
-            <label htmlFor="reg-program">Degree Program <span className="required-star">*</span></label>
-            <div className="auth-select-wrap">
-              <select
-                id="reg-program"
-                value={program}
-                onChange={(e) => setProgram(e.target.value)}
-              >
-                <option value="BSIT">BS Information Technology (BSIT)</option>
-                <option value="BSCS">BS Computer Science (BSCS)</option>
-                <option value="BEED">Bachelor of Elementary Education (BEED)</option>
-                <option value="BSED">Bachelor of Secondary Education (BSED)</option>
-              </select>
+            <label htmlFor="reg-school-id">
+              School ID <span className="field-hint">(if issued — 6 digits, starts with {accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2'})</span>
+            </label>
+            <div className="auth-input-wrap">
+              <span className="auth-input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="16" rx="2" ry="2" />
+                  <line x1="8" y1="9" x2="16" y2="9" />
+                  <line x1="8" y1="13" x2="13" y2="13" />
+                </svg>
+              </span>
+              <input
+                id="reg-school-id"
+                type="text"
+                inputMode="numeric"
+                value={schoolId}
+                onChange={(e) => setSchoolId(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="e.g. 201589 (optional)"
+                autoComplete="off"
+              />
             </div>
+            <span className="field-hint">Leave blank if this is your first application — one will be issued</span>
           </div>
 
           <div className="auth-field">
-            <label htmlFor="reg-year">Year Level <span className="required-star">*</span></label>
-            <div className="auth-select-wrap">
-              <select
-                id="reg-year"
-                value={yearLevel}
-                onChange={(e) => setYearLevel(e.target.value)}
-              >
-                <option value="1">1st Year (Freshman)</option>
-                <option value="2">2nd Year (Sophomore)</option>
-                <option value="3">3rd Year (Junior)</option>
-                <option value="4">4th Year (Senior)</option>
-              </select>
+            <label htmlFor="reg-address">
+              Home Address <span className="required-star">*</span>
+            </label>
+            <div className="auth-input-wrap">
+              <span className="auth-input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </span>
+              <input
+                id="reg-address"
+                type="text"
+                required
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="e.g. Colon St., Cebu City"
+                autoComplete="street-address"
+              />
             </div>
           </div>
         </div>
+
+        {accountRole === 'student' && (
+          <>
+            <div className="auth-field">
+              <label htmlFor="reg-program">Degree Program <span className="required-star">*</span></label>
+          <div className="auth-input-wrap">
+            <span className="auth-input-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                <path d="M6 12v5c3 3 9 3 12 0v-5" />
+              </svg>
+            </span>
+            <select
+              id="reg-program"
+              value={program}
+              onChange={(e) => setProgram(e.target.value)}
+            >
+              <option value="BSIT">BS Information Technology (BSIT)</option>
+              <option value="BSCS">BS Computer Science (BSCS)</option>
+              <option value="BEED">Bachelor of Elementary Education (BEED)</option>
+              <option value="BSED">Bachelor of Secondary Education (BSED)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="auth-field">
+          <label htmlFor="reg-year">Year Level <span className="required-star">*</span></label>
+          <div className="auth-input-wrap">
+            <span className="auth-input-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </span>
+            <select
+              id="reg-year"
+              value={yearLevel}
+              onChange={(e) => setYearLevel(e.target.value)}
+            >
+              <option value="1">1st Year (Freshman)</option>
+              <option value="2">2nd Year (Sophomore)</option>
+              <option value="3">3rd Year (Junior)</option>
+              <option value="4">4th Year (Senior)</option>
+            </select>
+          </div>
+        </div>
+          </>
+        )}
+
+        {accountRole === 'teacher' && (
+          <>
+            <div className="auth-field">
+              <label htmlFor="reg-dept">Department <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4" />
+                  </svg>
+                </span>
+                <select id="reg-dept" value={department} onChange={(e) => setDepartment(e.target.value)}>
+                  <option>BSIT Department</option>
+                  <option>BSCS Department</option>
+                  <option>BEED Department</option>
+                  <option>General Education</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="reg-position">Position / Rank <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                  </svg>
+                </span>
+                <input id="reg-position" type="text" required value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. Instructor I" autoComplete="off" />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="reg-license">PRC License No. <span className="field-hint">(if licensed)</span></label>
+              <div className="auth-input-wrap">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="8" r="6" />
+                    <path d="M15.5 13 17 22l-5-3-5 3 1.5-9" />
+                  </svg>
+                </span>
+                <input id="reg-license" type="text" value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} placeholder="e.g. 1234567 (optional)" autoComplete="off" />
+              </div>
+            </div>
+          </>
+        )}
+
+        {accountRole === 'admin' && (
+          <>
+            <div className="auth-field">
+              <label htmlFor="reg-office">Assigned Office <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4" />
+                  </svg>
+                </span>
+                <select id="reg-office" value={office} onChange={(e) => setOffice(e.target.value)}>
+                  <option>Registrar Office</option>
+                  <option>Finance Office</option>
+                  <option>Library</option>
+                  <option>Guidance Office</option>
+                  <option>IT Systems Office</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="reg-admin-position">Position / Designation <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                  </svg>
+                </span>
+                <input id="reg-admin-position" type="text" required value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. Registrar Staff" autoComplete="off" />
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="auth-checkbox-row">
           <label className="auth-checkbox-label">

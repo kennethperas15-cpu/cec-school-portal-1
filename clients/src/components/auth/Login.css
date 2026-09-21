@@ -3,7 +3,12 @@
   display: grid;
   place-items: center;
   padding: 48px 24px;
-  background: #081b3a url('/cec-school-portal-1/cec-login-banner.png') center/cover no-repeat fixed;
+  background-color: #edf1f8;
+  background-image: url('/cec-school-portal-1/cec-dragons-bg.png'), url('/cec-school-portal-1/cec-login-banner.png');
+  background-size: min(980px, 94vw) auto, cover;
+  background-position: center 32%, center;
+  background-repeat: no-repeat, no-repeat;
+  background-attachment: scroll, fixed;
   position: relative;
   isolation: isolate;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -14,7 +19,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at top right, rgba(16, 68, 155, 0.72), rgba(7, 39, 100, 0.92));
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0) 30%, rgba(237,241,248,.65) 100%);
   z-index: -1;
 }
 
@@ -298,7 +303,8 @@
   position: relative;
 }
 
-.auth-input-wrap input {
+.auth-input-wrap input,
+.auth-input-wrap select {
   width: 100%;
   border: 1px solid #dfe7f2;
   border-radius: 12px;
@@ -310,7 +316,8 @@
   box-sizing: border-box;
 }
 
-.auth-input-wrap input:focus {
+.auth-input-wrap input:focus,
+.auth-input-wrap select:focus {
   border-color: #3b82f6;
   outline: 0;
   box-shadow: 0 0 0 4px rgba(59,130,246,.12);

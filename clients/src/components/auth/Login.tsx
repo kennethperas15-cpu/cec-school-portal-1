@@ -1,5 +1,9 @@
-import React, { useState, useEffect, type FormEvent } from 'react';
+import React, { useState, useEffect, useRef, type FormEvent } from 'react';
 import api from '@/services/api';
+import { ensureSchoolId } from '@/services/crud';
+import { setPhoto as saveProfilePhoto, getPhoto as readProfilePhoto } from '@/services/photos';
+
+const GOOGLE_CLIENT_ID = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_GOOGLE_CLIENT_ID ?? '';
 
 export interface UserAuthData {
   firstName: string;
@@ -8,6 +12,7 @@ export interface UserAuthData {
   id?: string;
   email?: string;
   program?: string;
+  picture?: string;
 }
 
 interface LoginProps {
@@ -63,16 +68,6 @@ export const Login: React.FC<LoginProps> = ({
     }
   }, [prefillIdentifier, prefillPassword]);
 
-  const handleDemoFill = (selectedRole: 'Student' | 'Teacher' | 'Admin') => {
-    setRole(selectedRole);
-    setIdentifier(DEMO_ACCOUNTS[selectedRole].identifier);
-    setPassword(DEMO_ACCOUNTS[selectedRole].password);
-    setError('');
-    if (onNotify) {
-      onNotify(`Filled demo credentials for ${selectedRole}`);
-    }
-  };
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
@@ -108,12 +103,10 @@ export const Login: React.FC<LoginProps> = ({
       if (onSuccess) onSuccess(userData);
       return;
     }
-    const demo = DEMO_ACCOUNTS[role];
-
     // Offline-issued accounts (Apply/Register without backend) — check localStorage first
     try {
       const raw = localStorage.getItem('cec:registrations');
-      const regs = raw ? (JSON.parse(raw) as { schoolEmail?: string; temporaryPassword?: string; fullName?: string; id?: string }[]) : [];
+      const regs = raw ? (JSON.parse(raw) as { schoolEmail?: string; temporaryPassword?: string; fullName?: string; id?: string; requestedRole?: string }[]) : [];
       const hit = regs.find(
         (r) =>
           (r.schoolEmail?.toLowerCase() === identifier.trim().toLowerCase() ||
@@ -122,10 +115,14 @@ export const Login: React.FC<LoginProps> = ({
       );
       if (hit) {
         const parts = (hit.fullName ?? 'New Student').trim().split(/\s+/);
+        const hitRole = hit.requestedRole === 'teacher' ? 'teacher' : hit.requestedRole === 'admin' ? 'admin' : 'student';
+        const sid = ensureSchoolId(hit.id, hitRole);
         const offlineUser: UserAuthData = {
           firstName: parts[0] ?? 'New',
-          lastName: parts.slice(1).join(' ') || 'Student',
-          role: 'student',
+          lastName: parts.slice(1).join(' ') || (hitRole === 'student' ? 'Student' : 'User'),
+          role: hitRole,
+          id: sid,
+          email: hit.schoolEmail,
         };
         setLoading(false);
         localStorage.setItem('cec_session_user', JSON.stringify(offlineUser));
@@ -162,31 +159,104 @@ export const Login: React.FC<LoginProps> = ({
       if (onSuccess) onSuccess(user);
     } catch (requestError) {
       const apiError = requestError as { response?: { data?: { message?: string } } };
-      setError(
-        apiError.response?.data?.message ??
-          `Invalid credentials. Quick test with Demo ${role}: ID "${demo?.identifier}" and Password "${demo?.password}".`
-      );
+      setError('Invalid credentials. Please check your school ID/email and password — or Apply for an account, or sign in with Google.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleCredential = async (credentialResponse: { credential?: string }) => {
+    const idToken = credentialResponse?.credential;
+    if (!idToken) {
+      setError('Google sign-in was cancelled. Please try again.');
+      return;
+    }
     setGoogleLoading(true);
     setError('');
     try {
-      const response = await api.post('/auth/google/login-url');
-      if (response.data?.url) {
-        window.location.assign(response.data.url);
-      } else {
-        setError('Google Login service is currently unavailable.');
-      }
+      const response = await api.post('/auth/google/id-token', { idToken });
+      const user = response.data?.data?.user;
+      const token = response.data?.data?.token ?? response.data?.data?.accessToken;
+      if (!user) throw new Error('Google sign-in did not return an account.');
+      if (token) localStorage.setItem('cec_access_token', token);
+      // Same person, same school ID: if this Gmail already has a school
+      // account (applied/registered), reuse its ID and role instead of the new UUID.
+      let googleId = user.id as string | undefined;
+      let googleRole: 'student' | 'teacher' | 'admin' = user.role === 'teacher' || user.role === 'admin' ? user.role : 'student';
+      try {
+        const raw = localStorage.getItem('cec:registrations');
+        const regs = raw ? (JSON.parse(raw) as { id?: string; personalEmail?: string; requestedRole?: string }[]) : [];
+        const match = regs.find((r) => r.personalEmail?.toLowerCase() === String(user.email ?? '').toLowerCase());
+        if (match?.id) {
+          googleId = match.id;
+          if (match.requestedRole === 'teacher' || match.requestedRole === 'admin') googleRole = match.requestedRole;
+        }
+      } catch { /* ignore — fall through to UUID */ }
+      googleId = ensureSchoolId(googleId, googleRole);
+      // Show the Google account picture everywhere avatars appear
+      // (manual uploads take precedence — only fill when empty)
+      if (user.picture && googleId && !readProfilePhoto(googleId)) saveProfilePhoto(googleId, user.picture);
+      if (onNotify) onNotify(`Welcome back, ${user.firstName}!`);
+      if (onSuccess) onSuccess({ firstName: user.firstName, lastName: user.lastName, role: googleRole, id: googleId, email: user.email, picture: user.picture });
     } catch (err) {
       const apiError = err as { response?: { data?: { message?: string } } };
-      setError(apiError.response?.data?.message ?? 'Google Login is not configured on this server.');
+      setError(apiError.response?.data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
     } finally {
       setGoogleLoading(false);
     }
+  };
+
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !googleButtonRef.current) return;
+    let cancelled = false;
+    const renderButton = () => {
+      const g = (window as unknown as { google?: { accounts?: { id?: { initialize: (o: object) => void; renderButton: (el: HTMLElement, o: object) => void } } } }).google;
+      if (!g?.accounts?.id || !googleButtonRef.current || cancelled) return false;
+      g.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential, auto_select: false });
+      googleButtonRef.current.innerHTML = '';
+      g.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large', width: 300, text: 'signin_with' });
+      return true;
+    };
+    if (renderButton()) return () => { cancelled = true; };
+    const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]') ?? (() => {
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.defer = true;
+      document.head.appendChild(s);
+      return s;
+    })();
+    script.addEventListener('load', renderButton, { once: true });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [GOOGLE_CLIENT_ID]);
+
+  const handleGoogleLogin = async () => {
+    // No Google Client ID configured → fall back to server OAuth URL flow (shows setup error gracefully)
+    if (!GOOGLE_CLIENT_ID) {
+      setGoogleLoading(true);
+      setError('');
+      try {
+        const response = await api.post('/auth/google/login-url');
+        if (response.data?.url) {
+          window.location.assign(response.data.url);
+        } else {
+          setError('Google Login service is currently unavailable.');
+        }
+      } catch (err) {
+        const apiError = err as { response?: { data?: { message?: string } } };
+        setError(apiError.response?.data?.message ?? 'Google Login is not configured. Admin: set VITE_GOOGLE_CLIENT_ID (client) and GOOGLE_CLIENT_ID (server).');
+      } finally {
+        setGoogleLoading(false);
+      }
+      return;
+    }
+    // GIS button is rendered below; this fallback triggers One Tap prompt
+    const g = (window as unknown as { google?: { accounts?: { id?: { prompt: () => void } } } }).google;
+    if (g?.accounts?.id) g.accounts.id.prompt();
+    else setError('Google script is still loading. Please wait a moment and try again.');
   };
 
   return (
@@ -234,34 +304,7 @@ export const Login: React.FC<LoginProps> = ({
         ))}
       </div>
 
-      {/* Quick Demo Autofill Bar */}
-      <div className="demo-chips-bar">
-        <span className="demo-label">Quick Demo Fill:</span>
-        <button
-          type="button"
-          className="demo-chip"
-          onClick={() => handleDemoFill('Student')}
-          title="Fill Student Demo Account"
-        >
-          Student
-        </button>
-        <button
-          type="button"
-          className="demo-chip"
-          onClick={() => handleDemoFill('Teacher')}
-          title="Fill Faculty Demo Account"
-        >
-          Faculty
-        </button>
-        <button
-          type="button"
-          className="demo-chip"
-          onClick={() => handleDemoFill('Admin')}
-          title="Fill Admin Demo Account"
-        >
-          Admin
-        </button>
-      </div>
+      {/* Quick Demo Autofill removed — sign in with an issued school account or Google. */}
 
       {error && (
         <div className="auth-alert auth-alert-error" role="alert">
@@ -390,12 +433,19 @@ export const Login: React.FC<LoginProps> = ({
           <span>or continue with</span>
         </div>
 
-        <button
-          type="button"
-          className="auth-btn auth-btn-google"
-          onClick={handleGoogleLogin}
-          disabled={googleLoading}
-        >
+        {GOOGLE_CLIENT_ID ? (
+          <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+            <div ref={googleButtonRef} aria-label="Sign in with Google" style={{ minHeight: 40 }} />
+            {googleLoading && <span style={{ fontSize: 12, color: '#64748B' }}>Verifying Google account...</span>}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="auth-btn auth-btn-google"
+            onClick={handleGoogleLogin}
+            disabled={googleLoading}
+            title="Admin setup required: VITE_GOOGLE_CLIENT_ID"
+          >
           <svg className="google-icon" width="18" height="18" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
@@ -416,6 +466,12 @@ export const Login: React.FC<LoginProps> = ({
           </svg>
           <span>{googleLoading ? 'Connecting...' : 'Sign in with Google Account'}</span>
         </button>
+        )}
+        {!GOOGLE_CLIENT_ID && (
+          <p style={{ margin: '8px 0 0', fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>
+            Google button activates after admin adds <code>VITE_GOOGLE_CLIENT_ID</code> — see <code>docs/Google_Login_Setup.md</code>
+          </p>
+        )}
 
         {/* Footer switch to Register */}
         {onSwitchToRegister && (

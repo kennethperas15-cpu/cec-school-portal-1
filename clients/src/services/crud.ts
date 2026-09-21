@@ -29,3 +29,47 @@ export const useCollection = <T extends { id: string }>(key: string, seed: T[]) 
 };
 
 export const uid = (p: string) => `${p}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+// School ID rule: 6 digits, leading digit by role (student=2, teacher=3, admin=4).
+export type SchoolRole = 'student' | 'teacher' | 'admin';
+export const genSchoolId = (role: SchoolRole): string => {
+  const lead = role === 'student' ? '2' : role === 'teacher' ? '3' : '4';
+  let id = '';
+  for (let i = 0; i < 5; i++) id += Math.floor(Math.random() * 10).toString();
+  return `${lead}${id}`;
+};
+
+export const isValidSchoolId = (id: string, role: SchoolRole): boolean => {
+  if (!/^\d{6}$/.test(id.trim())) return false;
+  const lead = role === 'student' ? '2' : role === 'teacher' ? '3' : '4';
+  return id.trim().startsWith(lead);
+};
+
+// One-time migration for accounts created before the 6-digit rule:
+// issues a valid ID and rewrites it across all local stores. Returns the valid ID.
+export const ensureSchoolId = (oldId: string | undefined, role: SchoolRole): string => {
+  if (oldId && isValidSchoolId(oldId, role)) return oldId.trim();
+  const fresh = genSchoolId(role);
+  const swap = (key: string, match: (r: Record<string, unknown>) => boolean, patch: (r: Record<string, unknown>) => Record<string, unknown>) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const rows = JSON.parse(raw) as Record<string, unknown>[];
+      localStorage.setItem(key, JSON.stringify(rows.map((r) => (match(r) ? patch(r) : r))));
+    } catch { /* ignore */ }
+  };
+  const byId = (r: Record<string, unknown>) => r.id === oldId;
+  swap('cec:registrations', byId, (r) => ({ ...r, id: fresh }));
+  swap('cec:a_accounts', byId, (r) => ({ ...r, id: fresh }));
+  swap('cec:s_enroll_apps', byId, (r) => ({ ...r, id: fresh }));
+  swap('cec:a_enroll', byId, (r) => ({ ...r, id: fresh }));
+  swap('cec:t_roster', byId, (r) => ({ ...r, id: fresh }));
+  // Carry the profile photo to the new ID so faces don't disappear
+  try {
+    const photo = localStorage.getItem(`cec:photo:${oldId}`);
+    if (photo && !localStorage.getItem(`cec:photo:${fresh}`)) {
+      localStorage.setItem(`cec:photo:${fresh}`, photo);
+    }
+  } catch { /* ignore */ }
+  return fresh;
+};
