@@ -409,12 +409,26 @@ export const App = () => {
   const [campusSlide, setCampusSlide] = useState(0);
 
   const campusSlides = [
-    { src: '/cec-campus-collage.png', alt: 'Cebu Eastern College campus facilities' },
-    { src: '/cec-campus-group.png', alt: 'Cebu Eastern College faculty and staff' },
-    { src: '/cec-campus-front.png', alt: 'Cebu Eastern College building' },
+    { src: `${import.meta.env.BASE_URL}cec-campus-collage.png`, alt: 'Cebu Eastern College campus facilities' },
+    { src: `${import.meta.env.BASE_URL}cec-campus-group.png`, alt: 'Cebu Eastern College faculty and staff' },
+    { src: `${import.meta.env.BASE_URL}cec-campus-front.png`, alt: 'Cebu Eastern College building' },
   ];
 
   useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem('cec_session_user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser) as PortalUser;
+        if (user?.role && ['student', 'teacher', 'admin'].includes(user.role)) {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          setActiveNav(user.role === 'student' ? 'Registration / Enrollment' : 'Dashboard');
+        }
+      }
+    } catch {
+      localStorage.removeItem('cec_session_user');
+    }
+
     const token = new URLSearchParams(window.location.search).get('googleEnrollmentToken');
     if (token) {
       window.history.replaceState({}, '', window.location.pathname);
@@ -448,6 +462,7 @@ export const App = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('cec_access_token');
+    localStorage.removeItem('cec_session_user');
     setCurrentUser(null);
     setIsAuthenticated(false);
     setActiveNav('Dashboard');

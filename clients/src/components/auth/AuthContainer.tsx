@@ -13,17 +13,17 @@ interface AuthContainerProps {
 
 const campusSlides = [
   {
-    src: '/cec-campus-collage.png',
+    src: `${import.meta.env.BASE_URL}cec-campus-collage.png`,
     title: 'Modern Learning Facilities',
     subtitle: 'Equipped with contemporary tech labs, collaborative spaces, and modern classrooms.',
   },
   {
-    src: '/cec-campus-group.png',
+    src: `${import.meta.env.BASE_URL}cec-campus-group.png`,
     title: 'Distinguished Faculty & Mentors',
     subtitle: 'Dedicated academic mentors inspiring excellence, character, and lifelong leadership.',
   },
   {
-    src: '/cec-campus-front.png',
+    src: `${import.meta.env.BASE_URL}cec-campus-front.png`,
     title: 'Heritage of Excellence',
     subtitle: 'Serving students with pride, cultural heritage, and high standards of learning.',
   },
@@ -63,7 +63,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
             <div className="auth-hero-brand">
               <img
                 className="auth-hero-logo"
-                src="/cec-logo.png"
+                src={`${import.meta.env.BASE_URL}cec-logo.png`}
                 alt="Cebu Eastern College Official Crest"
                 width="96"
                 height="96"
@@ -243,4 +243,3 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
 };
 
 export default AuthContainer;
-
