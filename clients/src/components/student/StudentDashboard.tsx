@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useCollection, uid } from '../../services/crud';
 import { portalApi } from '../../services/portal';
+import { RoleDashboardHome } from '../shared/RoleDashboardHome';
+import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
+import { NotificationCenter } from '../shared/NotificationCenter';
+import { openEditDialog } from '../shared/EditDialog';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 type Rec = { id: string; name: string; role: string };
@@ -33,7 +37,7 @@ const CrudSection = ({ title, col, onNotify, hint }: { title: string; col: Col; 
     <form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); if (!v.trim()) return; col.create({ id: uid('s'), name: v.trim(), role: hint }); setV(''); onNotify(`${title} created`); }}>
       <input style={inp} placeholder={`New ${title}`} value={v} onChange={(e) => setV(e.target.value)} aria-label={title} /><button style={btn} type="submit">Add</button>
     </form>
-    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.id} • {r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { const nv = prompt('Edit', r.name); if (nv) { col.update(r.id, { name: nv }); onNotify('Updated'); } }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></div>)}{!col.list.length && <div style={{ color: '#6b7890' }}>No records yet — add one above.</div>}</div><Footer /></section>);
+    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.id} • {r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Edit record', r.name, (nv) => { col.update(r.id, { name: nv }); onNotify('Updated'); })}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}{!col.list.length && <div style={{ color: '#6b7890' }}>No records yet — add one above.</div>}</div><Footer /></section>);
 };
 
 const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: Col; onNotify: (t: string) => void; ph1: string; ph2: string }) => {
@@ -42,11 +46,11 @@ const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: 
     <form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!a.trim()) return; col.create({ id: uid('s'), name: a.trim(), role: b.trim() || 'New' }); setA(''); setB(''); onNotify(`${title} created`); }}>
       <input style={inp} placeholder={ph1} value={a} onChange={(e) => setA(e.target.value)} /><input style={inp} placeholder={ph2} value={b} onChange={(e) => setB(e.target.value)} /><button style={btn} type="submit">Add</button>
     </form>
-    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { const nv = prompt('Edit status/detail', r.role); if (nv !== null) { col.update(r.id, { role: nv }); onNotify('Updated'); } }}>Update</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
+    <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Update status/detail', r.role, (nv) => { col.update(r.id, { role: nv }); onNotify('Updated'); })}>Update</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}</div><Footer /></section>);
 };
 
 export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
-  const [active, setActive] = useState('Profile Management');
+  const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('auth');
   const [collapsed, setCollapsed] = useState(false);
   const [profile, setProfile] = useState({ name: 'Juan Dela Cruz', id: 'CEC-2024-0015', course: 'BSIT - 3rd Year', email: 'juan.delacruz@cec.edu.ph', phone: '0917-123-4567', address: 'Colon St., Cebu City', guardian: 'Maria Dela Cruz - 0917-999-0000', emergency: 'Maria Dela Cruz (Mother) - 0917-999-0000 - Brgy. Tejero' });
@@ -107,8 +111,18 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   };
   const [enrPg, setEnrPg] = useState('BSIT'); const [enrYr, setEnrYr] = useState('3rd Year'); const [enrSm, setEnrSm] = useState('1st Semester');
   const route = GROUPS.flatMap((g) => g.items).find((i) => i.label === active)?.route ?? 's_dashboard';
+  const moduleItems = ['Dashboard', ...GROUPS.flatMap((g) => g.items.map((item) => item.label))];
+  const navigate = (label: string) => setActive(moduleItems.includes(label) ? label : 'Dashboard');
+  const searchRecords = [
+    { title: 'Juan Dela Cruz', detail: 'CEC-2024-0015 • BSIT-3A • juan.delacruz@cec.edu.ph', target: 'Profile Management' },
+    ...subjects.list.map((item) => ({ title: item.name, detail: item.role, target: 'Grades / Report Card' })),
+    ...assigns.list.map((item) => ({ title: item.name, detail: item.role, target: 'Assignments' })),
+    ...docs.list.map((item) => ({ title: item.name, detail: item.role, target: 'Document Submission' })),
+    ...charges.list.map((item) => ({ title: item.name, detail: item.role, target: 'Payment Portal' })),
+  ];
 
   const render = () => {
+    if (active === 'Dashboard') return <RoleDashboardHome role="student" name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'} onNavigate={navigate} />;
     if (active === 'Profile Management') {
       const F = (k: keyof typeof profile, label: string) => (<div><span style={lbl}>{label}</span><input style={inp} value={profile[k]} onChange={(e) => setProfile({ ...profile, [k]: e.target.value })} aria-label={label} /></div>);
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Profile Management</h1><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>{F('name', 'NAME')}{F('id', 'ID')}{F('course', 'COURSE')}{F('email', 'EMAIL')}{F('phone', 'PHONE')}{F('address', 'ADDRESS')}{F('guardian', 'GUARDIAN')}{F('emergency', 'EMERGENCY')}</div><div style={{ marginTop: 18 }}><button style={{ ...btn, borderRadius: 10 }} onClick={() => onNotify('Profile changes saved (Update)')}>Save Changes</button></div><Footer /></section>);
@@ -179,8 +193,9 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><div style={{ width: 38, height: 38, borderRadius: 10, background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>CEC</div><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • 1ST SEM 2024-2025</div></div></div>
         <button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer' }} aria-label="Toggle sidebar">☰</button>
-        <span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{route}</span>
-        <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><button className="dashboard-alert-button" type="button" onClick={() => onNotify('You are all caught up')} aria-label="View notifications">♢<span /></button><div className="dashboard-avatar" style={{ width: 36, height: 36, borderRadius: '50%', background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>{currentUser?.firstName?.[0] ?? 'S'}</div></div>
+        <button className="dashboard-home-link" type="button" onClick={() => setActive('Dashboard')}>⌂ Dashboard</button><span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
+        <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />
+        <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><NotificationCenter role="student" onNavigate={navigate} /><div className="dashboard-avatar" style={{ width: 36, height: 36, borderRadius: '50%', background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>{currentUser?.firstName?.[0] ?? 'S'}</div></div>
       </header>
       <div style={{ display: 'flex' }}>
         {!collapsed && (<aside className="dashboard-sidebar" style={{ width: 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{GROUPS.map((g) => { const open = expanded === g.id; return (<div className={`dashboard-nav-group ${open ? 'is-open' : ''}`} key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => setExpanded(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button key={it.label} onClick={() => setActive(it.label)} style={{ textAlign: 'left', border: active === it.label ? '2px solid #111' : 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 400 }}>{it.label}</button>)}</div>}</div>); })}<div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><div><div style={{ fontWeight: 700, fontSize: 13 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Demo Student'}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>student</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div></aside>)}

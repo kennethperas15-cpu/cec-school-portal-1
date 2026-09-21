@@ -6,6 +6,7 @@ import { AuthContainer } from './components/auth/AuthContainer';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { StudentDashboard } from './components/student/StudentDashboard';
+import { EditDialog } from './components/shared/EditDialog';
 
 const Register = lazy(() => import('./components/auth/Register').then(({ Register: component }) => ({ default: component })));
 const ForgotPassword = lazy(() => import('./components/auth/ForgotPassword').then(({ ForgotPassword: component }) => ({ default: component })));
@@ -474,12 +475,12 @@ export const App = () => {
   }
 
   if (currentUser?.role === 'teacher') {
-    return <TeacherDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} />;
+    return <><EditDialog /><TeacherDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /></>;
   }
 
   if (currentUser?.role === 'admin') {
-    return <AdminDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} />;
+    return <><EditDialog /><AdminDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /></>;
   }
 
-  return <StudentDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} />;
+  return <><EditDialog /><StudentDashboard currentUser={currentUser} onNotify={notify} onLogout={handleLogout} /></>;
 };
