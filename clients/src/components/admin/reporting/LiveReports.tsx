@@ -53,10 +53,10 @@ export const LiveReport = ({ kind, onNotify }: Props) => {
   const [program, setProgram] = useState('All programs');
   const [query, setQuery] = useState('');
 
-  const enroll = useMemo(() => load<Rec>('cec:a_enroll', []), []);
-  const accounts = useMemo(() => load<Rec>('cec:a_accounts', []), []);
+  const enroll = useMemo(() => load<Rec>('cec:a_enroll_v2', []), []);
+  const accounts = useMemo(() => load<Rec>('cec:a_accounts_v2', []), []);
   const grades = useMemo(() => load<{ prelim: string; midterm: string; final: string }>('cec:t_grades', []), []);
-  const bills = useMemo(() => load<Rec>('cec:a_bills', []), []);
+  const bills = useMemo(() => load<Rec>('cec:a_bills_v2', []), []);
   const history = useMemo(() => load<Rec>('cec:s_history', []), []);
 
   if (kind === 'enrollment') {

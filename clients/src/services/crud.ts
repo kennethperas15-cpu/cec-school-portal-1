@@ -60,10 +60,10 @@ export const ensureSchoolId = (oldId: string | undefined, role: SchoolRole): str
   };
   const byId = (r: Record<string, unknown>) => r.id === oldId;
   swap('cec:registrations', byId, (r) => ({ ...r, id: fresh }));
-  swap('cec:a_accounts', byId, (r) => ({ ...r, id: fresh }));
+  swap('cec:a_accounts_v2', byId, (r) => ({ ...r, id: fresh }));
   swap('cec:s_enroll_apps', byId, (r) => ({ ...r, id: fresh }));
-  swap('cec:a_enroll', byId, (r) => ({ ...r, id: fresh }));
-  swap('cec:t_roster', byId, (r) => ({ ...r, id: fresh }));
+  swap('cec:a_enroll_v2', byId, (r) => ({ ...r, id: fresh }));
+  swap('cec:t_roster_v2', byId, (r) => ({ ...r, id: fresh }));
   // Carry the profile photo to the new ID so faces don't disappear
   try {
     const photo = localStorage.getItem(`cec:photo:${oldId}`);

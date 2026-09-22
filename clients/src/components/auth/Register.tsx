@@ -106,10 +106,10 @@ export const Register: React.FC<RegisterProps> = ({
           };
           // Names surface automatically: students see teachers, admin sees everyone
           const roleDetail = accountRole === 'student' ? program : accountRole === 'teacher' ? `${department} • ${position.trim() || 'Faculty applicant'}` : `${office} • ${position.trim() || 'Staff applicant'}`;
-          pushTo('cec:a_enroll', { id: studentId, name: fullName.trim(), meta: `${roleDetail} • Applied (offline)` });
-          pushTo('cec:a_accounts', { id: studentId, name: fullName.trim(), role: accountRole });
+          pushTo('cec:a_enroll_v2', { id: studentId, name: fullName.trim(), meta: `${roleDetail} • Applied (offline)` });
+          pushTo('cec:a_accounts_v2', { id: studentId, name: fullName.trim(), role: accountRole });
           if (accountRole === 'teacher') {
-            pushTo('cec:a_faculty', { id: studentId, name: fullName.trim(), role: `${department} • ${position.trim() || '6 units'}` });
+            pushTo('cec:a_faculty_v2', { id: studentId, name: fullName.trim(), role: `${department} • ${position.trim() || '6 units'}` });
           }
           pushTo('cec:registrations', { id: studentId, fullName: fullName.trim(), personalEmail: personalEmail.trim(), phone: phone.trim(), address: address.trim(), program: accountRole === 'student' ? program : department, yearLevel: accountRole === 'student' ? Number(yearLevel) : 1, position: position.trim(), licenseNo: licenseNo.trim(), office, requestedRole: accountRole, schoolEmail, temporaryPassword, createdAt: new Date().toISOString() });
         } catch { /* storage unavailable — still show credentials */ }

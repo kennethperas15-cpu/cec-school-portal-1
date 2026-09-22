@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 
+const BASE = import.meta.env.BASE_URL || '/';
+const pub = (f: string) => `${BASE}${f}`;
+
 export type Slide = { src: string; title: string; subtitle: string };
 
 type Props = { slides: Slide[]; label: string; intervalMs?: number };
@@ -32,12 +35,11 @@ export const SlideShow: React.FC<Props> = ({ slides, label, intervalMs = 5000 })
 };
 
 export const REGISTRAR_SLIDES: Slide[] = [
-  { src: '/cec-campus-front.png', title: 'Office of the Registrar', subtitle: 'Window 1–3 • Enrollment verification and records release.' },
-  { src: '/cec-campus-group.png', title: 'Registrar Services Team', subtitle: 'Assistance with COR, TOR, and certifications.' },
-  { src: '/cec-campus-collage.png', title: 'Enrollment Made Easy', subtitle: 'Apply online, verify documents, get approved.' },
+  { src: pub('cec-campus-front.png'), title: 'Office of the Registrar', subtitle: 'Window 1–3 • Enrollment verification and records release.' },
+  { src: pub('cec-campus-group.png'), title: 'Registrar Services Team', subtitle: 'Assistance with COR, TOR, and certifications.' },
+  { src: pub('cec-campus-collage.png'), title: 'Enrollment Made Easy', subtitle: 'Apply online, verify documents, get approved.' },
 ];
 
 export const FINANCE_SLIDES: Slide[] = [
-  { src: '/cec-building.png', title: 'CEC Cashier — Window 3', subtitle: 'On-site payments • GCash, Maya, bank transfer accepted.' },
-  { src: '/cec-login-banner.png', title: 'Pay Online, Anytime', subtitle: 'GoTyme, UnionBank, Metrobank, BPI supported.' },
+  { src: pub('cec-payment-banks.png'), title: 'UnionBank • BPI', subtitle: 'Pay via UnionBank or BPI bank transfer.' },
 ];
