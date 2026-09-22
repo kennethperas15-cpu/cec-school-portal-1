@@ -167,6 +167,18 @@ export const Login: React.FC<LoginProps> = ({
     }
   };
 
+  const verifyViaGoogle = async (idToken: string) => {
+    // Static-hosting fallback: ask Google itself (authoritative) — no backend needed.
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+    if (!res.ok) throw new Error('Google token check failed');
+    const info = (await res.json()) as { aud?: string; exp?: string; email?: string; email_verified?: string | boolean; given_name?: string; family_name?: string; picture?: string };
+    if (info.aud !== GOOGLE_CLIENT_ID) throw new Error('Token audience mismatch');
+    if (info.exp && Number(info.exp) * 1000 < Date.now()) throw new Error('Google session expired');
+    if (info.email_verified !== 'true' && info.email_verified !== true) throw new Error('A verified Google account is required');
+    if (!info.email) throw new Error('Google did not return an email address');
+    return info;
+  };
+
   const handleGoogleCredential = async (credentialResponse: { credential?: string }) => {
     const idToken = credentialResponse?.credential;
     if (!idToken) {
@@ -201,13 +213,41 @@ export const Login: React.FC<LoginProps> = ({
       if (onNotify) onNotify(`Welcome back, ${user.firstName}!`);
       if (onSuccess) onSuccess({ firstName: user.firstName, lastName: user.lastName, role: googleRole, id: googleId, email: user.email, picture: user.picture });
     } catch (err) {
-      const apiError = err as { response?: { data?: unknown; status?: number } };
-      const data = apiError.response?.data as { message?: string } | undefined;
-      // Static hosting (GitHub Pages) has no API: 404 HTML, empty, or unreachable
-      const needsServer = !apiError.response || typeof apiError.response.data === 'string' || apiError.response.status === 404;
-      setError(needsServer
-        ? 'Google sign-in needs the portal API server (port 4000) running — it cannot verify on the static GitHub Pages site. Use the localhost setup for the Google demo.'
-        : data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
+      // Backend unreachable (e.g. static GitHub Pages): verify with Google directly.
+      try {
+        const info = await verifyViaGoogle(idToken);
+        const gmail = String(info.email).toLowerCase();
+        let regs: { id?: string; fullName?: string; personalEmail?: string; requestedRole?: string }[] = [];
+        try {
+          const raw = localStorage.getItem('cec:registrations');
+          regs = raw ? JSON.parse(raw) : [];
+        } catch { regs = []; }
+        const match = regs.find((r) => r.personalEmail?.toLowerCase() === gmail);
+        const gRole = match?.requestedRole === 'teacher' || match?.requestedRole === 'admin' ? match.requestedRole : 'student';
+        const gId = ensureSchoolId(match?.id, gRole);
+        const fullName = match?.fullName || `${info.given_name ?? ''} ${info.family_name ?? ''}`.trim() || gmail.split('@')[0];
+        if (!match) {
+          regs.push({ id: gId, fullName, personalEmail: gmail, requestedRole: gRole });
+          try { localStorage.setItem('cec:registrations', JSON.stringify(regs)); } catch { /* ignore */ }
+        }
+        if (info.picture && !readProfilePhoto(gId)) saveProfilePhoto(gId, info.picture);
+        const parts = fullName.trim().split(/\s+/);
+        const gUser: UserAuthData = {
+          firstName: parts[0] ?? 'New', lastName: parts.slice(1).join(' ') || 'Student',
+          role: gRole, id: gId, email: gmail, picture: info.picture,
+        };
+        localStorage.setItem('cec_session_user', JSON.stringify(gUser));
+        if (onNotify) onNotify(`Welcome back, ${gUser.firstName}!`);
+        if (onSuccess) onSuccess(gUser);
+        return;
+      } catch {
+        const apiError = err as { response?: { data?: unknown; status?: number } };
+        const data = apiError.response?.data as { message?: string } | undefined;
+        const needsServer = !apiError.response || typeof apiError.response.data === 'string' || apiError.response.status === 404;
+        setError(needsServer
+          ? 'Google sign-in needs the portal API server (port 4000) running — it cannot verify on the static GitHub Pages site. Use the localhost setup for the Google demo.'
+          : data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
+      }
     } finally {
       setGoogleLoading(false);
     }
