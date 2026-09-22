@@ -32,3 +32,15 @@
 .theme-toggle:hover {
   background: #eef4ff;
 }
+
+/* Dragons artwork behind dashboard content (shows once clients/public/cec-dragons-bg.png exists) */
+main.dashboard-main {
+  background-image: url('/cec-school-portal-1/cec-dragons-bg.png');
+  background-size: min(880px, 92vw) auto;
+  background-position: center 12%;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+.cec-dark main.dashboard-main {
+  background-image: none;
+}

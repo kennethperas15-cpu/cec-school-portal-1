@@ -83,7 +83,7 @@ router.get('/items', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.post('/items', authmiddlewareMiddleware, requireRoles('admin', 'teacher'), async (req, res, next) => {
+router.post('/items', authmiddlewareMiddleware, requireRoles('admin', 'teacher', 'student'), async (req, res, next) => {
   try {
     const { portal, module, title, detail, status, owner } = req.body as {
       portal?: string; module?: string; title?: string; detail?: string; status?: string; owner?: string;

@@ -146,8 +146,9 @@ export const Login: React.FC<LoginProps> = ({
         role: role.toLowerCase(),
       };
 
-      if (response.data?.data?.token) {
-        localStorage.setItem('cec_access_token', response.data.data.token);
+      const token = response.data?.data?.token ?? response.data?.data?.accessToken;
+      if (token) {
+        localStorage.setItem('cec_access_token', token);
       }
       localStorage.setItem('cec_session_user', JSON.stringify(user));
 

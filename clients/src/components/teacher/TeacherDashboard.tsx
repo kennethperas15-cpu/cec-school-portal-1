@@ -14,6 +14,7 @@ import { openEditDialog } from '../shared/EditDialog';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 const NAVY = '#0B3D91';
+const BASE = import.meta.env.BASE_URL || '/';
 type Group = { id: string; label: string; icon: string; items: { label: string; route: string }[] };
 const GROUPS: Group[] = [
   { id: 'account', label: 'ACCOUNT', icon: '◈', items: [{ label: 'Profile Management', route: 't_auth_profile' }, { label: 'Password Recovery', route: 't_auth_recovery' }] },
@@ -45,28 +46,20 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [collapsed, setCollapsed] = useState(false);
   const { dark, toggle } = useTheme();
   const [q, setQ] = useState('');
-  const roster = useCollection('t_roster', [
-    { id: 'CEC-2024-0015', name: 'Juan Dela Cruz', course: 'BSIT-3A', email: 'juan@cec.edu.ph' },
-    { id: 'CEC-2024-0008', name: 'Ana Reyes', course: 'BSIT-3A', email: 'ana@cec.edu.ph' },
-    { id: 'CEC-2024-0022', name: 'Mark Lim', course: 'BSIT-3A', email: 'mark@cec.edu.ph' },
-  ]);
-  const sections = useCollection('t_sections', [
-    { id: 'BSIT-3A', title: 'BSIT-3A - Data Structures', detail: 'MWF 7:30-9:00 • Room 301' },
-    { id: 'BSIT-3B', title: 'BSIT-3B - Web Development', detail: 'TTH 9:00-10:30 • Lab 2' },
-  ]);
-  const grades = useCollection('t_grades', [
-    { id: 'g1', student: 'Juan Dela Cruz', prelim: '88', midterm: '91', final: '', locked: '' },
-    { id: 'g2', student: 'Ana Reyes', prelim: '90', midterm: '89', final: '', locked: '' },
-  ]);
-  const exams = useCollection('t_exams', [{ id: 'e1', title: 'Midterm Exam - DB Systems', date: '2024-10-18', items: '50' }]);
-  const attend = useCollection('t_attend', [{ id: 'a1', student: 'Juan Dela Cruz', date: '2024-10-10', status: 'Present' }]);
-  const materials = useCollection('t_materials', [{ id: 'm1', title: 'Week 5 Slides - Normalization', type: 'PDF' }]);
-  const assigns = useCollection('t_assign', [{ id: 'as1', title: 'ER Diagram Project', due: '2024-10-20', submitted: '24' }]);
-  const posts = useCollection('t_posts', [{ id: 'p1', title: 'Midterm moved to Friday', body: 'Room 301, bring permit.' }]);
-  const forum = useCollection('t_forum', [{ id: 'f1', title: 'How should schools protect student data?', body: 'Share best practices.' }]);
-  const sched = useCollection('t_sched', [{ id: 's1', title: 'CS 301 - BSCS-3A', when: 'Mon/Wed 8:00-9:30 AM', where: 'Lab 3' }]);
-  const consults = useCollection('t_consult', [{ id: 'c1', title: 'Consultation - Tue 1-3PM', when: 'Tue 1:00-3:00 PM', where: 'Faculty Room' }]);
-  const messages = useCollection('t_messages', [{ id: 'msg1', title: 'To BSIT-3A', when: 'Today', where: 'Midterm coverage posted.' }]);
+  const roster = useCollection<{ id: string; name: string; course: string; email: string }>('t_roster_v2', []);
+  // v2 stores: pre-launch — no enrolled students, so no sections, tasks, or messages
+  const sections = useCollection<{ id: string; title: string; detail: string }>('t_sections_v2', []);
+  // v2: gradebook starts empty — no demo students (fresh key, old seeds retired)
+  const grades = useCollection('t_grades_v2', [] as { id: string; student: string; prelim: string; midterm: string; final: string; locked: string }[]);
+  const exams = useCollection<{ id: string; title: string; date: string; items: string }>('t_exams_v2', []);
+  const attend = useCollection<{ id: string; student: string; date: string; status: string }>('t_attend_v2', []);
+  const materials = useCollection<{ id: string; title: string; type: string }>('t_materials_v2', []);
+  const assigns = useCollection<{ id: string; title: string; due: string; submitted: string }>('t_assign_v2', []);
+  const posts = useCollection<{ id: string; title: string; body: string }>('t_posts_v2', []);
+  const forum = useCollection<{ id: string; title: string; body: string }>('t_forum_v2', []);
+  const sched = useCollection<{ id: string; title: string; when: string; where: string }>('t_sched_v2', []);
+  const consults = useCollection<{ id: string; title: string; when: string; where: string }>('t_consult_v2', []);
+  const messages = useCollection<{ id: string; title: string; when: string; where: string }>('t_messages_v2', []);
   const [profile, setProfile] = useState({ name: 'Prof. Juan Santos - T-001', dept: 'BSIT Department • juan.santos@cec.edu.ph' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -111,7 +104,23 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   );
 
   const render = () => {
-    if (active === 'Dashboard') return <RoleDashboardHome role="teacher" name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Faculty'} onNavigate={navigate} />;
+    if (active === 'Dashboard') {
+      const pendingGrades = grades.list.filter((g) => !g.locked).length;
+      return (
+        <RoleDashboardHome
+          role="teacher"
+          name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Faculty'}
+          onNavigate={navigate}
+          blankSections
+          liveMetrics={[
+            { label: 'Assigned sections', value: String(sections.list.length), detail: sections.list.length ? 'Across assigned loads' : 'No sections assigned yet' },
+            { label: 'Total students', value: String(roster.list.length), detail: roster.list.length ? 'Across all sections' : 'No enrolled students yet' },
+            { label: 'Pending grades', value: String(pendingGrades), detail: pendingGrades ? 'Need review' : 'Nothing to grade yet' },
+            { label: 'Attendance today', value: attend.list.length ? `${Math.round((attend.list.filter((a) => a.status === 'Present').length / attend.list.length) * 100)}%` : '—', detail: attend.list.length ? 'Recorded today' : 'No classes recorded yet' },
+          ]}
+        />
+      );
+    }
     if (active === 'Profile Management') return (<section style={card}><h1 style={{ margin: 0 }}>Teacher Profile Management</h1>
       <div style={{ ...box, display: 'flex', gap: 16, alignItems: 'center' }} key={photoTick}>
         <PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : profile.name} size={72} />
@@ -186,7 +195,7 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   return (
     <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><div style={{ width: 38, height: 38, borderRadius: 10, background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>CEC</div><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>TEACHER PORTAL • 1ST SEM 2024-2025</div></div></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>TEACHER PORTAL • 1ST SEM 2024-2025</div></div></div>
         <button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer' }}>☰</button>
         <button className="dashboard-home-link" type="button" onClick={() => setActive('Dashboard')}>⌂ Dashboard</button><span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>TEACHER</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
         <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />

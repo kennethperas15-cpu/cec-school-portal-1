@@ -4,6 +4,7 @@ import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
 import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
 import { pushNotification } from '../../services/notify';
+import { refreshPipeline, readOfficialAssessment, parseAmount } from '../../services/pipeline';
 import { setPhoto, readPhotoFile } from '../../services/photos';
 import { ensureSchoolId } from '../../services/crud';
 import { PhotoAvatar } from '../shared/PhotoAvatar';
@@ -16,12 +17,13 @@ import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
 import { WorkflowTracker, type WorkflowStep } from '../shared/WorkflowTracker';
-import { readStage, DOC_STAGES, SUBMIT_STAGES, writeStage } from '../../services/docStages';
+import { readStage, DOC_STAGES, SUBMIT_STAGES, SUBMIT_STEPS, writeStage, autoVerifyDoc } from '../../services/docStages';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 type Rec = { id: string; name: string; role: string };
 type Col = { list: Rec[]; create: (x: { id?: string; name: string; role: string }) => void; update: (id: string, p: Partial<Rec>) => void; remove: (id: string) => void; setList: (v: Rec[] | ((p: Rec[]) => Rec[])) => void };
 const NAVY = '#0B3D91';
+const BASE = import.meta.env.BASE_URL || '/';
 type Group = { id: string; label: string; icon: string; items: { label: string; route: string }[] };
 const GROUPS: Group[] = [
   { id: 'auth', label: 'AUTHENTICATION', icon: '◈', items: [{ label: 'Profile Management', route: 's_auth_profile' }, { label: 'Registration / Enrollment', route: 's_auth_register' }, { label: 'Password Recovery', route: 's_auth_recovery' }] },
@@ -75,6 +77,7 @@ const ENROLL_STEPS: WorkflowStep[] = [
 
 const enrollStageOf = (role: string): number => {
   const r = role.toLowerCase();
+  if (r.includes('enroll')) return 3;
   if (r.includes('auto')) return 3;
   if (r.includes('approv')) return 2;
   if (r.includes('verif')) return 1;
@@ -173,13 +176,6 @@ const RequiredDocs = ({ col, onNotify, onUploaded }: { col: Col; onNotify: (t: s
     )}
   </>);
 };
-const SUBMIT_STEPS: WorkflowStep[] = [
-  { label: 'Submitted', nextAction: 'Wait for registrar review' },
-  { label: 'Under Review', nextAction: 'Registrar is checking your document' },
-  { label: 'Verified', nextAction: 'Wait for final acceptance' },
-  { label: 'Accepted', nextAction: 'Requirement complete' },
-];
-
 const SubmissionTracker = ({ slug, title, onNotify }: { slug: string; title: string; onNotify: (t: string) => void }) => {
   const [stage, setStage] = useState(() => readStage(slug));
   const [sentTick, setSentTick] = useState(0);
@@ -258,33 +254,197 @@ const SubmissionTracker = ({ slug, title, onNotify }: { slug: string; title: str
     <p style={{ margin: '10px 2px 0', fontSize: 12, color: '#64748B' }}>After you submit, the tracker updates automatically when the registrar verifies this document — no further action needed.</p>
   </>);
 };
+const DocumentFlow = ({ col, onNotify }: { col: Col; onNotify: (t: string) => void }) => {
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [typedId, setTypedId] = useState('');
+  const [idError, setIdError] = useState('');
+  const [stage, setStage] = useState(() => readStage('school-assessment'));
+  useEffect(() => {
+    const refresh = () => setStage(readStage('school-assessment'));
+    const timer = window.setInterval(refresh, 4000);
+    window.addEventListener('cec:doc-stages', refresh);
+    window.addEventListener('storage', refresh);
+    // True empty state: no entries left behind → no progress shown
+    try {
+      const raw = localStorage.getItem('cec:s_docs');
+      const rows = raw ? (JSON.parse(raw) as { id: string }[]) : [];
+      if (!rows.some((r) => r.id === 'school-assessment' || r.id === 'school-id-doc') && readStage('school-assessment') > 0) {
+        writeStage('school-assessment', 0);
+        setStage(0);
+      }
+      if (rows.some((r) => r.id === 'school-assessment') && readStage('school-assessment') < 3) {
+        autoVerifyDoc('school-assessment', setStage);
+      }
+    } catch { /* ignore */ }
+    return () => { window.clearInterval(timer); window.removeEventListener('cec:doc-stages', refresh); window.removeEventListener('storage', refresh); };
+  }, []);
+  const removeEntry = (slug: string, label: string) => {
+    col.remove(slug);
+    try {
+      const raw = localStorage.getItem('cec:doc-sent');
+      const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+      delete map[slug];
+      localStorage.setItem('cec:doc-sent', JSON.stringify(map));
+    } catch { /* ignore */ }
+    if (slug === 'school-assessment') {
+      writeStage(slug, 0);
+      setStage(0);
+    }
+    onNotify(`${label} removed — progress cleared`);
+  };
+  const assessment = col.list.find((r) => r.id === 'school-assessment');
+  const savedId = col.list.find((r) => r.id === 'school-id-doc');
+  const started = !!assessment || stage > 0;
+  const accepted = stage >= 3;
+
+  const handleFile = (file: File) => {
+    const label = `${file.name} • ${(file.size / 1024).toFixed(0)} KB • Submitted ${new Date().toLocaleDateString()}`;
+    if (file.size < 300 * 1024) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { localStorage.setItem('cec:docfile:school-assessment', String(reader.result ?? '')); } catch { /* quota */ }
+      };
+      reader.readAsDataURL(file);
+    }
+    if (assessment) col.update('school-assessment', { name: 'School Assessment', role: label });
+    else col.create({ id: 'school-assessment', name: 'School Assessment', role: label });
+    onNotify('School Assessment attached — add your School ID, then Submit below');
+  };
+
+  const submitAll = () => {
+    if (!assessment) { onNotify('Upload the School Assessment first'); return; }
+    const v = typedId.trim();
+    if (!savedId && !/^2\d{5}$/.test(v)) {
+      setIdError('Type your valid 6-digit school ID starting with 2.');
+      return;
+    }
+    setIdError('');
+    if (/^2\d{5}$/.test(v)) {
+      const label = `ID ${v} • Submitted ${new Date().toLocaleDateString()}`;
+      if (savedId) col.update('school-id-doc', { name: 'School ID', role: label });
+      else col.create({ id: 'school-id-doc', name: 'School ID', role: label });
+      setTypedId('');
+    }
+    pushNotification(['admin'], { title: 'Document package submitted (auto-verified)', detail: 'Assessment + School ID received — system is verifying automatically.', category: 'Enrollment', target: 'Document Verification' });
+    autoVerifyDoc('school-assessment', setStage, () => {
+      onNotify('Documents verified and accepted automatically');
+      pushNotification(['student'], { title: 'Documents accepted', detail: 'Verification completed automatically — no registrar wait.', category: 'Enrollment', target: 'Document Submission' });
+    });
+    onNotify('Package submitted — verifying automatically');
+  };
+
+  return (<>
+    <div style={box}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #eef1f6' }}>
+        <div style={{ flex: 1 }}>
+          <strong>1 • School Assessment</strong>
+          <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>Report card / Form 138 / assessment of grades</div>
+          <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700, color: assessment ? '#15803d' : '#b45309' }}>
+            {assessment ? `✓ ${assessment.role}` : '○ Missing — upload required'}
+          </div>
+        </div>
+        <button style={btn} onClick={() => setUploadOpen(true)}>↥ {assessment ? 'Re-upload' : 'Upload'}</button>
+          {assessment && <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => removeEntry('school-assessment', 'School Assessment')}>Remove</button>}
+      </div>
+      <div style={{ padding: '12px 0' }}>
+        <div style={{ flex: 1 }}>
+          <strong>2 • School ID</strong>
+          <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>Type your 6-digit school ID (starts with 2) — no upload needed</div>
+          {savedId && <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700, color: '#15803d' }}>✓ {savedId.role}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, maxWidth: 480 }}>
+          <input style={inp} placeholder={savedId ? savedId.role : 'e.g. 201589'} value={typedId} onChange={(e) => { setTypedId(e.target.value.replace(/\D/g, '').slice(0, 6)); setIdError(''); }} inputMode="numeric" aria-label="School ID number" />
+          {savedId && <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => removeEntry('school-id-doc', 'School ID')}>Remove</button>}
+        </div>
+        {idError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{idError}</div>}
+      </div>
+    </div>
+    {uploadOpen && (
+      <FileUploadDialog
+        title="Upload School Assessment"
+        subtitle="Report card / Form 138 / assessment of grades. PDF, JPG or PNG, max 10MB."
+        onClose={() => setUploadOpen(false)}
+        onUpload={(f) => { handleFile(f); setUploadOpen(false); }}
+      />
+    )}
+    <div style={{ marginTop: 18 }}>
+      {!started ? (
+        <div style={box}>No submission yet — attach your School Assessment and type your School ID above, then press Submit. The verification tracker appears here automatically.</div>
+      ) : (
+        <WorkflowTracker title="Document package — verification" reference={`school-assessment • stage ${stage + 1} of ${SUBMIT_STAGES.length} (${SUBMIT_STAGES[stage]})`} steps={SUBMIT_STEPS} currentIndex={stage} readOnly />
+      )}
+      <button
+        type="button"
+        disabled={!assessment || accepted}
+        onClick={submitAll}
+        style={{ marginTop: 12, width: '100%', border: 0, borderRadius: 10, padding: '13px 0', fontWeight: 800, fontSize: 14, cursor: !assessment || accepted ? 'not-allowed' : 'pointer', background: !assessment || accepted ? '#cbd5e1' : '#0B3D91', color: '#fff' }}
+      >
+        {!assessment ? 'Upload the School Assessment first' : accepted ? 'Accepted ✓ — requirement complete' : 'Submit documents for verification'}
+      </button>
+      <p style={{ margin: '10px 2px 0', fontSize: 12, color: '#64748B' }}>One submit sends the whole package — the tracker then completes by itself, no registrar wait.</p>
+    </div>
+  </>);
+};
+
+const pesoOf = (s: string): number => {
+  const t = s.trim();
+  if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
+  const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : 0;
+};
+
+const readVerifiedReceipts = (): string[] => {
+  try {
+    const raw = localStorage.getItem('cec:receipts_verified');
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch { return []; }
+};
+
+// 0 Assessment Created → 1 Payment Pending → 2 Partially Paid → 3 Fully Paid → 4 Receipt Issued (accounting verifies)
+const payStageOf = (assessed: number, paid: number): number => {
+  if (assessed <= 0) return 0;
+  if (paid <= 0) return 1;
+  if (paid < assessed) return 2;
+  const verified = readVerifiedReceipts();
+  let history: { id: string }[] = [];
+  try {
+    const raw = localStorage.getItem('cec:s_history_v2');
+    history = raw ? JSON.parse(raw) : [];
+  } catch { history = []; }
+  return history.some((h) => verified.includes(h.id)) ? 4 : 3;
+};
+
+const LivePayTracker = ({ steps }: { steps: WorkflowStep[] }) => {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick((t) => t + 1), 4000);
+    const refresh = () => setTick((t) => t + 1);
+    window.addEventListener('storage', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('storage', refresh); };
+  }, []);
+  let assessed = 0;
+  let paid = 0;
+  try {
+    const cRaw = localStorage.getItem('cec:s_charges_v2');
+    const charges = cRaw ? (JSON.parse(cRaw) as { name: string; role: string }[]) : [];
+    assessed = charges.reduce((n, c) => n + pesoOf(`${c.name} ${c.role}`), 0);
+    assessed += readOfficialAssessment().reduce((n, l) => n + l.amount, 0);
+    const hRaw = localStorage.getItem('cec:s_history_v2');
+    const history = hRaw ? (JSON.parse(hRaw) as { name: string; role: string }[]) : [];
+    paid = history.reduce((n, h) => n + pesoOf(`${h.name} ${h.role}`), 0);
+  } catch { /* ignore */ }
+  const stage = payStageOf(assessed, paid);
+  return (<>
+    <WorkflowTracker title="Tuition payment" reference={`Assessment • AY 2026–2027 • BSIT • Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()}`} steps={steps} currentIndex={stage} readOnly />
+    <p style={{ margin: '10px 2px 0', fontSize: 12, color: '#64748B' }}>Moves on its own as you pay; Receipt Issued unlocks when accounting verifies a receipt — no clicks needed.</p>
+  </>);
+};
+
 const LiveEnrollTracker = ({ apps }: { apps: { id: string; name: string; role: string }[] }) => {
   const [, setTick] = useState(0);
   useEffect(() => {
-    // Auto-progress: required documents complete → Documents Verified, no registrar wait
-    const checkDocs = () => {
-      try {
-        const dRaw = localStorage.getItem('cec:s_docs');
-        const dRows = dRaw ? (JSON.parse(dRaw) as { id: string }[]) : [];
-        const hasAssessment = dRows.some((r) => r.id === 'school-assessment');
-        const hasId = dRows.some((r) => r.id === 'school-id-doc');
-        if (!hasAssessment || !hasId) return;
-        const raw = localStorage.getItem('cec:s_enroll_apps');
-        if (!raw) return;
-        const rows = JSON.parse(raw) as { id: string; name: string; role: string }[];
-        let changed = false;
-        const next = rows.map((r) => {
-          if (r.role.startsWith('Pending') && !r.role.includes('Documents Verified')) { changed = true; return { ...r, role: `${r.role} • Documents Verified` }; }
-          return r;
-        });
-        if (changed) {
-          localStorage.setItem('cec:s_enroll_apps', JSON.stringify(next));
-          setTick((t) => t + 1);
-        }
-      } catch { /* ignore */ }
-    };
-    checkDocs();
-    const timer = window.setInterval(() => { checkDocs(); setTick((t) => t + 1); }, 4000);
+    // Read-only polling: stages move ONLY when admin acts (queue decisions)
+    const timer = window.setInterval(() => setTick((t) => t + 1), 4000);
     const refresh = () => setTick((t) => t + 1);
     window.addEventListener('storage', refresh);
     return () => { window.clearInterval(timer); window.removeEventListener('storage', refresh); };
@@ -319,21 +479,77 @@ const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: 
     <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Update status/detail', r.role, (nv) => { col.update(r.id, { role: nv }); onNotify('Updated'); })}>Update</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}</div><Footer /></section>);
 };
 
+type Offering = { edp: string; subject: string; descriptive: string; schedule: string; room: string; type: 'Lec' | 'Lab'; units: number; section: string };
+
+// EDP offerings (BSIT 3rd Year, 1st Sem) — pick ONE schedule per subject.
+// Uniform section picks → Regular; mixed/OPEN picks → Irregular (OPEN).
+const OFFERINGS: Offering[] = [
+  { edp: '2611005', subject: 'GE ELEC 7', descriptive: 'LITERATURES OF THE WORLD', schedule: 'TTHS 02:30-03:30 PM', room: 'H 308', type: 'Lec', units: 3, section: 'BSIT-3A' },
+  { edp: '2611006', subject: 'GE ELEC 7', descriptive: 'LITERATURES OF THE WORLD', schedule: 'TTHS 04:30-05:30 PM', room: 'H 308', type: 'Lec', units: 3, section: 'OPEN' },
+  { edp: '2611118', subject: 'GE 8', descriptive: 'UNDERSTANDING THE SELF WITH MENTAL HEALTH', schedule: 'TTHS 03:30-04:30 PM', room: 'H 307', type: 'Lec', units: 3, section: 'BSIT-3A' },
+  { edp: '2611119', subject: 'GE 8', descriptive: 'UNDERSTANDING THE SELF WITH MENTAL HEALTH', schedule: 'M 07:30-09:00 AM', room: 'H 307', type: 'Lec', units: 3, section: 'OPEN' },
+  { edp: '2612213', subject: 'IT EVD31', descriptive: 'EVENT DRIVEN PROGRAMMING (LECTURE)', schedule: 'MW 01:00-02:00 PM', room: 'OL 107', type: 'Lec', units: 2, section: 'BSIT-3A' },
+  { edp: '2611213', subject: 'IT EVD31', descriptive: 'EVENT DRIVEN PROGRAMMING (LECTURE)', schedule: 'TTH 01:00-02:00 PM', room: 'OL 107', type: 'Lec', units: 2, section: 'OPEN' },
+  { edp: '2611891', subject: 'IT EVD31 LAB', descriptive: 'EVENT DRIVEN PROGRAMMING (LABORATORY)', schedule: 'FS 07:30-09:00 AM', room: 'OCL', type: 'Lab', units: 1, section: 'BSIT-3A' },
+  { edp: '2611890', subject: 'IT EVD31 LAB', descriptive: 'EVENT DRIVEN PROGRAMMING (LABORATORY)', schedule: 'FS 09:00-10:30 AM', room: 'OCL', type: 'Lab', units: 1, section: 'OPEN' },
+  { edp: '2612214', subject: 'IT IAS31', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LECTURE)', schedule: 'MW 02:00-03:00 PM', room: 'OL 108', type: 'Lec', units: 2, section: 'BSIT-3A' },
+  { edp: '2611214', subject: 'IT IAS31', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LECTURE)', schedule: 'TTH 02:00-03:00 PM', room: 'OL 108', type: 'Lec', units: 2, section: 'OPEN' },
+  { edp: '2612215', subject: 'IT NET31', descriptive: 'NETWORKING 1 (LECTURE)', schedule: 'MW 11:00-12:00 PM', room: 'OL 109', type: 'Lec', units: 2, section: 'BSIT-3A' },
+  { edp: '2611215', subject: 'IT NET31', descriptive: 'NETWORKING 1 (LECTURE)', schedule: 'TTH 11:00-12:00 PM', room: 'OL 109', type: 'Lec', units: 2, section: 'OPEN' },
+  { edp: '2611893', subject: 'IT NET31 LAB', descriptive: 'NETWORKING 1 (LABORATORY)', schedule: 'MW 06:00-07:30 PM', room: 'CL 3', type: 'Lab', units: 1, section: 'BSIT-3A' },
+  { edp: '2611898', subject: 'IT NET31 LAB', descriptive: 'NETWORKING 1 (LABORATORY)', schedule: 'S 09:00-10:30 AM', room: 'CL 3', type: 'Lab', units: 1, section: 'OPEN' },
+  { edp: '2612216', subject: 'IT SIA31', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LECTURE)', schedule: 'FS 11:00-12:00 PM', room: 'OL 110', type: 'Lec', units: 2, section: 'BSIT-3A' },
+  { edp: '2611216', subject: 'IT SIA31', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LECTURE)', schedule: 'S 01:30-03:00 PM', room: 'CL 6', type: 'Lec', units: 2, section: 'OPEN' },
+  { edp: '2611892', subject: 'IT IAS31 LAB', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LABORATORY)', schedule: 'MW 07:30-09:00 PM', room: 'CL 5', type: 'Lab', units: 1, section: 'BSIT-3A' },
+  { edp: '2611897', subject: 'IT IAS31 LAB', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LABORATORY)', schedule: 'TTH 07:30-09:00 PM', room: 'CL 5', type: 'Lab', units: 1, section: 'OPEN' },
+  { edp: '2611894', subject: 'IT SIA31 LAB', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LABORATORY)', schedule: 'FS 01:30-03:00 PM', room: 'CL 6', type: 'Lab', units: 1, section: 'BSIT-3A' },
+  { edp: '2611899', subject: 'IT SIA31 LAB', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LABORATORY)', schedule: 'S 10:30-12:00 PM', room: 'CL 6', type: 'Lab', units: 1, section: 'OPEN' },
+  { edp: '2611895', subject: 'IT SPI31', descriptive: 'SOCIAL AND PROFESSIONAL ISSUES 1', schedule: 'FS 03:00-04:30 PM', room: 'A 201', type: 'Lec', units: 3, section: 'BSIT-3A' },
+  { edp: '2611896', subject: 'IT SPI31', descriptive: 'SOCIAL AND PROFESSIONAL ISSUES 1', schedule: 'MW 04:00-05:30 PM', room: 'A 201', type: 'Lec', units: 3, section: 'OPEN' },
+];
+
+const readPicks = (): Offering[] => {
+  try {
+    const raw = localStorage.getItem('cec:s_picks');
+    return raw ? (JSON.parse(raw) as Offering[]) : [];
+  } catch { return []; }
+};
+
+const sectionTagOf = (picks: Offering[]): string => {
+  if (!picks.length) return '—';
+  const secs = [...new Set(picks.map((p) => p.section))];
+  return secs.length === 1 && secs[0] !== 'OPEN' ? `Regular (${secs[0]})` : 'Irregular (OPEN)';
+};
+
+// Stable pseudo-random remaining slots (1–60) per offering.
+// Takes derive from saved picks: nothing saved yet → full availability;
+// each taken subject is minus one slot.
+const slotSeed = (edp: string): number => {
+  let h = 0;
+  for (const ch of edp) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return (Math.abs(h) % 60) + 1;
+};
+
+const slotsLeft = (edp: string): number => {
+  const taken = readPicks().some((p) => p.edp === edp) ? 1 : 0;
+  return Math.max(0, slotSeed(edp) - taken);
+};
+
 export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('auth');
   const [collapsed, setCollapsed] = useState(false);
   const { dark, toggle } = useTheme();
   const [profile, setProfile] = useState({ name: 'Juan Dela Cruz', id: 'CEC-2024-0015', course: 'BSIT - 3rd Year', email: 'juan.delacruz@cec.edu.ph', phone: '0917-123-4567', address: 'Colon St., Cebu City', guardian: 'Maria Dela Cruz - 0917-999-0000', emergency: 'Maria Dela Cruz (Mother) - 0917-999-0000 - Brgy. Tejero' });
-  const subjects = useCollection<Rec>('s_subjects', [{ id: 'CS301', name: 'CS 301 - Data Structures', role: 'BSIT-3A • 3 units • Enrolled' }, { id: 'CS302', name: 'CS 302 - Database Systems', role: 'BSIT-3A • 3 units • Enrolled' }]);
+  const subjects = useCollection<Rec>('s_subjects_v2', []);
   const schedule = useCollection<Rec>('s_schedule', [{ id: 'sch1', name: 'Mon 8:00-9:30 AM — CS 301', role: 'Lab 3 • Prof. Santos' }, { id: 'sch2', name: 'Tue 10:00-11:30 AM — CS 302', role: 'Lab 2 • Prof. Reyes' }]);
   const checklist = useCollection<Rec>('s_checklist', [{ id: 'IT101', name: 'IT 101 - Intro to Computing', role: 'done' }, { id: 'IT102', name: 'IT 102 - Programming 1', role: 'done' }, { id: 'IT201', name: 'IT 201 - Data Structures', role: 'pending' }]);
   const attendance = useCollection<Rec>('s_attendance', [{ id: 'at1', name: 'CS 301 — Oct 10', role: 'Present' }, { id: 'at2', name: 'CS 302 — Oct 11', role: 'Late' }]);
   const enrollApps = useCollection<Rec>('s_enroll_apps', [{ id: 'ENR-1', name: 'BSIT • 3rd Year • 1st Sem', role: 'Pending' }]);
   const docs = useCollection<Rec>('s_docs', [{ id: 'd1', name: 'PSA Birth Certificate', role: 'Verified' }]);
-  const charges = useCollection<Rec>('s_charges', [{ id: 'c1', name: 'Tuition balance', role: '₱18,500 • Outstanding' }]);
-  const history = useCollection<Rec>('s_history', [{ id: 'h1', name: 'OR-1001 — ₱5,000', role: 'Oct 01 • Tuition' }]);
-  const scholar = useCollection<Rec>('s_scholar', [{ id: 'sc1', name: 'Academic Excellence', role: 'Under review' }]);
+  const charges = useCollection<Rec>('s_charges_v2', []);
+  const history = useCollection<Rec>('s_history_v2', []);
+  const scholar = useCollection<Rec>('s_scholar_v2', []);
   const materials = useCollection<Rec>('s_materials', [{ id: 'm1', name: 'Week 5 Slides - Normalization', role: 'PDF • CS 302' }]);
   const assigns = useCollection<Rec>('s_assigns', [{ id: 'a1', name: 'ER Diagram Project', role: 'Due Oct 20 • Not submitted' }]);
   const quizzes = useCollection<Rec>('s_quiz', [{ id: 'q1', name: 'Quiz 3 - SQL Joins', role: '10 items • Not taken' }]);
@@ -347,9 +563,18 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const feedback = useCollection<Rec>('s_feedback', [{ id: 'fb1', name: 'Canteen queue feedback', role: 'Submitted' }]);
   const [attFilter, setAttFilter] = useState('');
   const [secSel, setSecSel] = useState<string[]>([]);
+  const [schedMode, setSchedMode] = useState<'auto' | 'regular' | 'irregular'>('auto');
   const [payAmt, setPayAmt] = useState('');
+  const [scholarName, setScholarName] = useState('');
   const [payMethod, setPayMethod] = useState('GCash');
   const [payRef, setPayRef] = useState('');
+  // Connected pipeline: registrar docs + accounting payment → EDP auto-enroll
+  useEffect(() => {
+    refreshPipeline({ name: profile.name, email: profile.email });
+    const timer = window.setInterval(() => refreshPipeline({ name: profile.name, email: profile.email }), 8000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [popup, setPopup] = useState<{ title: string; message: string; lines?: string[] } | null>(null);
   const [photoTick, setPhotoTick] = useState(0);
   const [photoError, setPhotoError] = useState('');
@@ -388,11 +613,11 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     const status = auto ? 'Approved (auto)' : 'Pending';
     enrollApps.create({ id, name: `${pg} • ${yr} • ${sm}`, role: remoteId ? `${status} • MySQL` : status });
     try {
-      const raw = localStorage.getItem('cec:a_enroll');
+      const raw = localStorage.getItem('cec:a_enroll_v2');
       const rows = raw ? (JSON.parse(raw) as { id: string; name: string; meta: string }[]) : [];
       if (!rows.some((x) => x.id === id)) {
         rows.push({ id, name: profile.name || 'Student Applicant', meta: `${pg} • ${yr} • ${sm} • ${remoteId ? 'MySQL' : 'local'} • ${auto ? 'Auto-approved' : 'Applied'}` });
-        localStorage.setItem('cec:a_enroll', JSON.stringify(rows));
+        localStorage.setItem('cec:a_enroll_v2', JSON.stringify(rows));
       }
     } catch { /* ignore */ }
     onNotify(auto ? 'Enrollment auto-approved' : remoteId ? 'Enrollment saved to MySQL — pending admin review' : 'Backend offline — enrollment saved locally');
@@ -427,16 +652,20 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       // Live college-based GWA from official teacher-encoded grades
       let official: { prelim: string; midterm: string; final: string }[] = [];
       try {
-        const raw = localStorage.getItem('cec:t_grades');
+        const raw = localStorage.getItem('cec:t_grades_v2');
         official = raw ? JSON.parse(raw) : [];
       } catch { official = []; }
       const liveGwa = gwa(official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); return avg === null ? 0 : percentToPoint(avg).point; }));
-      // Live balance: assessed charges minus recorded payments
-      const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; };
-      const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0);
+      // Live balance: official finance assessment + adjustments, minus recorded payments
+      const peso = (s: string) => parseAmount(s);
+      const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0)
+        + readOfficialAssessment().reduce((sum, l) => sum + l.amount, 0);
       const paid = history.list.reduce((sum, h) => sum + peso(`${h.name} ${h.role}`), 0);
       const remaining = Math.max(0, assessed - paid);
       const latestApp = enrollApps.list[enrollApps.list.length - 1];
+      // Gate: only ADMIN-confirmed enrollment unlocks progress
+      // (manual Approve or admin-enabled auto-approve — never pipeline auto-enroll)
+      const enrolled = enrollApps.list.some((a) => a.role === 'Approved' || a.role.includes('Approved (auto)'));
       return (
         <RoleDashboardHome
           role="student"
@@ -444,9 +673,10 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           onNavigate={navigate}
           blankSections
           liveMetrics={[
-            { label: 'Enrollment status', value: latestApp ? latestApp.role.replace(/ •.*$/, '') : 'Approved', detail: latestApp ? latestApp.name : '1st Sem • BSIT 3rd Year' },
-            { label: 'Current average', value: liveGwa === null ? '—' : formatPoint(liveGwa), detail: official.length ? `GWA across ${official.length} encoded subject${official.length === 1 ? '' : 's'}` : 'Awaiting teacher encoding' },
-            { label: 'Outstanding balance', value: assessed <= 0 ? '—' : remaining <= 0 ? 'Fully Paid' : `₱${remaining.toLocaleString()}`, detail: assessed <= 0 ? 'No assessment yet' : `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()}` },
+            { label: 'Enrollment status', value: latestApp ? latestApp.role.replace(/ •.*$/, '') : 'Not enrolled', detail: latestApp ? latestApp.name : 'Apply online or walk-in at the registrar' },
+            { label: 'Current average', value: !enrolled ? 'Not enrolled' : liveGwa === null ? '—' : formatPoint(liveGwa), detail: !enrolled ? 'Enroll online or walk-in to unlock grades' : official.length ? `GWA across ${official.length} encoded subject${official.length === 1 ? '' : 's'}` : 'Awaiting teacher encoding' },
+            ...(enrolled ? [] : [{ label: 'Attendance', value: 'Not enrolled', detail: 'Enroll to unlock attendance' }]),
+            { label: 'Outstanding balance', value: !enrolled ? 'Not enrolled' : assessed <= 0 ? '—' : remaining <= 0 ? 'Fully Paid' : `₱${remaining.toLocaleString()}`, detail: !enrolled ? 'Enroll online or walk-in to see assessment' : assessed <= 0 ? 'No assessment yet' : `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()}` },
           ]}
         />
       );
@@ -467,7 +697,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     if (active === 'Grades / Report Card') {
       let official: { id: string; student: string; prelim: string; midterm: string; final: string }[] = [];
       try {
-        const raw = localStorage.getItem('cec:t_grades');
+        const raw = localStorage.getItem('cec:t_grades_v2');
         official = raw ? JSON.parse(raw) : [];
       } catch { official = []; }
       const pts = official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); return avg === null ? 0 : percentToPoint(avg).point; });
@@ -477,15 +707,28 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         {!!official.length && <div style={{ ...box, padding: 0 }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Student</th><th style={{ padding: 12 }}>Average</th><th style={{ padding: 12 }}>Point</th><th style={{ padding: 12 }}>Equivalent</th><th style={{ padding: 12 }}>Remarks</th></tr></thead><tbody>{official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); const gp = avg === null ? null : percentToPoint(avg); return <tr key={g.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{g.student}</td><td style={{ padding: 12 }}>{avg === null ? '—' : `${avg.toFixed(1)}%`}</td><td style={{ padding: 12, fontWeight: 800 }}>{gp ? formatPoint(gp.point) : '—'}</td><td style={{ padding: 12 }}>{gp ? gp.equivalent : '—'}</td><td style={{ padding: 12 }}><span style={{ background: gp && gp.remarks === 'PASSED' ? '#dcfce7' : '#fee2e2', color: gp && gp.remarks === 'PASSED' ? '#15803d' : '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>{gp ? gp.remarks : '—'}</span></td></tr>; })}</tbody></table></div>}
         <div style={{ ...box, padding: 0, marginTop: 14 }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Code</th><th style={{ padding: 12 }}>Subject</th><th style={{ padding: 12 }}>Status</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>{subjects.list.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{s.id}</td><td style={{ padding: 12 }}>{s.name}</td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}><button style={ghost} onClick={() => onNotify(`${s.id} report viewed (Read)`)}>View</button> <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { subjects.remove(s.id); onNotify('Subject dropped (Delete)'); }}>Drop</button></td></tr>)}</tbody></table></div><Footer /></section>);
     }
-    if (active === 'Class Schedule') return <TwoFieldForm title="Class Schedule" col={schedule} onNotify={onNotify} ph1="e.g. Wed 1:00-2:30 PM — IT 303" ph2="Room / Professor" />;
+    if (active === 'Class Schedule') {
+      const picks = readPicks();
+      const tag = sectionTagOf(picks);
+      const total = picks.reduce((n, o) => n + o.units, 0);
+      if (!picks.length) {
+        return (<section style={card}><h1 style={{ margin: 0 }}>Class Schedule (COR)</h1><div style={box}>No schedules yet — pick them at <strong>Section Selection</strong> and they appear here automatically with EDP codes.</div><Footer /></section>);
+      }
+      return (<section style={card}><h1 style={{ margin: 0 }}>Class Schedule (COR)</h1>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Section: <strong>{tag}</strong> • {picks.length} subjects • {total} units • 1st Semester 2026–2027</p>
+        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 10 }}>EDP Code</th><th style={{ padding: 10 }}>Subject</th><th style={{ padding: 10 }}>Descriptive Title</th><th style={{ padding: 10 }}>Schedule</th><th style={{ padding: 10 }}>Room</th><th style={{ padding: 10 }}>Type</th><th style={{ padding: 10 }}>Units</th></tr></thead><tbody>
+          {picks.map((o) => <tr key={o.edp} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 10 }}><strong>{o.edp}</strong></td><td style={{ padding: 10 }}>{o.subject}</td><td style={{ padding: 10 }}>{o.descriptive}</td><td style={{ padding: 10 }}>{o.schedule}</td><td style={{ padding: 10 }}>{o.room}</td><td style={{ padding: 10 }}>{o.type}</td><td style={{ padding: 10 }}>{o.units}</td></tr>)}
+          <tr style={{ borderTop: '2px solid #0B3D91' }}><td colSpan={6} style={{ padding: 10, textAlign: 'right', fontWeight: 800 }}>Total units</td><td style={{ padding: 10, fontWeight: 800 }}>{total}</td></tr>
+        </tbody></table></div><Footer /></section>);
+    }
     if (active === 'Enrolled Subjects') {
       const seeded: Record<string, { id: string; name: string }> = { CS301: { id: 'T-001', name: 'Prof. Santos' }, CS302: { id: 'T-002', name: 'Ms. Reyes' } };
       // Newly registered teachers surface automatically (faculty + teacher accounts)
       const registered: { id: string; name: string }[] = [];
       try {
-        const fRaw = localStorage.getItem('cec:a_faculty');
+        const fRaw = localStorage.getItem('cec:a_faculty_v2');
         (fRaw ? (JSON.parse(fRaw) as { id: string; name: string }[]) : []).forEach((f) => { if (!registered.some((r) => r.id === f.id)) registered.push({ id: f.id, name: f.name }); });
-        const aRaw = localStorage.getItem('cec:a_accounts');
+        const aRaw = localStorage.getItem('cec:a_accounts_v2');
         (aRaw ? (JSON.parse(aRaw) as { id: string; name: string; role: string }[]) : []).filter((a) => a.role === 'teacher').forEach((a) => { if (!registered.some((r) => r.id === a.id)) registered.push({ id: a.id, name: a.name }); });
       } catch { /* ignore */ }
       const instructors: Record<string, { id: string; name: string }> = { ...seeded };
@@ -507,25 +750,120 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         <p style={{ color: '#6b7890', fontSize: 13 }}>Applications go straight to Admin → Enrollment Approval. Turn on auto-approve there for instant approval.</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><select style={inp} value={enrSm} onChange={(e) => setEnrSm(e.target.value)}><option>1st Semester</option><option>2nd Semester</option></select><button style={btn} type="submit">Submit</button></form><Footer /></section>);
     }
     if (active === 'Section Selection') {
-      const catalog = ['BSIT-3A — Data Structures', 'BSIT-3B — Web Development', 'BSCS-3A — Operating Systems'];
-      return (<section style={card}><h1 style={{ margin: 0 }}>Section Selection</h1><div style={box}>{catalog.map((c) => <label key={c} style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><input type="checkbox" checked={secSel.includes(c)} onChange={() => setSecSel((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]))} />{c}</label>)}</div><div style={{ marginTop: 12 }}><button style={btn} onClick={() => { secSel.forEach((s) => subjects.create({ id: uid('CS'), name: s, role: 'Selected • Enrolled' })); setSecSel([]); onNotify(`${secSel.length} sections saved`); }}>Save Selection (Create)</button></div><Footer /></section>);
+      const subjects8 = [...new Set(OFFERINGS.map((o) => o.subject))];
+      const saved = readPicks();
+      const tag = sectionTagOf(saved);
+      const togglePick = (edp: string, subject: string) => {
+        setSchedMode('auto');
+        setSecSel((s) => {
+          // Empty choice (or re-pick) removes a wrong choice
+          if (!edp) return s.filter((e) => { const o = OFFERINGS.find((x) => x.edp === e); return !o || o.subject !== subject; });
+          if (s.includes(edp)) return s.filter((e) => e !== edp);
+          const without = s.filter((e) => { const o = OFFERINGS.find((x) => x.edp === e); return !o || o.subject !== subject; });
+          return [...without, edp];
+        });
+      };
+      const chosen: Offering[] = secSel.map((e) => OFFERINGS.find((o) => o.edp === e)).filter((o): o is Offering => !!o);
+      const previewTag = sectionTagOf(chosen);
+      const applyMode = (mode: 'auto' | 'regular' | 'irregular') => {
+        setSchedMode(mode);
+        if (mode === 'auto') return;
+        const subjects8b = [...new Set(OFFERINGS.map((o) => o.subject))];
+        const preset = subjects8b.map((subj) => {
+          const opts = OFFERINGS.filter((o) => o.subject === subj);
+          const pick = mode === 'regular'
+            ? opts.find((o) => o.section !== 'OPEN') ?? opts[0]
+            : opts.find((o) => o.section === 'OPEN') ?? opts[1] ?? opts[0];
+          return pick.edp;
+        });
+        setSecSel(preset);
+        onNotify(mode === 'regular' ? 'Regular preset: full BSIT-3A load' : 'Irregular preset: OPEN schedules');
+      };
+      const savePicks = () => {
+        const open = chosen.filter((o) => slotsLeft(o.edp) > 0);
+        if (!open.length) { onNotify(open.length === chosen.length ? 'Pick at least one schedule first' : 'Selected schedules are full — pick available ones'); return; }
+        if (open.length < chosen.length) onNotify('Some picks were full and skipped');
+        try { localStorage.setItem('cec:s_picks', JSON.stringify(open)); } catch { /* ignore */ }
+        const label = sectionTagOf(open);
+        // EDP sees the tag: update latest application + admin queue entry
+        try {
+          const raw = localStorage.getItem('cec:s_enroll_apps');
+          if (raw) {
+            const rows = JSON.parse(raw) as { id: string; name: string; role: string }[];
+            const target = [...rows].reverse().find((r) => r.role.startsWith('Pending')) ?? rows[rows.length - 1];
+            if (target && !/Regular|Irregular/.test(target.name)) {
+              target.name = `${target.name} [${label}]`;
+              localStorage.setItem('cec:s_enroll_apps', JSON.stringify(rows));
+            }
+          }
+          const q = localStorage.getItem('cec:a_enroll_v2');
+          if (q) {
+            const rows = JSON.parse(q) as { id: string; name: string; meta: string }[];
+            rows.forEach((r) => { if (!/Regular|Irregular/.test(r.meta)) r.meta = `${r.meta} • ${label}`; });
+            localStorage.setItem('cec:a_enroll_v2', JSON.stringify(rows));
+          }
+        } catch { /* ignore */ }
+        // Enrolled subjects follow the picks
+        open.forEach((o) => {
+          if (!subjects.list.some((s) => s.id === o.edp)) {
+            subjects.create({ id: o.edp, name: `${o.subject} — ${o.descriptive}`, role: `${o.schedule} • ${o.room}` });
+          }
+        });
+        pushNotification(['admin'], { title: `Schedules picked: ${label}`, detail: `${open.length} offerings • ${open.reduce((n, o) => n + o.units, 0)} units`, category: 'Enrollment', target: 'Section Assignment' });
+        onNotify(`Schedules saved — EDP tagged: ${label}`);
+      };
+      return (<section style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <h1 style={{ margin: 0 }}>Schedule Selection (EDP)</h1>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#33415c' }}>Student type
+            <select value={schedMode} onChange={(e) => applyMode(e.target.value as 'auto' | 'regular' | 'irregular')} aria-label="Student type" style={{ ...inp, width: 'auto', padding: '10px 12px' }}>
+              <option value="auto">Auto-detect from picks</option>
+              <option value="regular">Regular — full section</option>
+              <option value="irregular">Irregular — OPEN</option>
+            </select>
+          </label>
+        </div>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Pick <strong>one schedule per subject</strong> — not a section. All picks in one section → <strong>Regular</strong>; mixed/OPEN picks → <strong>Irregular (OPEN)</strong>. {saved.length ? <>Current EDP tag: <strong>{tag}</strong></> : 'No schedules saved yet.'} {chosen.length ? <>Picking now: <strong>{previewTag}</strong></> : null}</p>
+        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 10 }}>Subject / Descriptive</th><th style={{ padding: 10 }}>Schedule (pick one)</th><th style={{ padding: 10 }}>EDP Code</th><th style={{ padding: 10 }}>Room</th><th style={{ padding: 10 }}>Type</th><th style={{ padding: 10 }}>Units</th><th style={{ padding: 10 }}>Availability</th></tr></thead><tbody>
+          {subjects8.map((subj) => {
+            const opts = OFFERINGS.filter((o) => o.subject === subj);
+            const picked = opts.find((o) => secSel.includes(o.edp)) ?? null;
+            const shown = picked ?? opts[0];
+            const left = slotsLeft(shown.edp);
+            const full = left <= 0;
+            return <tr key={subj} style={{ borderTop: '1px solid #eef1f6', background: picked ? '#eef4ff' : undefined }}><td style={{ padding: 10 }}><strong>{subj}</strong><br /><small style={{ color: '#6b7890' }}>{shown.descriptive}</small></td><td style={{ padding: 10 }}><div style={{ display: 'grid', gap: 6 }}>{opts.map((o) => { const l = slotsLeft(o.edp); const f = l <= 0; return <label key={o.edp} style={{ display: 'flex', gap: 8, alignItems: 'center', opacity: f ? .55 : undefined }}><input type="radio" name={`pick-${subj}`} checked={secSel.includes(o.edp)} disabled={f} onClick={() => togglePick(o.edp, subj)} onChange={() => undefined} aria-label={`${o.subject} ${o.schedule}`} /><span>{o.schedule}<br /><small style={{ color: '#6b7890' }}>{f ? 'Full' : `${l} left`}</small></span></label>; })}</div></td><td style={{ padding: 10 }}><strong>{picked ? shown.edp : '—'}</strong></td><td style={{ padding: 10 }}>{picked ? shown.room : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.type : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.units : '—'}</td><td style={{ padding: 10 }}>{!picked ? <span style={{ color: '#8a94a6', fontSize: 11 }}>Not picked</span> : full ? <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Full</span> : <span style={{ background: left < 10 ? '#fef3c7' : '#dcfce7', color: left < 10 ? '#92400e' : '#15803d', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Available • {left} left</span>}</td></tr>;
+          })}
+        </tbody></table></div>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}><button style={btn} onClick={savePicks}>Save schedules ({chosen.length} picked • {chosen.reduce((n, o) => n + o.units, 0)} units)</button></div><Footer /></section>);
     }
     if (active === 'Status Tracker') return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Enrollment Status Tracker</h1><div style={{ marginTop: 14 }}><LiveEnrollTracker apps={enrollApps.list} /></div><Footer /></section>);
     if (active === 'Document Submission') return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Document Submission</h1>
-      <p style={{ color: '#6b7890', fontSize: 13 }}>Upload your <strong>School Assessment</strong> and <strong>School ID</strong>. Click Upload — a popup opens where you pick the file. Each submission tracks its own verification below.</p>
-      <RequiredDocs col={docs} onNotify={onNotify} />
-      <div style={{ marginTop: 18, display: 'grid', gap: 18 }}>
-        <SubmissionTracker slug="school-assessment" title="School Assessment" onNotify={onNotify} />
-      </div>
+      <p style={{ color: '#6b7890', fontSize: 13 }}>One connected flow: attach your <strong>School Assessment</strong>, type your <strong>School ID</strong>, press <strong>Submit</strong> — verification completes below by itself.</p>
+      <DocumentFlow col={docs} onNotify={onNotify} />
       <Footer /></section>);
-    if (active === 'Tuition Assessment') return <TwoFieldForm title="Tuition Assessment" col={charges} onNotify={onNotify} ph1="Charge" ph2="Amount • Status" />;
+    if (active === 'Tuition Assessment') {
+      const official = readOfficialAssessment();
+      const mine = charges.list.map((c) => ({ id: c.id, label: `${c.name} — ${c.role}`, amount: parseAmount(`${c.name} ${c.role}`) }));
+      const total = [...official, ...mine].reduce((n, l) => n + l.amount, 0);
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Tuition Assessment — live from Finance Office</h1>
+        <div style={box}>
+          <strong>Official assessment ({official.length})</strong>
+          {official.length ? official.map((l) => <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span>{l.label}</span><strong>₱{l.amount.toLocaleString()}</strong></div>) : <div style={{ fontSize: 13, color: '#6b7890' }}>No official assessment issued yet — finance office publishes it here.</div>}
+        </div>
+        <div style={box}>
+          <strong>My adjustments ({mine.length})</strong>
+          {mine.map((l) => <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span>{l.label}</span><span>₱{l.amount.toLocaleString()} <button style={{ ...ghost, color: '#b91c1c', marginLeft: 8 }} onClick={() => { charges.remove(l.id); onNotify('Adjustment removed'); }}>Remove</button></span></div>)}
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0 0', fontSize: 15 }}><strong>Total assessed</strong><strong>₱{total.toLocaleString()}</strong></div>
+        </div>
+        <Footer /></section>);
+    }
     if (active === 'Payment Portal') {
       const methodHint: Record<string, string> = { GCash: 'GCash wallet • 0917-XXX-XXXX • reference no.', Maya: 'Maya wallet • reference no.', 'GoTyme Bank': 'GoTyme • account no. 0100-XXXX-XXXX', UnionBank: 'UnionBank • account no. 1093-XXXX-XXXX', Metrobank: 'Metrobank • account no. 305-XXXX-XXXX', BPI: 'BPI • account no. 1234-XXXX-XX', Cashier: 'Pay at CEC cashier • Window 3' };
-      return (<><WorkflowTracker title="Tuition payment" reference="Assessment • AY 2026–2027 • BSIT" steps={paymentSteps} currentIndex={1} /><section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
+      return (<><LivePayTracker steps={paymentSteps} /><section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
         <div style={{ marginTop: 14 }}><SlideShow slides={FINANCE_SLIDES} label="Cashier and online payment options" /></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>{['GCash', 'Maya', 'GoTyme Bank', 'UnionBank', 'Metrobank', 'BPI', 'Cashier'].map((m) => <button key={m} type="button" onClick={() => setPayMethod(m)} style={{ border: payMethod === m ? '2px solid #0B3D91' : '1px solid #e2e7ef', background: payMethod === m ? '#e8f1ff' : '#fff', borderRadius: 10, padding: '10px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{m}</button>)}</div>
         <div style={{ color: '#6b7890', fontSize: 13, marginTop: 10 }}>{methodHint[payMethod]}</div>
-        <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!payAmt.trim()) return; const orId = uid('OR'); const ref = payRef.trim(); const amount = payAmt.trim(); const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; }; history.create({ id: orId, name: `OR — ₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''}`, role: 'Today • Tuition • Paid' }); const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0); const paid = history.list.reduce((sum, h) => sum + peso(`${h.name} ${h.role}`), 0) + peso(amount); const covered = assessed > 0 && paid >= assessed; charges.setList((rows) => rows.map((r) => ({ ...r, role: covered ? r.role.replace('Outstanding', 'Paid in full').replace('Partially paid', 'Paid in full') : r.role.includes('Paid in full') ? r.role : r.role.replace('Outstanding', 'Partially paid') }))); setPayAmt(''); setPayRef(''); pushNotification(['student', 'admin'], { title: covered ? 'Balance fully paid' : 'Payment received', detail: `₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''} • ${orId}${covered ? ' • FULLY PAID' : ''}`, category: 'Finance', target: 'Billing History' }); setPopup({ title: covered ? 'Fully paid — thank you!' : 'Payment successful', message: covered ? 'Your balance is now fully paid.' : 'Your payment was recorded and a receipt notification was sent.', lines: [`Amount: ₱${amount}`, `Method: ${payMethod}`, ref ? `Reference: ${ref}` : 'Reference: —', `Receipt: ${orId}`] }); onNotify(covered ? 'Fully paid' : `Payment recorded via ${payMethod}`); }}>
+        <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!payAmt.trim()) return; const orId = uid('OR'); const ref = payRef.trim(); const amount = payAmt.trim(); const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; }; history.create({ id: orId, name: `OR — ₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''}`, role: 'Today • Tuition • Paid' }); try { void portalApi.itemCreate({ portal: 'student', module: 'receipt', title: `OR — ₱${amount} via ${payMethod}`, detail: `${ref ? `Ref ${ref} • ` : ''}${profile.name} • ${profile.id} • ${new Date().toLocaleString()}`, status: 'Posted', owner: `${profile.name} (${profile.id})` }).catch(() => undefined); } catch { /* offline */ } const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0); const paid = history.list.reduce((sum, h) => sum + peso(`${h.name} ${h.role}`), 0) + peso(amount); const covered = assessed > 0 && paid >= assessed; charges.setList((rows) => rows.map((r) => ({ ...r, role: covered ? r.role.replace('Outstanding', 'Paid in full').replace('Partially paid', 'Paid in full') : r.role.includes('Paid in full') ? r.role : r.role.replace('Outstanding', 'Partially paid') }))); setPayAmt(''); setPayRef(''); pushNotification(['student', 'admin'], { title: covered ? 'Balance fully paid' : 'Payment received', detail: `₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''} • ${orId}${covered ? ' • FULLY PAID' : ''}`, category: 'Finance', target: 'Billing History' }); setPopup({ title: covered ? 'Fully paid — thank you!' : 'Payment successful', message: covered ? 'Your balance is now fully paid.' : 'Your payment was recorded and a receipt notification was sent.', lines: [`Amount: ₱${amount}`, `Method: ${payMethod}`, ref ? `Reference: ${ref}` : 'Reference: —', `Receipt: ${orId}`] }); onNotify(covered ? 'Fully paid' : `Payment recorded via ${payMethod}`); }}>
           <input style={inp} placeholder="Amount e.g. 5000" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} aria-label="Amount" />
           <input style={inp} placeholder={payMethod === 'Cashier' ? 'OR number (optional)' : 'Reference / account no.'} value={payRef} onChange={(e) => setPayRef(e.target.value)} aria-label="Reference" />
           <select style={inp} value={payMethod} onChange={(e) => setPayMethod(e.target.value)} aria-label="Payment method"><option>GCash</option><option>Maya</option><option>GoTyme Bank</option><option>UnionBank</option><option>Metrobank</option><option>BPI</option><option>Cashier</option></select>
@@ -533,7 +871,14 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         </form><Footer />        </section></>);
     }
     if (active === 'Billing History') return <CrudSection title="Billing History" col={history} onNotify={onNotify} hint="Tuition" />;
-    if (active === 'Scholarship Application') return <TwoFieldForm title="Scholarship Application" col={scholar} onNotify={onNotify} ph1="Scholarship name" ph2="Status" />;
+    if (active === 'Scholarship Application') {
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Scholarship Application — live with Finance Office</h1>
+        <form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); if (!scholarName.trim()) return; const sid = uid('sc'); scholar.create({ id: sid, name: scholarName.trim(), role: 'Submitted — awaiting finance decision' }); try { const raw = localStorage.getItem('cec:a_scholars_v2'); const rows = raw ? (JSON.parse(raw) as { id: string; name: string; role: string }[]) : []; rows.push({ id: sid, name: `${scholarName.trim()} — ${profile.name} (${profile.id})`, role: 'Submitted • Pending' }); localStorage.setItem('cec:a_scholars_v2', JSON.stringify(rows)); } catch { /* ignore */ } setScholarName(''); onNotify('Scholarship application sent to finance office'); }}>
+          <input style={inp} placeholder="e.g. Academic Excellence" value={scholarName} onChange={(e) => setScholarName(e.target.value)} aria-label="Scholarship name" />
+          <button style={btn} type="submit">Apply</button>
+        </form>
+        <div style={box}>{scholar.list.map((s) => <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><div><strong>{s.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{s.role}</div></div><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { scholar.remove(s.id); onNotify('Application withdrawn'); }}>Withdraw</button></div>)}{!scholar.list.length && <div style={{ color: '#6b7890', fontSize: 13 }}>No applications — decisions from the finance office appear here automatically.</div>}</div><Footer /></section>);
+    }
     if (active === 'Course Material') return <TwoFieldForm title="Course Material" col={materials} onNotify={onNotify} ph1="Material title" ph2="Type • Subject" />;
     if (active === 'Assignments') {
       return (<section style={card}><h1 style={{ margin: 0 }}>Assignments</h1><div style={box}>{assigns.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { assigns.update(a.id, { role: 'Submitted • For review' }); onNotify('Assignment submitted (Update)'); }}>Submit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { assigns.remove(a.id); onNotify('Assignment deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
@@ -563,7 +908,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   return (
     <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><div style={{ width: 38, height: 38, borderRadius: 10, background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>CEC</div><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • 1ST SEM 2024-2025</div></div></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • 1ST SEM 2024-2025</div></div></div>
         <button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer' }} aria-label="Toggle sidebar">☰</button>
         <button className="dashboard-home-link" type="button" onClick={() => setActive('Dashboard')}>⌂ Dashboard</button><span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
         <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />

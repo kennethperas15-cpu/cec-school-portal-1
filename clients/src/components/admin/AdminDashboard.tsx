@@ -4,6 +4,7 @@ import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
 import { pushNotification } from '../../services/notify';
 import { DOC_STAGES, SUBMIT_STAGES, listTrackedDocs, writeStage } from '../../services/docStages';
+import { pipelineBadges } from '../../services/pipeline';
 import { setPhoto, readPhotoFile } from '../../services/photos';
 import { PhotoAvatar } from '../shared/PhotoAvatar';
 import { AlertPopup } from '../shared/AlertPopup';
@@ -17,6 +18,7 @@ import { LiveReport } from './reporting/LiveReports';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 const NAVY = '#0B3D91';
+const BASE = import.meta.env.BASE_URL || '/';
 type Group = { id: string; label: string; icon: string; items: { label: string; route: string }[] };
 const GROUPS: Group[] = [
   { id: 'account', label: 'ACCOUNT MGMT', icon: '◈', items: [{ label: 'RBAC Management', route: 'a_auth_rbac' }, { label: 'Account Creation', route: 'a_auth_accounts' }, { label: 'Password Reset', route: 'a_auth_reset' }] },
@@ -55,27 +57,32 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [expanded, setExpanded] = useState('account');
   const [collapsed, setCollapsed] = useState(false);
   const { dark, toggle } = useTheme();
-  const enroll = useCollection('a_enroll', [{ id: 'CEC-2024-0030', name: 'Lisa Tan', meta: 'BSIT • Documents Verified' }, { id: 'CEC-2024-0031', name: 'Paul Cruz', meta: 'BSCS • Applied' }]);
-  const accounts = useCollection('a_accounts', [{ id: 'CEC-2024-0015', name: 'Juan Dela Cruz', role: 'student' }, { id: 'T-001', name: 'Prof. Santos', role: 'teacher' }, { id: 'ADMIN', name: 'Registrar Admin', role: 'admin' }]);
-  const fees = useCollection('a_fees', [{ id: 'f1', name: 'Tuition BSIT', role: '18500' }, { id: 'f2', name: 'Lab Fee', role: '2500' }]);
-  const faculty = useCollection('a_faculty', [{ id: 'T-001', name: 'Prof. Santos', role: 'BSIT • 12 units' }]);
-  const rooms = useCollection('a_rooms', [{ id: 'R1', name: 'Lab 2', role: '40 seats' }]);
-  const offers = useCollection('a_offers', [{ id: 'O1', name: 'IT 302 - Database', role: 'BSIT-3A' }]);
-  const bills = useCollection('a_bills', [{ id: 'B1', name: 'Tuition balance', role: '₱18,500' }]);
-  const broadcasts = useCollection('a_broadcast', [{ id: 'bc1', name: 'Enrollment extended', role: 'All roles' }]);
-  const assign = useCollection('a_assign', [{ id: 'as1', name: 'Lisa Tan', role: 'BSIT-3A' }]);
-  const cap = useCollection('a_capacity', [{ id: 'BSIT-3A', name: 'BSIT-3A', role: '38 / 40' }]);
+  // v2 stores: pre-launch — no demo students, teachers, or payments (all start empty)
+  const enroll = useCollection<{ id: string; name: string; meta: string }>('a_enroll_v2', []);
+  const accounts = useCollection<{ id: string; name: string; role: string }>('a_accounts_v2', []);
+  const fees = useCollection<{ id: string; name: string; role: string }>('a_fees_v2', []);
+  const faculty = useCollection<{ id: string; name: string; role: string }>('a_faculty_v2', []);
+  const rooms = useCollection<{ id: string; name: string; role: string }>('a_rooms_v2', []);
+  const offers = useCollection<{ id: string; name: string; role: string }>('a_offers_v2', []);
+  const bills = useCollection<{ id: string; name: string; role: string }>('a_bills_v2', []);
+  const broadcasts = useCollection<{ id: string; name: string; role: string }>('a_broadcast_v2', []);
+  const assign = useCollection<{ id: string; name: string; role: string }>('a_assign_v2', []);
+  const cap = useCollection<{ id: string; name: string; role: string }>('a_capacity_v2', []);
   const curr = useCollection('a_curriculum', [{ id: 'BSIT', name: 'BS Information Technology', role: '8 semesters • 42 subjects' }]);
   const cal = useCollection('a_calendar', [{ id: 'ev1', name: 'Enrollment opens', role: '2026-10-01' }]);
-  const loads = useCollection('a_loads', [{ id: 'T-001', name: 'Prof. Santos', role: '12 units • BSIT-3A/3B' }]);
-  const creds = useCollection('a_creds', [{ id: 'T-001', name: 'Prof. Santos PRC License', role: 'Valid until 2027-05-01' }]);
-  const scholars = useCollection('a_scholars', [{ id: 'sc1', name: 'Ana Reyes', role: 'Academic • Pending' }]);
+  const loads = useCollection<{ id: string; name: string; role: string }>('a_loads_v2', []);
+  const creds = useCollection<{ id: string; name: string; role: string }>('a_creds_v2', []);
+  const scholars = useCollection<{ id: string; name: string; role: string }>('a_scholars_v2', []);
   const syscfg = useCollection('a_syscfg', [{ id: 'school_year', name: 'Current school year', role: '2026–2027' }]);
   const [perms, setPerms] = useState<Record<string, boolean>>({ 'Teacher-Students': true, 'Teacher-Teachers': true, 'Admin-Students': true, 'Admin-Teachers': true, 'Admin-Finance': true, 'Admin-Admin': true });
   const [fn, setFn] = useState(''); const [fi, setFi] = useState(''); const [fr, setFr] = useState('student');
   const [enrN, setEnrN] = useState(''); const [enrM, setEnrM] = useState('BSIT • Applied');
   const [autoApprove, setAutoApprove] = useState(() => { try { return localStorage.getItem('cec:auto_approve') === '1'; } catch { return false; } });
   const [boxVal, setBoxVal] = useState('');
+  const [remoteReceipts, setRemoteReceipts] = useState<{ id: string; title: string; detail?: string | null; status?: string | null }[]>([]);
+  useEffect(() => {
+    portalApi.items(undefined, 'receipt').then((rows) => setRemoteReceipts(rows)).catch(() => undefined);
+  }, []);
   const [resetWho, setResetWho] = useState('');
   const [docTick, setDocTick] = useState(0);
   const bumpDocs = () => setDocTick((t) => t + 1);
@@ -116,11 +123,35 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const decideEnrollment = async (id: string, decision: 'approved' | 'rejected') => {
-    try { await portalApi.enrollDecide(id, decision); } catch { /* local-only fallback */ }
-    enroll.remove(id);
-    syncStudentStatus(id, decision === 'approved' ? 'Approved' : 'Rejected');
+  const decideEnrollment = async (id: string, decision: 'approved' | 'rejected' | 'enrolled') => {
+    try { await portalApi.enrollDecide(id, decision === 'rejected' ? 'rejected' : 'approved'); } catch { /* local-only fallback */ }
+    const applicant = enroll.list.find((a) => a.id === id);
+    if (decision === 'rejected') {
+      enroll.remove(id);
+      syncStudentStatus(id, 'Rejected');
+    } else if (decision === 'enrolled') {
+      // EDP final step: enrollee lands on the teacher roster so all systems connect
+      try {
+        const raw = localStorage.getItem('cec:t_roster_v2');
+        const roster = raw ? (JSON.parse(raw) as { id: string; name: string; course: string; email: string }[]) : [];
+        if (applicant && !roster.some((r) => r.id === id)) {
+          roster.push({ id, name: applicant.name, course: (applicant.meta || '').split('•')[0].trim(), email: '-' });
+          localStorage.setItem('cec:t_roster_v2', JSON.stringify(roster));
+        }
+      } catch { /* ignore */ }
+      enroll.remove(id);
+      syncStudentStatus(id, 'Enrolled');
+    } else {
+      syncStudentStatus(id, 'Approved');
+    }
     onNotify(`${id} ${decision} — student tracker updated${mysqlOn ? ' (MySQL)' : ''}`);
+  };
+
+  // Explicit registrar stepping stones — the ONLY way stages advance:
+  // Docs ✓ → Approve → Enroll (row leaves the queue only when Enrolled/Rejected)
+  const setAppStage = (id: string, stage: 'Pending • Documents Verified' | 'Approved') => {
+    syncStudentStatus(id, stage);
+    onNotify(`${id} → ${stage} — student tracker updated`);
   };
 
   const syncStudentStatus = (id: string, status: string) => {
@@ -155,15 +186,38 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   );
 
   const render = () => {
-    if (active === 'Dashboard') return <RoleDashboardHome role="admin" name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'} onNavigate={navigate} />;
-    if (active === 'Enrollment Stats') return <><LiveReport kind="enrollment" onNotify={onNotify} /><div style={{ height: 16 }} /><AdminReports onNotify={onNotify} /></>;
+    if (active === 'Dashboard') {
+      const peso = (s: string) => {
+        const t = s.trim();
+        if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
+        const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/);
+        return m ? Number(m[1]) : 0;
+      };
+      const outstanding = bills.list.reduce((n, b) => n + peso(`${b.name} ${b.role}`), 0);
+      const teachers = faculty.list.length + accounts.list.filter((a) => a.role === 'teacher').length;
+      const students = accounts.list.filter((a) => a.role === 'student').length;
+      return (
+        <RoleDashboardHome
+          role="admin"
+          name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'}
+          onNavigate={navigate}
+          liveMetrics={[
+            { label: 'Total students', value: String(students), detail: students ? 'Enrolled via portal' : 'No students yet' },
+            { label: 'Active teachers', value: String(teachers), detail: teachers ? 'Across departments' : 'No teachers yet' },
+            { label: 'Pending applications', value: String(enroll.list.length), detail: enroll.list.length ? 'In approval queue' : 'Queue empty' },
+            { label: 'Outstanding balances', value: outstanding > 0 ? `₱${outstanding.toLocaleString()}` : '₱0', detail: outstanding > 0 ? 'Across open invoices' : 'No balances yet' },
+          ]}
+        />
+      );
+    }
+    if (active === 'Enrollment Stats') return <><LiveReport kind="enrollment" onNotify={onNotify} />{enroll.list.length + accounts.list.length > 0 ? <><div style={{ height: 16 }} /><AdminReports onNotify={onNotify} /></> : null}</>;
     if (active === 'Academic Performance') return <LiveReport kind="academic" onNotify={onNotify} />;
     if (active === 'Revenue Dashboard') return <LiveReport kind="revenue" onNotify={onNotify} />;
     if (active === 'Enrollment Approval') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Enrollment Approval (CRUD)</h1>
-        <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div><strong>Auto-approve new applications: {autoApprove ? 'ON' : 'OFF'}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>Student Online Enrollment + Registration write to this queue. Approvals sync back to the student Status Tracker.</div></div><button style={autoApprove ? ghost : btn} onClick={toggleAuto}>{autoApprove ? 'Turn OFF' : 'Turn ON'}</button></div>
-        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Applicant</th><th style={{ padding: 12 }}>Detail</th><th style={{ padding: 12 }}>Decision</th></tr></thead><tbody>{enroll.list.map((a) => <tr key={a.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><PhotoAvatar userId={a.id} name={a.name} size={32} /><strong>{a.name} - {a.id}</strong></div></td><td style={{ padding: 12 }}>{a.meta}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8 }}><button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'approved')}>Approve</button><button style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'rejected')}>Reject</button><button style={ghost} onClick={() => {         openEditDialog('Edit detail', a.meta, (v) => { enroll.update(a.id, { meta: v }); onNotify('Updated'); }) }}>Edit</button></div></td></tr>)}{!enroll.list.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>Queue empty — new student applications will appear here.</td></tr>}</tbody></table></div>
-        <form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!enrN.trim()) return; enroll.create({ id: genSchoolId('student'), name: enrN.trim(), meta: enrM }); setEnrN(''); onNotify('Application created with 2xxxxx ID'); }}><input style={inp} placeholder="Applicant name" value={enrN} onChange={(e) => setEnrN(e.target.value)} /><input style={inp} value={enrM} onChange={(e) => setEnrM(e.target.value)} /><button style={btn} type="submit">Add</button></form>{footer}</section>);
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Enrollment Approval</h1>
+        <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}><div><strong>Auto-approve new applications: {autoApprove ? 'ON' : 'OFF'}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>Online + walk-in applications land here. Advance each one yourself: Docs ✓ → Approve → Enroll ✓. Nothing moves without a registrar click.</div><div style={{ display: 'flex', gap: 8, marginTop: 8 }}>{(() => { const p = pipelineBadges(); return (<><span style={{ ...pill, background: p.docs ? '#ecfdf5' : '#fff' }}>Registrar docs {p.docs ? '✓' : '—'}</span><span style={{ ...pill, background: p.pay ? '#ecfdf5' : '#fff' }}>Accounting pay {p.pay ? '✓' : '—'}</span></>); })()}</div></div><button style={autoApprove ? ghost : btn} onClick={toggleAuto}>{autoApprove ? 'Turn OFF' : 'Turn ON'}</button></div>
+        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Applicant</th><th style={{ padding: 12 }}>Detail</th><th style={{ padding: 12 }}>Decision</th></tr></thead><tbody>{enroll.list.map((a) => <tr key={a.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><PhotoAvatar userId={a.id} name={a.name} size={32} /><strong>{a.name} - {a.id}</strong></div></td><td style={{ padding: 12 }}>{a.meta}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8 }}><button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'approved')}>Approve</button><button style={{ background: '#0B3D91', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'enrolled')}>Enroll ✓</button><button style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'rejected')}>Reject</button><button style={ghost} onClick={() => {         openEditDialog('Edit detail', a.meta, (v) => { enroll.update(a.id, { meta: v }); onNotify('Updated'); }) }}>Edit</button></div></td></tr>)}{!enroll.list.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>Queue empty — new student applications will appear here.</td></tr>}</tbody></table></div>
+        <form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!enrN.trim()) return; const nid = genSchoolId('student'); enroll.create({ id: nid, name: enrN.trim(), meta: enrM }); try { const raw = localStorage.getItem('cec:s_enroll_apps'); const rows = raw ? (JSON.parse(raw) as { id: string; name: string; role: string }[]) : []; rows.push({ id: nid, name: `${enrM.split('•')[0].trim()} • walk-in`, role: 'Pending' }); localStorage.setItem('cec:s_enroll_apps', JSON.stringify(rows)); } catch { /* ignore */ } setEnrN(''); onNotify('Walk-in application created — visible in student tracker'); }}><input style={inp} placeholder="Applicant name" value={enrN} onChange={(e) => setEnrN(e.target.value)} /><input style={inp} value={enrM} onChange={(e) => setEnrM(e.target.value)} /><button style={btn} type="submit">Add walk-in</button></form>{footer}</section>);
     }
     if (active === 'Document Verification') {
       void docTick;
@@ -177,7 +231,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
         rows.forEach((r) => { docNames[r.id] = `${r.name} — ${r.role}`; });
       } catch { /* ignore */ }
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Document Verification — Registrar</h1>        <p style={{ color: '#6b7890', fontSize: 13 }}>Confirm submissions here. Student trackers update automatically — students cannot advance stages themselves.</p>
-        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Document</th><th style={{ padding: 12 }}>Stage</th><th style={{ padding: 12 }}>Registrar action</th></tr></thead><tbody>{docs.map((d) => { const atMin = d.stage === 0; const atMax = d.stage >= stageCount(d) - 1; const decide = (dir: 1 | -1) => { try { const next = Math.max(0, Math.min(stageCount(d) - 1, d.stage + dir)); writeStage(d.id, next); const verb = dir === 1 ? 'confirmed' : 'moved back'; pushNotification(['student'], { title: `Document ${d.id}: ${stageName({ ...d, stage: next })}`, detail: dir === 1 ? 'Registrar confirmed your submission — tracker updated automatically.' : `Registrar moved it back to ${stageName({ ...d, stage: next })}.`, category: 'Enrollment', target: 'Document Submission' }); if (dir === 1) setPopup({ title: 'Stage confirmed', message: `${d.id} is now at ${stageName({ ...d, stage: next })}. Student notified.`, lines: [d.id] }); bumpDocs(); onNotify(`${d.id} ${verb} → ${stageName({ ...d, stage: next })}`); } catch { onNotify('Could not save — storage unavailable'); } }; return <tr key={d.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{d.id}</strong><br /><small style={{ color: '#6b7890' }}>{docNames[d.id] ?? 'Awaiting upload'}</small></td><td style={{ padding: 12 }}>{stageName(d)} ({d.stage + 1}/{stageCount(d)})</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={{ ...ghost, ...(atMin ? { opacity: .45, cursor: 'not-allowed' } : null) }} disabled={atMin} onClick={() => decide(-1)}>Return</button><button style={{ ...btn, ...(atMax ? { background: '#94a3b8', cursor: 'not-allowed' } : null) }} disabled={atMax} onClick={() => decide(1)}>Confirm ✓</button></div></td></tr>; })}</tbody></table></div>{footer}</section>);
+        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Document</th><th style={{ padding: 12 }}>Stage</th><th style={{ padding: 12 }}>Registrar action</th></tr></thead><tbody>{docs.map((d) => { const atMin = d.stage === 0; const atMax = d.stage >= stageCount(d) - 1; const decide = (dir: 1 | -1) => { try { const next = Math.max(0, Math.min(stageCount(d) - 1, d.stage + dir)); writeStage(d.id, next); const verb = dir === 1 ? 'confirmed' : 'moved back'; pushNotification(['student'], { title: `Document ${d.id}: ${stageName({ ...d, stage: next })}`, detail: dir === 1 ? 'Registrar confirmed your submission — tracker updated automatically.' : `Registrar moved it back to ${stageName({ ...d, stage: next })}.`, category: 'Enrollment', target: 'Document Submission' }); if (dir === 1) setPopup({ title: 'Stage confirmed', message: `${d.id} is now at ${stageName({ ...d, stage: next })}. Student notified.`, lines: [d.id] }); bumpDocs(); onNotify(`${d.id} ${verb} → ${stageName({ ...d, stage: next })}`); } catch { onNotify('Could not save — storage unavailable'); } }; return <tr key={d.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{d.id}</strong><br /><small style={{ color: '#6b7890' }}>{docNames[d.id] ?? 'Awaiting upload'}</small></td><td style={{ padding: 12 }}>{stageName(d)} ({d.stage + 1}/{stageCount(d)})</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={{ ...ghost, ...(atMin ? { opacity: .45, cursor: 'not-allowed' } : null) }} disabled={atMin} onClick={() => decide(-1)}>Return</button><button style={{ ...btn, ...(atMax ? { background: '#94a3b8', cursor: 'not-allowed' } : null) }} disabled={atMax} onClick={() => decide(1)}>Confirm ✓</button></div></td></tr>; })}{!docs.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>No documents submitted yet — student uploads appear here automatically.</td></tr>}</tbody></table></div>{footer}</section>);
     }
     if (active === 'RBAC Management') {
       const rows = ['Student', 'Teacher', 'Admin']; const cols = ['Students', 'Teachers', 'Finance', 'Admin'];
@@ -231,12 +285,46 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Password Reset</h1><div style={{ ...box }}><ChangePassword identifier={currentUser?.email || myPhotoId} onNotify={onNotify} /></div><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); if (!resetWho.trim()) return; onNotify(`Reset link sent to accounts matching "${resetWho.trim()}"`); pushNotification(['student', 'teacher'], { title: 'Password reset issued', detail: 'Admin issued a password reset for your account.', category: 'System', target: 'Password Recovery' }); setResetWho(''); }}><input style={inp} placeholder="Name, ID or email" value={resetWho} onChange={(e) => setResetWho(e.target.value)} aria-label="Account to reset" /><button style={btn} type="submit">Send reset</button></form><div style={box}>{accounts.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{a.name}</strong> • {a.id}</span><button style={ghost} onClick={() => onNotify(`Reset link sent to ${a.name}`)}>Reset</button></div>)}</div>{footer}</section>);
     }
     if (active === 'Scholarships') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Scholarship Approvals</h1><div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Applicant</th><th style={{ padding: 12 }}>Status</th><th style={{ padding: 12 }}>Decision</th></tr></thead><tbody>{scholars.list.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{s.name}</strong></td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => { scholars.update(s.id, { role: 'Approved' }); onNotify(`${s.name} scholarship approved`); }}>Approve</button><button style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => { scholars.update(s.id, { role: 'Denied' }); onNotify(`${s.name} scholarship denied`); }}>Deny</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { scholars.remove(s.id); onNotify('Scholarship record deleted'); }}>Delete</button></div></td></tr>)}</tbody></table></div>{footer}</section>);
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Scholarship Approvals</h1><div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Applicant</th><th style={{ padding: 12 }}>Status</th><th style={{ padding: 12 }}>Decision</th></tr></thead><tbody>{scholars.list.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{s.name}</strong></td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => { scholars.update(s.id, { role: 'Approved' }); try { const raw = localStorage.getItem('cec:s_scholar_v2'); const rows = raw ? (JSON.parse(raw) as { id: string; role: string }[]) : []; localStorage.setItem('cec:s_scholar_v2', JSON.stringify(rows.map((r) => (r.id === s.id ? { ...r, role: 'Approved by finance office' } : r)))); } catch { /* ignore */ } pushNotification(['student'], { title: 'Scholarship approved', detail: `${s.name} — finance office decision posted.`, category: 'Finance', target: 'Scholarship Application' }); onNotify(`${s.name} scholarship approved — student updated`); }}>Approve</button><button style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => { scholars.update(s.id, { role: 'Denied' }); try { const raw = localStorage.getItem('cec:s_scholar_v2'); const rows = raw ? (JSON.parse(raw) as { id: string; role: string }[]) : []; localStorage.setItem('cec:s_scholar_v2', JSON.stringify(rows.map((r) => (r.id === s.id ? { ...r, role: 'Denied by finance office' } : r)))); } catch { /* ignore */ } onNotify(`${s.name} scholarship denied — student updated`); }}>Deny</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { scholars.remove(s.id); onNotify('Scholarship record deleted'); }}>Delete</button></div></td></tr>)}</tbody></table></div>{footer}</section>);
     }
     if (active === 'Payment Monitoring') {
       const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; };
       const total = bills.list.reduce((n, b) => n + peso(`${b.name} ${b.role}`), 0);
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Payment Monitoring</h1><div style={box}>Tracked invoices: <strong>{bills.list.length}</strong> • Total on books: <strong>₱{total.toLocaleString()}</strong>{bills.list.map((b) => <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{b.name}</strong> • {b.role}</span><button style={ghost} onClick={() => { bills.update(b.id, { role: `${b.role} • Verified` }); onNotify(`${b.name} marked verified`); }}>Verify</button></div>)}</div>{footer}</section>);
+      let receipts: { id: string; name: string; role: string; remote?: boolean; verifiedRemote?: boolean }[] = [];
+      let verified: string[] = [];
+      try {
+        const hRaw = localStorage.getItem('cec:s_history_v2');
+        receipts = hRaw ? JSON.parse(hRaw) : [];
+        const vRaw = localStorage.getItem('cec:receipts_verified');
+        verified = vRaw ? JSON.parse(vRaw) : [];
+      } catch { /* ignore */ }
+      remoteReceipts.forEach((r) => {
+        if (!receipts.some((x) => x.id === r.id)) {
+          receipts.push({ id: r.id, name: r.title, role: `${r.detail ?? ''} • ${r.status ?? 'Posted'}`, remote: true, verifiedRemote: r.status === 'Verified' });
+        }
+      });
+      const verifyReceipt = (id: string, label: string, remote?: boolean) => {
+        if (remote) {
+          portalApi.itemUpdate(id, { status: 'Verified' }).then(() => {
+            setRemoteReceipts((rows) => rows.map((r) => (r.id === id ? { ...r, status: 'Verified' } : r)));
+            onNotify(`${label} verified — student tracker updated`);
+          }).catch(() => onNotify('Could not reach database — receipt kept as posted'));
+          pushNotification(['student'], { title: 'Receipt verified by accounting', detail: `${label} — your payment tracker now shows Receipt Issued.`, category: 'Finance', target: 'Payment Portal' });
+          return;
+        }
+        if (!verified.includes(id)) {
+          verified = [...verified, id];
+          try { localStorage.setItem('cec:receipts_verified', JSON.stringify(verified)); } catch { /* ignore */ }
+        }
+        pushNotification(['student'], { title: 'Receipt verified by accounting', detail: `${label} — your payment tracker now shows Receipt Issued.`, category: 'Finance', target: 'Payment Portal' });
+        onNotify(`${label} verified — student tracker updated`);
+      };
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Payment Monitoring — Accounting</h1>
+        <div style={box}>Tracked invoices: <strong>{bills.list.length}</strong> • Total on books: <strong>₱{total.toLocaleString()}</strong>
+          <div style={{ marginTop: 12 }}><strong>Student receipts ({receipts.length})</strong></div>
+          {receipts.length ? receipts.map((h) => <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{h.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{h.id} • {h.role}{h.remote ? ' • MySQL' : ''}</div></span>{verified.includes(h.id) || h.verifiedRemote ? <span style={{ background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Verified ✓</span> : <button style={btn} onClick={() => verifyReceipt(h.id, h.name, h.remote)}>Verify</button>}</div>) : <div style={{ fontSize: 13, color: '#6b7890' }}>No student payments posted yet.</div>}
+          {bills.list.map((b) => <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{b.name}</strong> • {b.role}</span><button style={ghost} onClick={() => { bills.update(b.id, { role: `${b.role} • Verified` }); onNotify(`${b.name} marked verified`); }}>Verify</button></div>)}
+        </div>{footer}</section>);
     }
     if (active === 'System Config') return <AdminTable title="System Config" col={syscfg} colA="Key" colB="Value" phA="e.g. enrollment_open" phB="e.g. true" onNotify={onNotify} footer={footer} />;
     if (active === 'Audit Log') {
@@ -248,7 +336,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Audit Log</h1><div style={box}>{trail.length ? trail.slice(0, 20).map((t) => <div key={t.id} style={{ padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 13 }}><strong>{t.title}</strong><div style={{ color: '#6b7890' }}>{t.detail}</div></div>) : <div style={{ color: '#6b7890' }}>No admin activity recorded yet — actions you take (approvals, broadcasts, confirms) appear here.</div>}</div>{footer}</section>);
     }
     if (active === 'Backup & Restore') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Backup &amp; Restore</h1><div style={box}><p style={{ fontSize: 13, color: '#475569' }}>Download every local portal record as JSON, or restore from a backup file. MySQL: full versioned dump lives at <code>database/cec_portal_v2_full.sql</code>.</p><div style={{ display: 'flex', gap: 8 }}><button style={btn} onClick={() => {
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Backup &amp; Restore</h1><div style={box}><p style={{ fontSize: 13, color: '#475569' }}>Download every local portal record as JSON, or restore from a backup file. MySQL: full versioned dump lives at <code>database/cec_portal_v2_full.sql</code>.</p><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button style={btn} onClick={() => {
         const data: Record<string, string | null> = {};
         for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('cec:')) data[k] = localStorage.getItem(k); }
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -258,7 +346,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
         a.click();
         URL.revokeObjectURL(a.href);
         onNotify('Backup downloaded');
-      }}>Download backup</button><label style={{ ...ghost, display: 'inline-block' }}>Restore<input type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const data = JSON.parse(String(r.result)) as Record<string, string>; Object.entries(data).forEach(([k, v]) => { if (k.startsWith('cec:')) localStorage.setItem(k, v); }); onNotify('Backup restored — refresh to see it'); } catch { onNotify('Invalid backup file'); } }; r.readAsText(f); }} /></label></div></div>{footer}</section>);
+      }}>Download backup</button><label style={{ ...ghost, display: 'inline-block' }}>Restore<input type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const data = JSON.parse(String(r.result)) as Record<string, string>; Object.entries(data).forEach(([k, v]) => { if (k.startsWith('cec:')) localStorage.setItem(k, v); }); onNotify('Backup restored — refresh to see it'); } catch { onNotify('Invalid backup file'); } }; r.readAsText(f); }} /></label><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (!window.confirm('Clear ALL local portal records (students, teachers, payments, docs)? The MySQL database is untouched.')) return; const keep = ['cec:theme', 'cec_session_user', 'cec_access_token', 'cec_remember_identifier']; const keys: string[] = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('cec:') && !keep.includes(k)) keys.push(k); } keys.forEach((k) => localStorage.removeItem(k)); onNotify(`Cleared ${keys.length} record stores — refresh for empty systems`); }}>Reset demo data</button></div></div>{footer}</section>);
     }
     if (active === 'Security') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Security Monitoring</h1><div style={box}><div style={{ fontSize: 14 }}>Auto-approve new enrollments: <strong>{autoApprove ? 'ON' : 'OFF'}</strong> (toggle in Enrollment Approval)</div><div style={{ fontSize: 14, marginTop: 8 }}>Active session: <strong>{currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role})` : '—'}</strong></div><div style={{ fontSize: 14, marginTop: 8 }}>Demo accounts use fixed credentials for thesis presentation; MySQL passwords are bcrypt-hashed.</div><div style={{ marginTop: 12 }}><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { localStorage.removeItem('cec_access_token'); onLogout(); onNotify('All sessions revoked — signed out'); }}>Revoke sessions &amp; sign out</button></div></div>{footer}</section>);
@@ -269,7 +357,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   return (
     <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><div style={{ width: 38, height: 38, borderRadius: 10, background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>CEC</div><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>ADMIN PORTAL • 1ST SEM 2024-2025</div></div></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>ADMIN PORTAL • 1ST SEM 2024-2025</div></div></div>
         <button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer' }}>☰</button>
         <button className="dashboard-home-link" type="button" onClick={() => setActive('Dashboard')}>⌂ Dashboard</button><span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>ADMIN</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
         <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />
