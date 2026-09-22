@@ -3,7 +3,9 @@ import api from '@/services/api';
 import { ensureSchoolId } from '@/services/crud';
 import { setPhoto as saveProfilePhoto, getPhoto as readProfilePhoto } from '@/services/photos';
 
-const GOOGLE_CLIENT_ID = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_GOOGLE_CLIENT_ID ?? '';
+const GOOGLE_CLIENT_ID = ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_GOOGLE_CLIENT_ID ?? '')
+  // Public identifier (safe to ship): lets production builds render the Google button.
+  || '955227893108-jhsaaq79ko2jck7i91mcehpp6b3na6jl.apps.googleusercontent.com';
 
 export interface UserAuthData {
   firstName: string;
@@ -199,8 +201,11 @@ export const Login: React.FC<LoginProps> = ({
       if (onNotify) onNotify(`Welcome back, ${user.firstName}!`);
       if (onSuccess) onSuccess({ firstName: user.firstName, lastName: user.lastName, role: googleRole, id: googleId, email: user.email, picture: user.picture });
     } catch (err) {
-      const apiError = err as { response?: { data?: { message?: string } } };
-      setError(apiError.response?.data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
+      const apiError = err as { response?: { data?: { message?: string } }; code?: string };
+      const offline = !apiError.response;
+      setError(offline
+        ? 'Google sign-in needs the portal API server (port 4000) running — it cannot verify on the static GitHub Pages site. Use the localhost setup for the Google demo.'
+        : apiError.response?.data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
     } finally {
       setGoogleLoading(false);
     }
@@ -247,7 +252,7 @@ export const Login: React.FC<LoginProps> = ({
         }
       } catch (err) {
         const apiError = err as { response?: { data?: { message?: string } } };
-        setError(apiError.response?.data?.message ?? 'Google Login is not configured. Admin: set VITE_GOOGLE_CLIENT_ID (client) and GOOGLE_CLIENT_ID (server).');
+        setError(apiError.response?.data?.message ?? 'Google Login needs the portal API server (port 4000) running — unavailable on the static site.');
       } finally {
         setGoogleLoading(false);
       }
