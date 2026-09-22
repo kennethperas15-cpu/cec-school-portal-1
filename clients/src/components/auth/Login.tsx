@@ -201,11 +201,13 @@ export const Login: React.FC<LoginProps> = ({
       if (onNotify) onNotify(`Welcome back, ${user.firstName}!`);
       if (onSuccess) onSuccess({ firstName: user.firstName, lastName: user.lastName, role: googleRole, id: googleId, email: user.email, picture: user.picture });
     } catch (err) {
-      const apiError = err as { response?: { data?: { message?: string } }; code?: string };
-      const offline = !apiError.response;
-      setError(offline
+      const apiError = err as { response?: { data?: unknown; status?: number } };
+      const data = apiError.response?.data as { message?: string } | undefined;
+      // Static hosting (GitHub Pages) has no API: 404 HTML, empty, or unreachable
+      const needsServer = !apiError.response || typeof apiError.response.data === 'string' || apiError.response.status === 404;
+      setError(needsServer
         ? 'Google sign-in needs the portal API server (port 4000) running — it cannot verify on the static GitHub Pages site. Use the localhost setup for the Google demo.'
-        : apiError.response?.data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
+        : data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
     } finally {
       setGoogleLoading(false);
     }
