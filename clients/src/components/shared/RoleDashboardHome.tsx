@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAcademicConfig } from '../../services/academicConfig';
 
 export type DashboardRole = 'student' | 'teacher' | 'admin';
 
@@ -90,6 +91,7 @@ const roleContent: Record<DashboardRole, {
 };
 
 export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate, liveMetrics, blankSections }) => {
+  const academicConfig = useAcademicConfig();
   const content = roleContent[role];
   const metrics = content.metrics.map((m) => {
     const live = liveMetrics?.find((l) => l.label === m.label);
@@ -99,7 +101,7 @@ export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate, liv
     <section className="role-home">
       <div className="role-home-heading">
         <div><span className="role-home-eyebrow">{content.eyebrow}</span><h1>{content.title}, {name.split(' ')[0]} <span>✦</span></h1><p>{content.description}</p></div>
-        <span className="role-home-date">CEC Portal • 1st Semester 2024–2025</span>
+        <span className="role-home-date">CEC Portal • {academicConfig.semester} {academicConfig.schoolYear}</span>
       </div>
       <div className="role-home-metrics">{metrics.map((metric) => <div className={`role-home-metric ${metric.tone}`} key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small></div>)}</div>
       <div className="role-home-actions"><strong>Quick actions</strong>{content.actions.map((action) => <button key={action.label} type="button" onClick={() => onNavigate(action.target)}><span>{action.icon}</span>{action.label}<b>→</b></button>)}</div>

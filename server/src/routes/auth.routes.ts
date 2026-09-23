@@ -66,12 +66,37 @@ router.post('/login', loginRateLimit(), async (req, res, next) => {
     const result = await authService.login(identifier, password);
     res.json({ success: true, data: result });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Invalid email or password') {
+    if (error instanceof Error && (error.message === 'Invalid email or password' || error.message.includes('temporarily locked'))) {
       res.status(401).json({ success: false, message: error.message });
       return;
     }
     next(error);
   }
+});
+
+router.post('/refresh', async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body as { refreshToken?: string };
+    if (!refreshToken) {
+      res.status(401).json({ success: false, message: 'Refresh token is required' });
+      return;
+    }
+    res.json({ success: true, data: await authService.refresh(refreshToken) });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Refresh session')) {
+      res.status(401).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.post('/logout', async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body as { refreshToken?: string };
+    if (refreshToken) await authService.revokeRefresh(refreshToken);
+    res.json({ success: true });
+  } catch (error) { next(error); }
 });
 
 router.post('/google/id-token', async (req, res, next) => {
