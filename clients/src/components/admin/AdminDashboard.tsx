@@ -21,6 +21,7 @@ const NAVY = '#0B3D91';
 const BASE = import.meta.env.BASE_URL || '/';
 type Group = { id: string; label: string; icon: string; items: { label: string; route: string }[] };
 const GROUPS: Group[] = [
+  { id: 'home', label: 'DASHBOARD', icon: '⌂', items: [{ label: 'Dashboard', route: 'a_dashboard' }] },
   { id: 'account', label: 'ACCOUNT MGMT', icon: '◈', items: [{ label: 'RBAC Management', route: 'a_auth_rbac' }, { label: 'Account Creation', route: 'a_auth_accounts' }, { label: 'Password Reset', route: 'a_auth_reset' }] },
   { id: 'enroll', label: 'ENROLLMENT MGMT', icon: '▤', items: [{ label: 'Enrollment Approval', route: 'a_enroll_approval' }, { label: 'Document Verification', route: 'a_enroll_docs' }, { label: 'Section Assignment', route: 'a_enroll_sections' }, { label: 'Capacity Control', route: 'a_enroll_capacity' }, { label: 'Status Monitoring', route: 'a_enroll_status' }] },
   { id: 'academic', label: 'ACADEMIC MGMT', icon: '▥', items: [{ label: 'Curriculum Setup', route: 'a_acad_curriculum' }, { label: 'Subject Offering', route: 'a_acad_subjects' }, { label: 'Calendar', route: 'a_acad_calendar' }, { label: 'Room Allocation', route: 'a_acad_rooms' }] },
@@ -54,7 +55,7 @@ const AdminTable = ({ title, col, colA, colB, phA, phB, onNotify, footer }: { ti
 
 export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [active, setActive] = useState('Dashboard');
-  const [expanded, setExpanded] = useState('account');
+  const [expanded, setExpanded] = useState('home');
   const [collapsed, setCollapsed] = useState(false);
   const { dark, toggle } = useTheme();
   // v2 stores: pre-launch — no demo students, teachers, or payments (all start empty)
@@ -358,7 +359,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><button onClick={() => setCollapsed((c) => !c)} aria-label="Toggle sidebar" style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', fontSize: 16 }}>☰</button><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>ADMIN PORTAL • 1ST SEM 2024-2025</div></div></div>
-        <button className="dashboard-home-link" type="button" onClick={() => setActive('Dashboard')}>⌂ Dashboard</button><span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>ADMIN</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
+        <span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>ADMIN</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
         <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />
         <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><NotificationCenter role="admin" onNavigate={navigate} /><button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button><span key={photoTick}><PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'} size={36} /></span></div>
       </header>

@@ -27,12 +27,6 @@ interface LoginProps {
   onNotify?: (message: string) => void;
 }
 
-const DEMO_ACCOUNTS: Record<string, { identifier: string; password: string; name: string }> = {
-  Student: { identifier: 'CEC-2024-0015', password: 'student123', name: 'Demo Student' },
-  Teacher: { identifier: 'T-001', password: 'teacher123', name: 'Faculty Member' },
-  Admin: { identifier: 'ADMIN', password: 'admin123', name: 'Administrator' },
-};
-
 export const Login: React.FC<LoginProps> = ({
   className = '',
   onSuccess,
@@ -80,60 +74,6 @@ export const Login: React.FC<LoginProps> = ({
     setError('');
     setLoading(true);
 
-    // Check demo match first (role-agnostic: accept any demo ID regardless of selected tab)
-    const demoEntries = Object.entries(DEMO_ACCOUNTS) as ['Student' | 'Teacher' | 'Admin', { identifier: string; password: string; name: string }][];
-    const anyDemo = demoEntries.find(
-      ([, d]) => identifier.trim().toUpperCase() === d.identifier.toUpperCase() && password === d.password
-    );
-    if (anyDemo) {
-      const [demoRole] = anyDemo;
-      const names =
-        demoRole === 'Student'
-          ? { firstName: 'Demo', lastName: 'Student' }
-          : { firstName: demoRole, lastName: 'User' };
-      const userData: UserAuthData = { ...names, role: demoRole.toLowerCase() };
-
-      if (rememberMe) {
-        localStorage.setItem('cec_remember_identifier', identifier.trim());
-      } else {
-        localStorage.removeItem('cec_remember_identifier');
-      }
-
-      setLoading(false);
-      localStorage.setItem('cec_session_user', JSON.stringify(userData));
-      if (onNotify) onNotify(`Welcome back, ${userData.firstName}!`);
-      if (onSuccess) onSuccess(userData);
-      return;
-    }
-    // Offline-issued accounts (Apply/Register without backend) — check localStorage first
-    try {
-      const raw = localStorage.getItem('cec:registrations');
-      const regs = raw ? (JSON.parse(raw) as { schoolEmail?: string; temporaryPassword?: string; fullName?: string; id?: string; requestedRole?: string }[]) : [];
-      const hit = regs.find(
-        (r) =>
-          (r.schoolEmail?.toLowerCase() === identifier.trim().toLowerCase() ||
-            r.id?.toUpperCase() === identifier.trim().toUpperCase()) &&
-          r.temporaryPassword === password
-      );
-      if (hit) {
-        const parts = (hit.fullName ?? 'New Student').trim().split(/\s+/);
-        const hitRole = hit.requestedRole === 'teacher' ? 'teacher' : hit.requestedRole === 'admin' ? 'admin' : 'student';
-        const sid = ensureSchoolId(hit.id, hitRole);
-        const offlineUser: UserAuthData = {
-          firstName: parts[0] ?? 'New',
-          lastName: parts.slice(1).join(' ') || (hitRole === 'student' ? 'Student' : 'User'),
-          role: hitRole,
-          id: sid,
-          email: hit.schoolEmail,
-        };
-        setLoading(false);
-        localStorage.setItem('cec_session_user', JSON.stringify(offlineUser));
-        if (onNotify) onNotify(`Welcome back, ${offlineUser.firstName}!`);
-        if (onSuccess) onSuccess(offlineUser);
-        return;
-      }
-    } catch { /* ignore storage errors, fall through to API */ }
-
     try {
       const response = await api.post('/auth/login', {
         identifier: identifier.trim(),
@@ -147,11 +87,9 @@ export const Login: React.FC<LoginProps> = ({
       };
 
       const token = response.data?.data?.token ?? response.data?.data?.accessToken;
-      if (token) {
-        localStorage.setItem('cec_access_token', token);
-      }
-      localStorage.setItem('cec_session_user', JSON.stringify(user));
-
+      const refreshToken = response.data?.data?.refreshToken;
+      if (token) sessionStorage.setItem('cec_access_token', token);
+      if (refreshToken) sessionStorage.setItem('cec_refresh_token', refreshToken);
       if (rememberMe) {
         localStorage.setItem('cec_remember_identifier', identifier.trim());
       } else {
@@ -161,8 +99,34 @@ export const Login: React.FC<LoginProps> = ({
       if (onNotify) onNotify(`Welcome back, ${user.firstName}!`);
       if (onSuccess) onSuccess(user);
     } catch (requestError) {
+      // Registration can intentionally run without the API for static demos.
+      // Authenticate credentials issued by that same local registration store.
+      try {
+        const raw = localStorage.getItem('cec:registrations');
+        const registrations = raw ? JSON.parse(raw) as {
+          id?: string; fullName?: string; schoolEmail?: string; temporaryPassword?: string; requestedRole?: string;
+        }[] : [];
+        const registration = registrations.find((item) =>
+          (item.schoolEmail ?? '').toLowerCase() === identifier.trim().toLowerCase() || item.id === identifier.trim()
+        );
+        if (registration && registration.temporaryPassword === password) {
+          const nameParts = (registration.fullName ?? 'CEC User').trim().split(/\s+/);
+          const localUser: UserAuthData = {
+            firstName: nameParts[0] ?? 'CEC',
+            lastName: nameParts.slice(1).join(' '),
+            role: registration.requestedRole ?? role.toLowerCase(),
+            id: registration.id,
+            email: registration.schoolEmail,
+          };
+          if (onNotify) onNotify(`Welcome back, ${localUser.firstName}!`);
+          if (onSuccess) onSuccess(localUser);
+          return;
+        }
+      } catch {
+        // Storage is optional; preserve the normal API error below.
+      }
       const apiError = requestError as { response?: { data?: { message?: string } } };
-      setError('Invalid credentials. Please check your school ID/email and password — or Apply for an account, or sign in with Google.');
+      setError(apiError.response?.data?.message ?? 'Invalid credentials. Please check your school ID/email and password.');
     } finally {
       setLoading(false);
     }
@@ -193,7 +157,9 @@ export const Login: React.FC<LoginProps> = ({
       const user = response.data?.data?.user;
       const token = response.data?.data?.token ?? response.data?.data?.accessToken;
       if (!user) throw new Error('Google sign-in did not return an account.');
-      if (token) localStorage.setItem('cec_access_token', token);
+      const refreshToken = response.data?.data?.refreshToken;
+      if (token) sessionStorage.setItem('cec_access_token', token);
+      if (refreshToken) sessionStorage.setItem('cec_refresh_token', refreshToken);
       // Same person, same school ID: if this Gmail already has a school
       // account (applied/registered), reuse its ID and role instead of the new UUID.
       let googleId = user.id as string | undefined;
@@ -237,7 +203,6 @@ export const Login: React.FC<LoginProps> = ({
           firstName: parts[0] ?? 'New', lastName: parts.slice(1).join(' ') || 'Student',
           role: gRole, id: gId, email: gmail, picture: info.picture,
         };
-        localStorage.setItem('cec_session_user', JSON.stringify(gUser));
         if (onNotify) onNotify(`Welcome back, ${gUser.firstName}!`);
         if (onSuccess) onSuccess(gUser);
         return;

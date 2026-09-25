@@ -35,6 +35,20 @@ const mailer = env.smtpHost
   : null;
 
 const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
+const accessTokenFor = (user: { id: string; role: string; email: string }) => jwt.sign(
+  { sub: user.id, role: user.role, email: user.email },
+  env.jwtSecret,
+  { expiresIn: env.accessTokenTtl as jwt.SignOptions['expiresIn'] }
+);
+
+const refreshSessionFor = async (userId: string) => {
+  const refreshToken = crypto.randomBytes(48).toString('base64url');
+  await sequelize.query(
+    `INSERT INTO sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))`,
+    { replacements: [crypto.randomUUID(), userId, hashToken(refreshToken)], type: QueryTypes.INSERT }
+  );
+  return refreshToken;
+};
 
 export const authService = {
   createGoogleLoginUrl() {
@@ -91,6 +105,7 @@ export const authService = {
     const temporaryPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     const applicationId = crypto.randomUUID();
+    const studentNumber = `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`;
 
     await sequelize.transaction(async (transaction) => {
       await sequelize.query(
@@ -117,7 +132,7 @@ export const authService = {
           {
             replacements: [
               crypto.randomUUID(), userId,
-              `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`,
+              studentNumber,
               input.program, input.yearLevel
             ],
             transaction
@@ -137,35 +152,57 @@ export const authService = {
       });
       emailSent = true;
     }
-    return { applicationId, status: 'approved', schoolEmail, temporaryPassword, emailSent };
+    return {
+      applicationId,
+      status: 'approved',
+      schoolEmail,
+      schoolId: requestedRole === 'student' ? studentNumber : undefined,
+      temporaryPassword,
+      emailSent,
+    };
   },
 
   async login(identifier: string, password: string) {
     const users = await sequelize.query<{
       id: string; email: string; password_hash: string; first_name: string; last_name: string; role: string;
+      failed_login_attempts: number; locked_until: Date | null;
     }>(
-      `SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, r.name AS role
+      `SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, r.name AS role,
+              u.failed_login_attempts, u.locked_until
        FROM users u JOIN roles r ON r.id = u.role_id
-       WHERE (LOWER(u.email) = LOWER(?) OR u.id = ?) AND u.is_active = TRUE
+       LEFT JOIN students s ON s.user_id = u.id
+       LEFT JOIN teachers t ON t.user_id = u.id
+       WHERE (LOWER(u.email) = LOWER(?) OR u.id = ? OR s.student_number = ? OR t.employee_number = ?)
+         AND u.is_active = TRUE
        LIMIT 1`,
-      { replacements: [identifier.trim(), identifier.trim()], type: QueryTypes.SELECT }
+      { replacements: [identifier.trim(), identifier.trim(), identifier.trim(), identifier.trim()], type: QueryTypes.SELECT }
     );
     if (!users.length || users[0].password_hash === 'ACTIVATION_PENDING') {
       throw new Error('Invalid email or password');
     }
+    if (users[0].locked_until && new Date(users[0].locked_until).getTime() > Date.now()) {
+      throw new Error('Account temporarily locked. Try again later.');
+    }
     const valid = await bcrypt.compare(password, users[0].password_hash);
-    if (!valid) throw new Error('Invalid email or password');
-    await sequelize.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', {
+    if (!valid) {
+      await sequelize.query(
+        `UPDATE users SET failed_login_attempts = failed_login_attempts + 1,
+         locked_until = CASE WHEN failed_login_attempts + 1 >= 5 THEN DATE_ADD(NOW(), INTERVAL 15 MINUTE) ELSE locked_until END
+         WHERE id = ?`,
+        { replacements: [users[0].id], type: QueryTypes.UPDATE }
+      );
+      throw new Error('Invalid email or password');
+    }
+    await sequelize.query('UPDATE users SET last_login_at = NOW(), failed_login_attempts = 0, locked_until = NULL WHERE id = ?', {
       replacements: [users[0].id],
       type: QueryTypes.UPDATE
     });
-    const accessToken = jwt.sign(
-      { sub: users[0].id, role: users[0].role, email: users[0].email },
-      env.jwtSecret,
-      { expiresIn: env.accessTokenTtl as jwt.SignOptions['expiresIn'] }
-    );
+    const user = { id: users[0].id, email: users[0].email, role: users[0].role };
+    const accessToken = accessTokenFor(user);
+    const refreshToken = await refreshSessionFor(user.id);
     return {
       accessToken,
+      refreshToken,
       user: {
         id: users[0].id,
         email: users[0].email,
@@ -174,6 +211,29 @@ export const authService = {
         role: users[0].role
       }
     };
+  },
+
+  async refresh(refreshToken: string) {
+    const rows = await sequelize.query<{ id: string; user_id: string; email: string; first_name: string; last_name: string; role: string }>(
+      `SELECT s.id, s.user_id, u.email, u.first_name, u.last_name, r.name AS role
+       FROM sessions s JOIN users u ON u.id = s.user_id JOIN roles r ON r.id = u.role_id
+       WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > NOW() AND u.is_active = TRUE LIMIT 1`,
+      { replacements: [hashToken(refreshToken)], type: QueryTypes.SELECT }
+    );
+    if (!rows.length) throw new Error('Refresh session expired or revoked');
+    await sequelize.query('UPDATE sessions SET revoked_at = NOW() WHERE id = ?', { replacements: [rows[0].id], type: QueryTypes.UPDATE });
+    const user = { id: rows[0].user_id, email: rows[0].email, role: rows[0].role };
+    return {
+      accessToken: accessTokenFor(user),
+      refreshToken: await refreshSessionFor(user.id),
+      user: { id: user.id, email: user.email, firstName: rows[0].first_name, lastName: rows[0].last_name, role: user.role },
+    };
+  },
+
+  async revokeRefresh(refreshToken: string) {
+    await sequelize.query('UPDATE sessions SET revoked_at = NOW() WHERE token_hash = ? AND revoked_at IS NULL', {
+      replacements: [hashToken(refreshToken)], type: QueryTypes.UPDATE,
+    });
   },
 
   createGoogleEnrollmentUrl(input: GoogleEnrollmentInput) {
@@ -356,14 +416,12 @@ export const authService = {
     await sequelize.query('UPDATE users SET last_login_at = NOW(), avatar_url = COALESCE(?, avatar_url) WHERE id = ?', {
       replacements: [googlePicture, user.id], type: QueryTypes.UPDATE,
     });
-    const accessToken = jwt.sign(
-      { sub: user.id, role: user.role, email: user.email },
-      env.jwtSecret,
-      { expiresIn: '8h' }
-    );
+    const accessToken = accessTokenFor({ id: user.id, role: user.role, email: user.email });
+    const refreshToken = await refreshSessionFor(user.id);
     return {
       accessToken,
       token: accessToken,
+      refreshToken,
       user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, role: user.role, picture: googlePicture ?? undefined },
     };
   },

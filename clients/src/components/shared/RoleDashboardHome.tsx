@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAcademicConfig } from '../../services/academicConfig';
 
 export type DashboardRole = 'student' | 'teacher' | 'admin';
 
@@ -10,12 +11,14 @@ type Props = {
   blankSections?: boolean;
 };
 
+type DashboardSection = { title: string; target: string; items: { title: string; detail: string; status?: string; target?: string }[] };
+
 const roleContent: Record<DashboardRole, {
   eyebrow: string;
   title: string;
   description: string;
   metrics: { label: string; value: string; detail: string; tone: string }[];
-  sections: { title: string; items: { title: string; detail: string; status?: string }[] }[];
+  sections: DashboardSection[];
   actions: { label: string; target: string; icon: string }[];
 }> = {
   student: {
@@ -29,9 +32,9 @@ const roleContent: Record<DashboardRole, {
       { label: 'Outstanding balance', value: '₱18,500', detail: 'Due October 12, 2024', tone: 'orange' },
     ],
     sections: [
-      { title: 'Upcoming classes', items: [{ title: 'CS 301 — Data Structures', detail: 'Today • 8:00–9:30 AM • Room 301', status: 'Today' }, { title: 'CS 302 — Database Systems', detail: 'Tomorrow • 10:00–11:30 AM • Lab 2', status: 'Tomorrow' }] },
-      { title: 'Assignments & announcements', items: [{ title: 'ER Diagram Project', detail: 'Due October 20 • Database Systems', status: 'Due soon' }, { title: 'Midterm coverage posted', detail: 'Faculty announcement • 2 hours ago', status: 'New' }] },
-      { title: 'Pending requests', items: [{ title: 'Certificate of Enrollment', detail: 'Document request is being processed', status: 'Processing' }, { title: 'Curriculum checklist', detail: '12 of 16 requirements completed', status: '75%' }] },
+      { title: 'Upcoming classes', target: 'Class Schedule', items: [{ title: 'CS 301 — Data Structures', detail: 'Today • 8:00–9:30 AM • Room 301', status: 'Today', target: 'Class Schedule' }, { title: 'CS 302 — Database Systems', detail: 'Tomorrow • 10:00–11:30 AM • Lab 2', status: 'Tomorrow', target: 'Class Schedule' }] },
+      { title: 'Assignments & announcements', target: 'Assignments', items: [{ title: 'ER Diagram Project', detail: 'Due October 20 • Database Systems', status: 'Due soon', target: 'Assignments' }, { title: 'Midterm coverage posted', detail: 'Faculty announcement • 2 hours ago', status: 'New', target: 'Announcement Board' }] },
+      { title: 'Pending requests', target: 'Document Request', items: [{ title: 'Certificate of Enrollment', detail: 'Document request is being processed', status: 'Processing', target: 'Document Request' }, { title: 'Curriculum checklist', detail: '12 of 16 requirements completed', status: '75%', target: 'Curriculum Checklist' }] },
     ],
     actions: [
       { label: 'Enroll now', target: 'Online Enrollment', icon: '＋' },
@@ -52,9 +55,9 @@ const roleContent: Record<DashboardRole, {
       { label: 'Attendance today', value: '75%', detail: '3 of 4 classes recorded', tone: 'green' },
     ],
     sections: [
-      { title: 'Today’s classes', items: [{ title: 'BSIT-3A — Data Structures', detail: '7:30–9:00 AM • Room 301', status: 'Completed' }, { title: 'BSIT-3B — Web Development', detail: '9:00–10:30 AM • Lab 2', status: 'Upcoming' }] },
-      { title: 'Upcoming work', items: [{ title: 'Midterm Exam — DB Systems', detail: 'October 18 • 50 items', status: 'Scheduled' }, { title: 'ER Diagram Project', detail: '24 submissions • Review pending', status: 'Review' }] },
-      { title: 'Recent messages', items: [{ title: 'To BSIT-3A', detail: 'Midterm coverage posted • Today', status: 'New' }, { title: 'Student consultation request', detail: 'Juan Dela Cruz • Tomorrow 1:00 PM', status: 'Open' }] },
+      { title: 'Today’s classes', target: 'Class Schedule', items: [{ title: 'BSIT-3A — Data Structures', detail: '7:30–9:00 AM • Room 301', status: 'Completed', target: 'Class Schedule' }, { title: 'BSIT-3B — Web Development', detail: '9:00–10:30 AM • Lab 2', status: 'Upcoming', target: 'Class Schedule' }] },
+      { title: 'Upcoming work', target: 'Assignments', items: [{ title: 'Midterm Exam — DB Systems', detail: 'October 18 • 50 items', status: 'Scheduled', target: 'Exam Creation' }, { title: 'ER Diagram Project', detail: '24 submissions • Review pending', status: 'Review', target: 'Assignments' }] },
+      { title: 'Recent messages', target: 'Messaging', items: [{ title: 'To BSIT-3A', detail: 'Midterm coverage posted • Today', status: 'New', target: 'Messaging' }, { title: 'Student consultation request', detail: 'Juan Dela Cruz • Tomorrow 1:00 PM', status: 'Open', target: 'Messaging' }] },
     ],
     actions: [
       { label: 'Encode grades', target: 'Grade Encoding', icon: '✓' },
@@ -75,9 +78,9 @@ const roleContent: Record<DashboardRole, {
       { label: 'Outstanding balances', value: '₱842k', detail: '18 accounts need follow-up', tone: 'green' },
     ],
     sections: [
-      { title: 'Enrollment operations', items: [{ title: 'Applications awaiting review', detail: '24 student applications in queue', status: 'Action needed' }, { title: 'Approval rate', detail: '92% approved this semester', status: 'Healthy' }] },
-      { title: 'Recent transactions', items: [{ title: 'Tuition payment received', detail: 'Juan Dela Cruz • ₱18,500 • Today', status: 'Posted' }, { title: 'Faculty account created', detail: 'Prof. Maria Santos • 30 minutes ago', status: 'Audit' }] },
-      { title: 'System alerts', items: [{ title: 'Backup completed successfully', detail: 'Today at 02:00 AM • No issues found', status: 'Healthy' }, { title: '4 faculty credentials expire soon', detail: 'Review before October 31', status: 'Review' }] },
+      { title: 'Enrollment operations', target: 'Enrollment Approval', items: [{ title: 'Applications awaiting review', detail: '24 student applications in queue', status: 'Action needed', target: 'Enrollment Approval' }, { title: 'Approval rate', detail: '92% approved this semester', status: 'Healthy', target: 'Enrollment Stats' }] },
+      { title: 'Recent transactions', target: 'Payment Monitoring', items: [{ title: 'Tuition payment received', detail: 'Juan Dela Cruz • ₱18,500 • Today', status: 'Posted', target: 'Payment Monitoring' }, { title: 'Faculty account created', detail: 'Prof. Maria Santos • 30 minutes ago', status: 'Audit', target: 'Account Creation' }] },
+      { title: 'System alerts', target: 'Security', items: [{ title: 'Backup completed successfully', detail: 'Today at 02:00 AM • No issues found', status: 'Healthy', target: 'Backup & Restore' }, { title: '4 faculty credentials expire soon', detail: 'Review before October 31', status: 'Review', target: 'Credentials' }] },
     ],
     actions: [
       { label: 'Approve enrollment', target: 'Enrollment Approval', icon: '✓' },
@@ -90,20 +93,24 @@ const roleContent: Record<DashboardRole, {
 };
 
 export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate, liveMetrics, blankSections }) => {
+  const academicConfig = useAcademicConfig();
   const content = roleContent[role];
   const metrics = content.metrics.map((m) => {
     const live = liveMetrics?.find((l) => l.label === m.label);
     return live ? { ...m, value: live.value, detail: live.detail } : m;
   });
+  const firstName = name.trim().split(/\s+/)[0] || 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   return (
     <section className="role-home">
       <div className="role-home-heading">
-        <div><span className="role-home-eyebrow">{content.eyebrow}</span><h1>{content.title}, {name.split(' ')[0]} <span>✦</span></h1><p>{content.description}</p></div>
-        <span className="role-home-date">CEC Portal • 1st Semester 2024–2025</span>
+        <div><span className="role-home-eyebrow">{content.eyebrow}</span><h1>{greeting}, {firstName} <span>✦</span></h1><p>{content.description}</p></div>
+        <span className="role-home-date">CEC Portal • {academicConfig.semester} {academicConfig.schoolYear}</span>
       </div>
-      <div className="role-home-metrics">{metrics.map((metric) => <div className={`role-home-metric ${metric.tone}`} key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small></div>)}</div>
+      <div className="role-home-metrics" aria-label="Dashboard summary">{metrics.map((metric) => <div className={`role-home-metric ${metric.tone}`} key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small></div>)}</div>
       <div className="role-home-actions"><strong>Quick actions</strong>{content.actions.map((action) => <button key={action.label} type="button" onClick={() => onNavigate(action.target)}><span>{action.icon}</span>{action.label}<b>→</b></button>)}</div>
-      <div className="role-home-columns">{content.sections.map((section) => <div className="role-home-panel" key={section.title}><div className="role-home-panel-heading"><h2>{section.title}</h2><button type="button" onClick={() => onNavigate(section.title)}>View all</button></div>{blankSections ? <p style={{ margin: '6px 0', color: '#94a1b0', fontSize: 12 }}>No data yet — waiting for admin to provide subjects.</p> : section.items.map((item) => <button type="button" className="role-home-item" key={item.title} onClick={() => onNavigate(item.title)}><span className="role-home-item-icon">{item.title[0]}</span><span><strong>{item.title}</strong><small>{item.detail}</small></span>{item.status && <em>{item.status}</em>}</button>)}</div>)}</div>
+      <div className="role-home-columns">{content.sections.map((section) => <div className="role-home-panel" key={section.title}><div className="role-home-panel-heading"><h2>{section.title}</h2><button type="button" onClick={() => onNavigate(section.target)}>View all <span aria-hidden="true">→</span></button></div>{blankSections ? <p className="role-home-empty">No data yet <span>Waiting for admin to provide subjects.</span></p> : section.items.map((item) => <button type="button" className="role-home-item" key={item.title} onClick={() => onNavigate(item.target ?? section.target)}><span className="role-home-item-icon">{item.title[0]}</span><span><strong>{item.title}</strong><small>{item.detail}</small></span>{item.status && <em>{item.status}</em>}</button>)}</div>)}</div>
     </section>
   );
 };

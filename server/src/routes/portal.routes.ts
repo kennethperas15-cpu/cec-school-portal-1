@@ -15,8 +15,19 @@ router.get('/health', async (_req, res, next) => {
   } catch (error) { next(error); }
 });
 
+router.get('/config/academic', async (_req, res, next) => {
+  try {
+    const rows = await sequelize.query<{ config_key: string; config_value: string }>(
+      `SELECT config_key, config_value FROM system_config WHERE is_public = TRUE AND config_key IN ('school_year', 'semester')`,
+      { type: QueryTypes.SELECT }
+    );
+    const values = Object.fromEntries(rows.map((row) => [row.config_key, row.config_value]));
+    res.json({ success: true, data: { schoolYear: values.school_year ?? '2026–2027', semester: values.semester ?? '1st Semester' } });
+  } catch (error) { next(error); }
+});
+
 // ---- Enrollment queue shared by student <-> admin (real tables) ----
-router.get('/enrollments', async (req, res, next) => {
+router.get('/enrollments', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
   try {
     const status = typeof req.query.status === 'string' ? req.query.status : 'pending';
     const rows = await sequelize.query(
