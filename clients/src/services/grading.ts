@@ -23,8 +23,29 @@ export const percentToPoint = (percent: number): GradePoint => {
 
 export const formatPoint = (point: number): string => (point > 0 ? point.toFixed(2) : '—');
 
+// College input: teachers may type a percent (60–100) or a grade point
+// (1.00–5.00). Points convert to their band percent for averaging.
+const POINT_TO_PERCENT: [number, number][] = [
+  [1.0, 98], [1.25, 95], [1.5, 92], [1.75, 89], [2.0, 86],
+  [2.25, 83], [2.5, 80], [2.75, 77], [3.0, 75], [5.0, 65],
+];
+
+export const entryToPercent = (value: string | number): number | null => {
+  if (value === '' || value === null || value === undefined) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (n >= 1 && n <= 5) {
+    let best = POINT_TO_PERCENT[0];
+    for (const row of POINT_TO_PERCENT) {
+      if (Math.abs(n - row[0]) < Math.abs(n - best[0])) best = row;
+    }
+    return best[1];
+  }
+  return n;
+};
+
 export const averagePercent = (values: (string | number)[]): number | null => {
-  const nums = values.filter((v) => v !== '' && !Number.isNaN(Number(v))).map(Number);
+  const nums = values.map(entryToPercent).filter((v): v is number => v !== null);
   if (!nums.length) return null;
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 };

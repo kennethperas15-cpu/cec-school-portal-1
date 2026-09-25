@@ -33,6 +33,55 @@
   background: #eef4ff;
 }
 
+/* ---- Mobile header + layout (drawer sidebar already handled in styles.css) ---- */
+@media (max-width: 800px) {
+  /* Drawer overlays fixed — never pushes content or scrolls away */
+  aside.dashboard-sidebar {
+    position: fixed !important;
+    top: 68px !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    z-index: 50 !important;
+    overflow-y: auto !important;
+  }
+  header.dashboard-topbar {
+    padding: 0 10px !important;
+    gap: 8px !important;
+  }
+  header.dashboard-topbar > div:first-child {
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+  /* Brand text off on phones — crest stays */
+  header.dashboard-topbar > div:first-child > div:last-child {
+    display: none;
+  }
+  .dashboard-search,
+  .command-trigger,
+  .dashboard-home-link,
+  header.dashboard-topbar > span {
+    display: none !important;
+  }
+  .role-home-metrics {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .role-home-columns {
+    grid-template-columns: 1fr !important;
+  }
+  main.dashboard-main section {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .role-home-metrics {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-actions {
+    gap: 8px !important;
+  }
+}
+
 /* Dragons artwork behind dashboard content (shows once clients/public/cec-dragons-bg.png exists) */
 main.dashboard-main {
   background-image: url('/cec-school-portal-1/cec-dragons-bg.png');
