@@ -30,22 +30,22 @@ export const useCollection = <T extends { id: string }>(key: string, seed: T[]) 
 
 export const uid = (p: string) => `${p}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-// School ID rule: 6 digits, leading digit by role (student=2, teacher=3, admin=4).
+// School ID rule: 7 digits, leading digit by role (student=2, teacher=3, admin=4).
 export type SchoolRole = 'student' | 'teacher' | 'admin';
 export const genSchoolId = (role: SchoolRole): string => {
   const lead = role === 'student' ? '2' : role === 'teacher' ? '3' : '4';
   let id = '';
-  for (let i = 0; i < 5; i++) id += Math.floor(Math.random() * 10).toString();
+  for (let i = 0; i < 6; i++) id += Math.floor(Math.random() * 10).toString();
   return `${lead}${id}`;
 };
 
 export const isValidSchoolId = (id: string, role: SchoolRole): boolean => {
-  if (!/^\d{6}$/.test(id.trim())) return false;
+  if (!/^\d{7}$/.test(id.trim())) return false;
   const lead = role === 'student' ? '2' : role === 'teacher' ? '3' : '4';
   return id.trim().startsWith(lead);
 };
 
-// One-time migration for accounts created before the 6-digit rule:
+// One-time migration for accounts created before the 7-digit rule:
 // issues a valid ID and rewrites it across all local stores. Returns the valid ID.
 export const ensureSchoolId = (oldId: string | undefined, role: SchoolRole): string => {
   if (oldId && isValidSchoolId(oldId, role)) return oldId.trim();

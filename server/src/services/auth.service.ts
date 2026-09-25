@@ -15,6 +15,7 @@ type EnrollmentInput = {
   yearLevel: number;
   requestedRole?: 'student' | 'teacher' | 'admin';
   googleToken?: string;
+  schoolId?: string;
 };
 
 type GoogleEnrollmentInput = { program: string; yearLevel: number; phone?: string };
@@ -105,7 +106,12 @@ export const authService = {
     const temporaryPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     const applicationId = crypto.randomUUID();
-    const studentNumber = `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`;
+    // Keep a caller-provided 7-digit school ID (2 student • 3 teacher • 4 admin)
+    const idLead = requestedRole === 'teacher' ? '3' : requestedRole === 'admin' ? '4' : '2';
+    const providedId = typeof input.schoolId === 'string' && new RegExp(`^${idLead}\\d{6}$`).test(input.schoolId.trim())
+      ? input.schoolId.trim()
+      : null;
+    const studentNumber = providedId ?? `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`;
 
     await sequelize.transaction(async (transaction) => {
       await sequelize.query(
@@ -139,6 +145,14 @@ export const authService = {
           }
         );
       }
+      if (requestedRole === 'teacher' && providedId) {
+        await sequelize.query(
+          `INSERT INTO teachers (id, user_id, employee_number, employment_status)
+           VALUES (?, ?, ?, 'active')
+           ON DUPLICATE KEY UPDATE employee_number = VALUES(employee_number)`,
+          { replacements: [crypto.randomUUID(), userId, providedId], transaction }
+        );
+      }
     });
 
     let emailSent = false;
@@ -156,7 +170,7 @@ export const authService = {
       applicationId,
       status: 'approved',
       schoolEmail,
-      schoolId: requestedRole === 'student' ? studentNumber : undefined,
+      schoolId: requestedRole === 'student' ? studentNumber : providedId ?? undefined,
       temporaryPassword,
       emailSent,
     };
@@ -293,7 +307,6 @@ export const authService = {
       { replacements: [applicationId], type: QueryTypes.SELECT }
     );
     if (!applications.length) throw new Error('Pending enrollment application not found');
-    if (!mailer) throw new Error('Email delivery is not configured');
 
     const application = applications[0];
     const userId = crypto.randomUUID();
@@ -303,25 +316,39 @@ export const authService = {
       .replace(/\.+/g, '.')
       .replace(/^\.|\.$/g, '');
     const schoolEmail = `${localPart || 'student'}.${userId.slice(0, 6)}@cec.edu.ph`;
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = hashToken(token);
     const role = await sequelize.query<{ id: number }>(
       'SELECT id FROM roles WHERE name = ? LIMIT 1',
       { replacements: [application.requested_role], type: QueryTypes.SELECT }
     );
     if (!role.length) throw new Error('Student role is missing; run seed.sql');
 
+    // Without email delivery, issue an active account with a temporary
+    // password so approval still lands in users/students tables.
+    let temporaryPassword: string | null = null;
+    let tokenHash: string | null = null;
+    let token: string | null = null;
+    let passwordHash = 'ACTIVATION_PENDING';
+    if (!mailer) {
+      temporaryPassword = crypto.randomBytes(12).toString('base64url');
+      passwordHash = await bcrypt.hash(temporaryPassword, 12);
+    } else {
+      token = crypto.randomBytes(32).toString('hex');
+      tokenHash = hashToken(token);
+    }
+
     await sequelize.transaction(async (transaction) => {
       await sequelize.query(
         `INSERT INTO users (id, role_id, email, password_hash, first_name, last_name)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        { replacements: [userId, role[0].id, schoolEmail, 'ACTIVATION_PENDING', application.first_name, application.last_name], transaction }
+        { replacements: [userId, role[0].id, schoolEmail, passwordHash, application.first_name, application.last_name], transaction }
       );
-      await sequelize.query(
-        `INSERT INTO account_activation_tokens (user_id, token_hash, expires_at)
-         VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
-        { replacements: [userId, tokenHash], transaction }
-      );
+      if (tokenHash) {
+        await sequelize.query(
+          `INSERT INTO account_activation_tokens (user_id, token_hash, expires_at)
+           VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
+          { replacements: [userId, tokenHash], transaction }
+        );
+      }
       await sequelize.query(
         `UPDATE enrollment_applications SET status = 'approved', user_id = ?, reviewed_at = NOW()
          WHERE id = ?`,
@@ -343,6 +370,9 @@ export const authService = {
       }
     });
 
+    if (!mailer) {
+      return { personalEmail: application.email, schoolEmail, temporaryPassword, emailSent: false };
+    }
     const activationUrl = `${env.clientUrl}/activate?token=${token}`;
     await mailer.sendMail({
       from: env.emailFrom,
@@ -351,7 +381,7 @@ export const authService = {
       text: `Your enrollment was approved. Your school email is ${schoolEmail}. Activate your CEC Portal account within 24 hours: ${activationUrl}`,
       html: `<p>Your enrollment was approved.</p><p>Your school email is <strong>${schoolEmail}</strong>.</p><p><a href="${activationUrl}">Activate your CEC Portal account</a></p><p>This link expires in 24 hours.</p>`
     });
-    return { personalEmail: application.email, schoolEmail };
+    return { personalEmail: application.email, schoolEmail, emailSent: true };
   },
 
   async activateAccount(token: string, password: string) {
@@ -376,6 +406,62 @@ export const authService = {
       );
     });
     return { email: records[0].email };
+  },
+
+  // Returning students/teachers: claim portal access with an existing
+  // 7-digit school ID (+ name match). Issues fresh credentials for login.
+  async claimAccount(input: { schoolId: string; fullName: string; personalEmail: string; phone: string }) {
+    const schoolId = (input.schoolId ?? '').trim();
+    if (!/^\d{7}$/.test(schoolId)) throw new Error('School ID must be 7 digits');
+    const nameParts = (input.fullName ?? '').trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length < 2 || !input.personalEmail?.includes('@') || !input.phone?.trim()) {
+      throw new Error('Full name, valid email and phone are required');
+    }
+    const firstGuess = nameParts[0].toLowerCase();
+    const lastGuess = nameParts[nameParts.length - 1].toLowerCase();
+    // Students first, then teachers
+    const studentRows = await sequelize.query<{ user_id: string; program: string }>(
+      `SELECT user_id, program FROM students WHERE student_number = ? LIMIT 1`,
+      { replacements: [schoolId], type: QueryTypes.SELECT }
+    );
+    const teacherRows = studentRows.length ? [] : await sequelize.query<{ user_id: string }>(
+      `SELECT user_id FROM teachers WHERE employee_number = ? LIMIT 1`,
+      { replacements: [schoolId], type: QueryTypes.SELECT }
+    );
+    const ownerId = studentRows.length || teacherRows.length
+      ? (studentRows[0]?.user_id ?? teacherRows[0]?.user_id)
+      : null;
+    if (!ownerId) throw new Error('No school record found for that ID — apply as a new enrollee instead');
+    const owners = await sequelize.query<{ id: string; email: string; first_name: string; last_name: string; role: string }>(
+      `SELECT u.id, u.email, u.first_name, u.last_name, r.name AS role
+       FROM users u JOIN roles r ON r.id = u.role_id
+       WHERE u.id = ? AND u.is_active = TRUE LIMIT 1`,
+      { replacements: [ownerId], type: QueryTypes.SELECT }
+    );
+    if (!owners.length) throw new Error('No school record found for that ID — apply as a new enrollee instead');
+    const owner = owners[0];
+    if (!owner.first_name.toLowerCase().includes(firstGuess) && !owner.last_name.toLowerCase().includes(lastGuess)) {
+      if (!owner.last_name.toLowerCase().includes(firstGuess) && !owner.first_name.toLowerCase().includes(lastGuess)) {
+        throw new Error('Name does not match our records for that school ID');
+      }
+    }
+    const temporaryPassword = crypto.randomBytes(12).toString('base64url');
+    const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+    await sequelize.query('UPDATE users SET password_hash = ?, phone = COALESCE(NULLIF(phone, \'\'), ?) WHERE id = ?', {
+      replacements: [passwordHash, input.phone.trim(), owner.id], type: QueryTypes.UPDATE,
+    });
+    let emailSent = false;
+    if (mailer) {
+      await mailer.sendMail({
+        from: env.emailFrom,
+        to: input.personalEmail.trim(),
+        subject: 'Your CEC School Portal credentials',
+        text: `School email: ${owner.email}. Temporary password: ${temporaryPassword}. Please change it after you sign in.`,
+        html: `<p>School email: <strong>${owner.email}</strong></p><p>Temporary password: <strong>${temporaryPassword}</strong></p><p>Please change it after you sign in.</p>`,
+      });
+      emailSent = true;
+    }
+    return { schoolEmail: owner.email, temporaryPassword, schoolId, emailSent, role: owner.role };
   },
 
   async loginWithGoogleIdToken(idToken: string) {

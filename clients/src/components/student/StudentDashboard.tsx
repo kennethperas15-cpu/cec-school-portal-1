@@ -114,8 +114,8 @@ const RequiredDocs = ({ col, onNotify, onUploaded }: { col: Col; onNotify: (t: s
   };
   const saveTypedId = () => {
     const v = typedId.trim();
-    if (!/^2\d{5}$/.test(v)) {
-      setIdError('School ID must be 6 digits starting with 2 (e.g. 201589).');
+    if (!/^2\d{6}$/.test(v)) {
+      setIdError('School ID must be 7 digits starting with 2 (e.g. 2414807).');
       return;
     }
     setIdError('');
@@ -139,14 +139,14 @@ const RequiredDocs = ({ col, onNotify, onUploaded }: { col: Col; onNotify: (t: s
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                   <strong>{d.title}</strong>
-                  <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>Type your 6-digit school ID (starts with 2) — no upload needed</div>
+                  <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>Type your 7-digit school ID (starts with 2) — no upload needed</div>
                   <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700, color: done ? '#15803d' : '#b45309' }}>
                     {done ? `✓ ${entry?.role}` : '○ Missing — enter below'}
                   </div>
                 </div>
               </div>
               <form style={{ display: 'flex', gap: 8, marginTop: 10, maxWidth: 480 }} onSubmit={(e) => { e.preventDefault(); saveTypedId(); }}>
-                <input style={inp} placeholder="e.g. 201589" value={typedId} onChange={(e) => { setTypedId(e.target.value.replace(/\D/g, '').slice(0, 6)); setIdError(''); }} inputMode="numeric" aria-label="School ID number" />
+                <input style={inp} placeholder="e.g. 2414807" value={typedId} onChange={(e) => { setTypedId(e.target.value.replace(/\D/g, '').slice(0, 7)); setIdError(''); }} inputMode="numeric" aria-label="School ID number" />
                 <button style={btn} type="submit">{done ? 'Update' : 'Save'}</button>
               </form>
               {idError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{idError}</div>}
@@ -315,12 +315,12 @@ const DocumentFlow = ({ col, onNotify }: { col: Col; onNotify: (t: string) => vo
   const submitAll = () => {
     if (!assessment) { onNotify('Upload the School Assessment first'); return; }
     const v = typedId.trim();
-    if (!savedId && !/^2\d{5}$/.test(v)) {
-      setIdError('Type your valid 6-digit school ID starting with 2.');
+    if (!savedId && !/^2\d{6}$/.test(v)) {
+      setIdError('Type your valid 7-digit school ID starting with 2.');
       return;
     }
     setIdError('');
-    if (/^2\d{5}$/.test(v)) {
+    if (/^2\d{6}$/.test(v)) {
       const label = `ID ${v} • Submitted ${new Date().toLocaleDateString()}`;
       if (savedId) col.update('school-id-doc', { name: 'School ID', role: label });
       else col.create({ id: 'school-id-doc', name: 'School ID', role: label });
@@ -350,11 +350,11 @@ const DocumentFlow = ({ col, onNotify }: { col: Col; onNotify: (t: string) => vo
       <div style={{ padding: '12px 0' }}>
         <div style={{ flex: 1 }}>
           <strong>2 • School ID</strong>
-          <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>Type your 6-digit school ID (starts with 2) — no upload needed</div>
+          <div style={{ fontSize: 12, color: '#6b7890', marginTop: 2 }}>Type your 7-digit school ID (starts with 2) — no upload needed</div>
           {savedId && <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700, color: '#15803d' }}>✓ {savedId.role}</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 10, maxWidth: 480 }}>
-          <input style={inp} placeholder={savedId ? savedId.role : 'e.g. 201589'} value={typedId} onChange={(e) => { setTypedId(e.target.value.replace(/\D/g, '').slice(0, 6)); setIdError(''); }} inputMode="numeric" aria-label="School ID number" />
+          <input style={inp} placeholder={savedId ? savedId.role : 'e.g. 2414807'} value={typedId} onChange={(e) => { setTypedId(e.target.value.replace(/\D/g, '').slice(0, 7)); setIdError(''); }} inputMode="numeric" aria-label="School ID number" />
           {savedId && <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => removeEntry('school-id-doc', 'School ID')}>Remove</button>}
         </div>
         {idError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{idError}</div>}
@@ -541,7 +541,13 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [expanded, setExpanded] = useState('home');
   const [collapsed, setCollapsed] = useState(false);
   const { dark, toggle } = useTheme();
-  const [profile, setProfile] = useState({ name: 'Juan Dela Cruz', id: 'CEC-2024-0015', course: 'BSIT - 3rd Year', email: 'juan.delacruz@cec.edu.ph', phone: '0917-123-4567', address: 'Colon St., Cebu City', guardian: 'Maria Dela Cruz - 0917-999-0000', emergency: 'Maria Dela Cruz (Mother) - 0917-999-0000 - Brgy. Tejero' });
+  const [profile, setProfile] = useState(() => {
+    try {
+      const raw = localStorage.getItem('cec:s_profile');
+      if (raw) return JSON.parse(raw);
+    } catch { /* fall through to defaults */ }
+    return { name: 'Juan Dela Cruz', id: 'CEC-2024-0015', course: 'BSIT - 3rd Year', email: 'juan.delacruz@cec.edu.ph', phone: '0917-123-4567', address: 'Colon St., Cebu City', guardian: 'Maria Dela Cruz - 0917-999-0000', emergency: 'Maria Dela Cruz (Mother) - 0917-999-0000 - Brgy. Tejero' };
+  });
   const subjects = useCollection<Rec>('s_subjects_v2', []);
   const schedule = useCollection<Rec>('s_schedule', [{ id: 'sch1', name: 'Mon 8:00-9:30 AM — CS 301', role: 'Lab 3 • Prof. Santos' }, { id: 'sch2', name: 'Tue 10:00-11:30 AM — CS 302', role: 'Lab 2 • Prof. Reyes' }]);
   const checklist = useCollection<Rec>('s_checklist', [{ id: 'IT101', name: 'IT 101 - Intro to Computing', role: 'done' }, { id: 'IT102', name: 'IT 102 - Programming 1', role: 'done' }, { id: 'IT201', name: 'IT 201 - Data Structures', role: 'pending' }]);
@@ -692,7 +698,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
             {photoError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{photoError}</div>}
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>{F('name', 'NAME')}{F('id', 'ID')}{F('course', 'COURSE')}{F('email', 'EMAIL')}{F('phone', 'PHONE')}{F('address', 'ADDRESS')}{F('guardian', 'GUARDIAN')}{F('emergency', 'EMERGENCY')}</div><div style={{ marginTop: 18 }}><button style={{ ...btn, borderRadius: 10 }} onClick={() => onNotify('Profile changes saved (Update)')}>Save Changes</button></div><div style={{ marginTop: 22, borderTop: '1px solid #eef1f6', paddingTop: 18 }}><ChangePassword identifier={currentUser?.email || profile.email || profile.id} onNotify={onNotify} /></div><Footer /></section>);
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>{F('name', 'NAME')}{F('id', 'ID')}{F('course', 'COURSE')}{F('email', 'EMAIL')}{F('phone', 'PHONE')}{F('address', 'ADDRESS')}{F('guardian', 'GUARDIAN')}{F('emergency', 'EMERGENCY')}</div><div style={{ marginTop: 18 }}><button style={{ ...btn, borderRadius: 10 }} onClick={() => { try { localStorage.setItem('cec:s_profile', JSON.stringify(profile)); } catch { /* ignore */ } onNotify('Profile changes saved'); }}>Save Changes</button></div><div style={{ marginTop: 22, borderTop: '1px solid #eef1f6', paddingTop: 18 }}><ChangePassword identifier={currentUser?.email || profile.email || profile.id} onNotify={onNotify} /></div><Footer /></section>);
     }
     if (active === 'Password Recovery') return (<section style={card}><h1 style={{ margin: 0 }}>Password Recovery</h1><form style={{ display: 'flex', gap: 10, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); onNotify('Recovery link sent'); }}><input required style={inp} placeholder="student@cec.edu.ph" /><button style={btn} type="submit">Send Link</button></form><Footer /></section>);
     if (active === 'Grades / Report Card') {

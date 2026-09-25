@@ -30,9 +30,9 @@ router.get('/google/login-callback', async (req, res, next) => {
 
 router.post('/enrollment', async (req, res, next) => {
   try {
-    const { fullName, personalEmail, phone, program, yearLevel, requestedRole, googleToken } = req.body as {
+    const { fullName, personalEmail, phone, program, yearLevel, requestedRole, googleToken, schoolId } = req.body as {
       fullName?: string; personalEmail?: string; phone?: string; program?: string; yearLevel?: number;
-      requestedRole?: 'student' | 'teacher' | 'admin'; googleToken?: string;
+      requestedRole?: 'student' | 'teacher' | 'admin'; googleToken?: string; schoolId?: string;
     };
     if (!fullName?.trim() || !personalEmail?.trim() || !phone?.trim() || !program?.trim() ||
       typeof yearLevel !== 'number' || !Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 6) {
@@ -43,7 +43,7 @@ router.post('/enrollment', async (req, res, next) => {
       res.status(400).json({ success: false, message: 'Invalid requested role' });
       return;
     }
-    const result = await authService.submitEnrollment({ fullName, personalEmail, phone, program, yearLevel, requestedRole, googleToken });
+    const result = await authService.submitEnrollment({ fullName, personalEmail, phone, program, yearLevel, requestedRole, googleToken, schoolId });
     res.status(201).json({
       success: true,
       data: result,
@@ -124,6 +124,28 @@ router.post('/change-password', async (req, res, next) => {
     if (error instanceof Error && (
       error.message.includes('required') || error.message.includes('at least 8') ||
       error.message.includes('different') || error.message.includes('incorrect') || error.message.includes('not found')
+    )) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.post('/claim', async (req, res, next) => {
+  try {
+    const { schoolId, fullName, personalEmail, phone } = req.body as {
+      schoolId?: string; fullName?: string; personalEmail?: string; phone?: string;
+    };
+    const result = await authService.claimAccount({
+      schoolId: schoolId ?? '', fullName: fullName ?? '',
+      personalEmail: personalEmail ?? '', phone: phone ?? '',
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes('7 digits') || error.message.includes('required') ||
+      error.message.includes('No school record') || error.message.includes('does not match')
     )) {
       res.status(400).json({ success: false, message: error.message });
       return;

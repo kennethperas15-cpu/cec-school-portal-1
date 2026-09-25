@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useCollection, uid, genSchoolId, isValidSchoolId, type SchoolRole } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
+import api from '../../services/api';
 import { pushNotification } from '../../services/notify';
 import { DOC_STAGES, SUBMIT_STAGES, listTrackedDocs, writeStage } from '../../services/docStages';
 import { pipelineBadges } from '../../services/pipeline';
@@ -78,6 +79,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [perms, setPerms] = useState<Record<string, boolean>>({ 'Teacher-Students': true, 'Teacher-Teachers': true, 'Admin-Students': true, 'Admin-Teachers': true, 'Admin-Finance': true, 'Admin-Admin': true });
   const [fn, setFn] = useState(''); const [fi, setFi] = useState(''); const [fr, setFr] = useState('student');
   const [enrN, setEnrN] = useState(''); const [enrM, setEnrM] = useState('BSIT • Applied');
+  const [walkN, setWalkN] = useState(''); const [walkE, setWalkE] = useState(''); const [walkP, setWalkP] = useState('');
   const [autoApprove, setAutoApprove] = useState(() => { try { return localStorage.getItem('cec:auto_approve') === '1'; } catch { return false; } });
   const [boxVal, setBoxVal] = useState('');
   const [remoteReceipts, setRemoteReceipts] = useState<{ id: string; title: string; detail?: string | null; status?: string | null }[]>([]);
@@ -218,7 +220,44 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Enrollment Approval</h1>
         <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}><div><strong>Auto-approve new applications: {autoApprove ? 'ON' : 'OFF'}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>Online + walk-in applications land here. Advance each one yourself: Docs ✓ → Approve → Enroll ✓. Nothing moves without a registrar click.</div><div style={{ display: 'flex', gap: 8, marginTop: 8 }}>{(() => { const p = pipelineBadges(); return (<><span style={{ ...pill, background: p.docs ? '#ecfdf5' : '#fff' }}>Registrar docs {p.docs ? '✓' : '—'}</span><span style={{ ...pill, background: p.pay ? '#ecfdf5' : '#fff' }}>Accounting pay {p.pay ? '✓' : '—'}</span></>); })()}</div></div><button style={autoApprove ? ghost : btn} onClick={toggleAuto}>{autoApprove ? 'Turn OFF' : 'Turn ON'}</button></div>
         <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Applicant</th><th style={{ padding: 12 }}>Detail</th><th style={{ padding: 12 }}>Decision</th></tr></thead><tbody>{enroll.list.map((a) => <tr key={a.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><PhotoAvatar userId={a.id} name={a.name} size={32} /><strong>{a.name} - {a.id}</strong></div></td><td style={{ padding: 12 }}>{a.meta}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8 }}><button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'approved')}>Approve</button><button style={{ background: '#0B3D91', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'enrolled')}>Enroll ✓</button><button style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'rejected')}>Reject</button><button style={ghost} onClick={() => {         openEditDialog('Edit detail', a.meta, (v) => { enroll.update(a.id, { meta: v }); onNotify('Updated'); }) }}>Edit</button></div></td></tr>)}{!enroll.list.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>Queue empty — new student applications will appear here.</td></tr>}</tbody></table></div>
-        <form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!enrN.trim()) return; const nid = genSchoolId('student'); enroll.create({ id: nid, name: enrN.trim(), meta: enrM }); try { const raw = localStorage.getItem('cec:s_enroll_apps'); const rows = raw ? (JSON.parse(raw) as { id: string; name: string; role: string }[]) : []; rows.push({ id: nid, name: `${enrM.split('•')[0].trim()} • walk-in`, role: 'Pending' }); localStorage.setItem('cec:s_enroll_apps', JSON.stringify(rows)); } catch { /* ignore */ } setEnrN(''); onNotify('Walk-in application created — visible in student tracker'); }}><input style={inp} placeholder="Applicant name" value={enrN} onChange={(e) => setEnrN(e.target.value)} /><input style={inp} value={enrM} onChange={(e) => setEnrM(e.target.value)} /><button style={btn} type="submit">Add walk-in</button></form>{footer}</section>);
+        <form style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }} onSubmit={async (e) => {
+          e.preventDefault();
+          if (!walkN.trim() || !walkE.trim()) { onNotify('Enter walk-in name and personal email'); return; }
+          const prog = enrM.split('•')[0].trim() || 'BSIT';
+          // EDP direct enroll: account issued on the spot, no queue wait
+          try {
+            const res = await api.post('/auth/enrollment', { fullName: walkN.trim(), personalEmail: walkE.trim(), phone: walkP.trim() || '09170000000', program: prog, yearLevel: 1, requestedRole: 'student' });
+            const d = res.data?.data ?? {};
+            setPopup({ title: 'Walk-in enrolled ✓', message: 'Hand these portal credentials to the student — they can sign in right away.', lines: [`Name: ${walkN.trim()}`, `School email: ${d.schoolEmail ?? '—'}`, `Temp password: ${d.temporaryPassword ?? '—'}`, `School ID: ${d.schoolId ?? '—'}`] });
+            onNotify('Walk-in student enrolled with portal access');
+          } catch (err) {
+            const apiErr = err as { response?: unknown };
+            if (apiErr.response) { onNotify('Enrollment failed — check details and try again'); return; }
+            // Offline: issue locally so the student still walks out with access
+            const nid = genSchoolId('student');
+            const temp = `CEC-${Math.floor(100000 + Math.random() * 900000)}`;
+            const mail = `${walkN.trim().toLowerCase().replace(/[^a-z\s.]/g, '').replace(/\s+/g, '.')}@cec.edu.ph`;
+            try {
+              const raw = localStorage.getItem('cec:registrations');
+              const rows = raw ? (JSON.parse(raw) as unknown[]) : [];
+              rows.push({ id: nid, fullName: walkN.trim(), personalEmail: walkE.trim(), phone: walkP.trim(), program: prog, yearLevel: 1, requestedRole: 'student', schoolEmail: mail, temporaryPassword: temp, createdAt: new Date().toISOString() });
+              localStorage.setItem('cec:registrations', JSON.stringify(rows));
+              const aRaw = localStorage.getItem('cec:a_accounts_v2');
+              const accs = aRaw ? (JSON.parse(aRaw) as unknown[]) : [];
+              accs.push({ id: nid, name: walkN.trim(), role: 'student' });
+              localStorage.setItem('cec:a_accounts_v2', JSON.stringify(accs));
+            } catch { /* ignore */ }
+            setPopup({ title: 'Walk-in enrolled ✓ (offline)', message: 'Hand these portal credentials to the student.', lines: [`Name: ${walkN.trim()}`, `School email: ${mail}`, `Temp password: ${temp}`, `School ID: ${nid}`] });
+            onNotify('Walk-in student enrolled (offline mode)');
+          }
+          setWalkN(''); setWalkE(''); setWalkP('');
+        }}>
+          <input style={{ ...inp, flex: 2, minWidth: 160 }} placeholder="Walk-in full name" value={walkN} onChange={(e) => setWalkN(e.target.value)} aria-label="Walk-in name" />
+          <input style={{ ...inp, flex: 2, minWidth: 160 }} placeholder="Personal email (Gmail)" value={walkE} onChange={(e) => setWalkE(e.target.value)} aria-label="Walk-in email" />
+          <input style={{ ...inp, flex: 1, minWidth: 120 }} placeholder="Phone" value={walkP} onChange={(e) => setWalkP(e.target.value)} aria-label="Walk-in phone" />
+          <button style={btn} type="submit">Enroll walk-in ✓</button>
+        </form>
+        <form style={{ display: 'flex', gap: 8, marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); if (!enrN.trim()) return; const nid = genSchoolId('student'); enroll.create({ id: nid, name: enrN.trim(), meta: enrM }); try { const raw = localStorage.getItem('cec:s_enroll_apps'); const rows = raw ? (JSON.parse(raw) as { id: string; name: string; role: string }[]) : []; rows.push({ id: nid, name: `${enrM.split('•')[0].trim()} • walk-in`, role: 'Pending' }); localStorage.setItem('cec:s_enroll_apps', JSON.stringify(rows)); } catch { /* ignore */ } setEnrN(''); onNotify('Walk-in application queued — approve above to enroll'); }}><input style={inp} placeholder="Queue applicant (no account yet)" value={enrN} onChange={(e) => setEnrN(e.target.value)} /><input style={inp} value={enrM} onChange={(e) => setEnrM(e.target.value)} /><button style={ghost} type="submit">Queue only</button></form>{footer}</section>);
     }
     if (active === 'Document Verification') {
       void docTick;
@@ -249,13 +288,13 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
         </div>
         {table('Accounts', ['Photo', 'ID', 'Name', 'Role', 'Actions'],
         accounts.list.map((a) => <tr key={a.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><PhotoAvatar userId={a.id} name={a.name} size={34} /></td><td style={{ padding: 12 }}>{a.id}</td><td style={{ padding: 12 }}><strong>{a.name}</strong><br /><small style={{ color: '#6b7890' }}>{a.id}</small></td><td style={{ padding: 12 }}>{a.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog('Edit name', a.name, (v) => { accounts.update(a.id, { name: v }); onNotify('Account updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { accounts.remove(a.id); onNotify('Account deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); if (!fn.trim() || !fi.trim()) { onNotify('Enter name and ID'); return; } const need: SchoolRole = fr === 'teacher' ? 'teacher' : fr === 'admin' ? 'admin' : 'student'; if (!isValidSchoolId(fi, need)) { onNotify(`ID must be 6 digits starting with ${need === 'student' ? '2' : need === 'teacher' ? '3' : '4'} for ${need}s`); return; } accounts.create({ id: fi.trim(), name: fn.trim(), role: fr }); setFn(''); setFi(''); onNotify('Account created'); }}><input style={inp} placeholder="Full Name" value={fn} onChange={(e) => setFn(e.target.value)} /><select style={inp} value={fr} onChange={(e) => { setFr(e.target.value); setFi(genSchoolId(e.target.value === 'teacher' ? 'teacher' : e.target.value === 'admin' ? 'admin' : 'student')); }} aria-label="Role"><option value="student">student (2xxxxx)</option><option value="teacher">teacher (3xxxxx)</option><option value="admin">admin (4xxxxx)</option></select><input style={inp} placeholder="6-digit ID (student 2•teacher 3•admin 4)" value={fi} onChange={(e) => setFi(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" /><button type="button" style={ghost} onClick={() => setFi(genSchoolId(fr === 'teacher' ? 'teacher' : fr === 'admin' ? 'admin' : 'student'))}>Auto ID</button><button style={{ ...btn, gridColumn: '1/-1' }} type="submit">Create Account</button></form>))}
+        (<form style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); if (!fn.trim() || !fi.trim()) { onNotify('Enter name and ID'); return; } const need: SchoolRole = fr === 'teacher' ? 'teacher' : fr === 'admin' ? 'admin' : 'student'; if (!isValidSchoolId(fi, need)) { onNotify(`ID must be 7 digits starting with ${need === 'student' ? '2' : need === 'teacher' ? '3' : '4'} for ${need}s`); return; } accounts.create({ id: fi.trim(), name: fn.trim(), role: fr }); setFn(''); setFi(''); onNotify('Account created'); }}><input style={inp} placeholder="Full Name" value={fn} onChange={(e) => setFn(e.target.value)} /><select style={inp} value={fr} onChange={(e) => { setFr(e.target.value); setFi(genSchoolId(e.target.value === 'teacher' ? 'teacher' : e.target.value === 'admin' ? 'admin' : 'student')); }} aria-label="Role"><option value="student">student (2xxxxxx)</option><option value="teacher">teacher (3xxxxxx)</option><option value="admin">admin (4xxxxxx)</option></select><input style={inp} placeholder="7-digit ID (student 2•teacher 3•admin 4)" value={fi} onChange={(e) => setFi(e.target.value.replace(/\D/g, '').slice(0, 7))} inputMode="numeric" /><button type="button" style={ghost} onClick={() => setFi(genSchoolId(fr === 'teacher' ? 'teacher' : fr === 'admin' ? 'admin' : 'student'))}>Auto ID</button><button style={{ ...btn, gridColumn: '1/-1' }} type="submit">Create Account</button></form>))}
       </section>);
     }
     if (active === 'Teacher Records') {
       return table('Teacher Records / Faculty Faces', ['Photo', 'Name', 'Load', 'Actions'],
         faculty.list.map((t) => <tr key={t.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><PhotoAvatar userId={t.id} name={t.name} size={38} /></td><td style={{ padding: 12 }}><strong>{t.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{t.id}</div></td><td style={{ padding: 12 }}>{t.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog('Edit record', t.name, (v) => { faculty.update(t.id, { name: v }); onNotify('Updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { faculty.remove(t.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim()) return; faculty.create({ id: genSchoolId('teacher'), name: boxVal.trim(), role: 'New hire • 6 units' }); setBoxVal(''); onNotify('Faculty record created with 3xxxxx ID'); }}><input style={inp} placeholder="Faculty name" value={boxVal} onChange={(e) => setBoxVal(e.target.value)} /><button style={btn} type="submit">Add</button></form>));
+        (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim()) return; faculty.create({ id: genSchoolId('teacher'), name: boxVal.trim(), role: 'New hire • 6 units' }); setBoxVal(''); onNotify('Faculty record created with 3xxxxxx ID'); }}><input style={inp} placeholder="Faculty name" value={boxVal} onChange={(e) => setBoxVal(e.target.value)} /><button style={btn} type="submit">Add</button></form>));
     }
     if (active === 'Broadcast Messaging' || active === 'System Announcements') {
       return table(active, ['Title', 'Detail', 'Actions'],

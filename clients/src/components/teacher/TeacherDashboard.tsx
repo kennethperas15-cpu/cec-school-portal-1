@@ -61,7 +61,13 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const sched = useCollection<{ id: string; title: string; when: string; where: string }>('t_sched_v2', []);
   const consults = useCollection<{ id: string; title: string; when: string; where: string }>('t_consult_v2', []);
   const messages = useCollection<{ id: string; title: string; when: string; where: string }>('t_messages_v2', []);
-  const [profile, setProfile] = useState({ name: 'Prof. Juan Santos - T-001', dept: 'BSIT Department • juan.santos@cec.edu.ph' });
+  const [profile, setProfile] = useState(() => {
+    try {
+      const raw = localStorage.getItem('cec:t_profile');
+      if (raw) return JSON.parse(raw);
+    } catch { /* fall through to defaults */ }
+    return { name: 'Prof. Juan Santos - T-001', dept: 'BSIT Department • juan.santos@cec.edu.ph' };
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [rosNm, setRosNm] = useState(''); const [rosEm, setRosEm] = useState('');
@@ -130,11 +136,11 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           {photoError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{photoError}</div>}
         </div>
       </div>
-      <div style={box}><input style={inp} value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} aria-label="Profile name" /><input style={{ ...inp, marginTop: 10 }} value={profile.dept} onChange={(e) => setProfile({ ...profile, dept: e.target.value })} aria-label="Department" /><div style={{ marginTop: 12 }}><button style={btn} onClick={() => onNotify('Teacher profile updated')}>Save</button></div></div><div style={{ marginTop: 18, borderTop: '1px solid #eef1f6', paddingTop: 16 }}><ChangePassword identifier={currentUser?.email || myPhotoId} onNotify={onNotify} /></div>{footer}</section>);
+      <div style={box}><input style={inp} value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} aria-label="Profile name" /><input style={{ ...inp, marginTop: 10 }} value={profile.dept} onChange={(e) => setProfile({ ...profile, dept: e.target.value })} aria-label="Department" /><div style={{ marginTop: 12 }}><button style={btn} onClick={() => { try { localStorage.setItem('cec:t_profile', JSON.stringify(profile)); } catch { /* ignore */ } onNotify('Teacher profile saved'); }}>Save</button></div></div><div style={{ marginTop: 18, borderTop: '1px solid #eef1f6', paddingTop: 16 }}><ChangePassword identifier={currentUser?.email || myPhotoId} onNotify={onNotify} /></div>{footer}</section>);
     if (active === 'Password Recovery') return (<section style={card}><h1 style={{ margin: 0 }}>Password Recovery</h1><form style={{ display: 'flex', gap: 10, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); onNotify('Recovery link sent'); }}><input required style={inp} placeholder="teacher@cec.edu.ph" /><button style={btn} type="submit">Send Link</button></form>{footer}</section>);
     if (active === 'Class List / Roster') {
       return crudTable({ title: 'Class List / Roster - BSIT-3A (CRUD)', columns: ['Photo', 'ID', 'Name', 'Course', 'Email', 'Actions'],
-        form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!rosNm.trim()) return; roster.create({ id: genSchoolId('student'), name: rosNm.trim(), course: 'BSIT-3A', email: rosEm.trim() || '-' }); setRosNm(''); setRosEm(''); onNotify('Student added with 2xxxxx ID'); }}><input style={inp} placeholder="Full name" value={rosNm} onChange={(e) => setRosNm(e.target.value)} /><input style={inp} placeholder="Email" value={rosEm} onChange={(e) => setRosEm(e.target.value)} /><button style={btn} type="submit">Add</button></form>),
+        form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!rosNm.trim()) return; roster.create({ id: genSchoolId('student'), name: rosNm.trim(), course: 'BSIT-3A', email: rosEm.trim() || '-' }); setRosNm(''); setRosEm(''); onNotify('Student added with 2xxxxxx ID'); }}><input style={inp} placeholder="Full name" value={rosNm} onChange={(e) => setRosNm(e.target.value)} /><input style={inp} placeholder="Email" value={rosEm} onChange={(e) => setRosEm(e.target.value)} /><button style={btn} type="submit">Add</button></form>),
         rows: roster.list.filter((r) => (r.name + r.id).toLowerCase().includes(q.toLowerCase())).map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><PhotoAvatar userId={r.id} name={r.name} size={34} /></td><td style={{ padding: 12 }}>{r.id}</td><td style={{ padding: 12 }}>{editingId === r.id ? <input style={inp} value={draft.name ?? ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /> : <><strong>{r.name}</strong><br /><small style={{ color: '#6b7890' }}>{r.id}</small></>}</td><td style={{ padding: 12 }}>{r.course}</td><td style={{ padding: 12 }}>{editingId === r.id ? <input style={inp} value={draft.email ?? ''} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /> : r.email}</td><td style={{ padding: 12 }}>{editingId === r.id ? <div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { roster.update(r.id, { name: draft.name ?? r.name, email: draft.email ?? r.email }); setEditingId(null); onNotify('Student updated'); }}>Save</button><button style={ghost} onClick={() => setEditingId(null)}>Cancel</button></div> : <RowActions onEdit={() => startEdit(r.id, { name: r.name, email: r.email })} onDelete={() => { roster.remove(r.id); onNotify('Student deleted'); }} />}</td></tr>) });
     }
     if (active === 'My Sections') {

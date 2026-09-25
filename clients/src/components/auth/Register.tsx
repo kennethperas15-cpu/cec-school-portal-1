@@ -36,6 +36,8 @@ export const Register: React.FC<RegisterProps> = ({
   const [licenseNo, setLicenseNo] = useState('');
   const [office, setOffice] = useState('Registrar Office');
   const [accountRole, setAccountRole] = useState<'student' | 'teacher' | 'admin'>('student');
+  const [applicantType, setApplicantType] = useState<'new' | 'old'>('new');
+  const [clearanceRef, setClearanceRef] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +53,54 @@ export const Register: React.FC<RegisterProps> = ({
 
     setError('');
     setSubmitting(true);
+
+    // Returning students/teachers: claim portal access with an existing school ID
+    if (applicantType === 'old') {
+      try {
+        const response = await api.post('/auth/claim', {
+          schoolId: schoolId.trim(),
+          fullName: fullName.trim(),
+          personalEmail: personalEmail.trim(),
+          phone: phone.trim(),
+          clearanceRef: clearanceRef.trim() || undefined,
+        });
+        const data: IssuedAccount = {
+          schoolEmail: response.data?.data?.schoolEmail,
+          temporaryPassword: response.data?.data?.temporaryPassword,
+          schoolId: response.data?.data?.schoolId ?? schoolId.trim(),
+          fullName: fullName.trim(),
+          emailSent: response.data?.data?.emailSent ?? false,
+        };
+        setIssuedAccount(data);
+        if (onNotify) onNotify('School account recovered — sign in with these credentials!');
+        if (onSuccess) onSuccess(data);
+      } catch (requestError) {
+        // Offline fallback: match a locally issued school ID + name
+        const apiError = requestError as { response?: { data?: { message?: string } } };
+        if (!apiError.response && fullName.trim() && personalEmail.trim()) {
+          try {
+            const raw = localStorage.getItem('cec:registrations');
+            const regs = raw ? (JSON.parse(raw) as { id?: string; fullName?: string; schoolEmail?: string; temporaryPassword?: string }[]) : [];
+            const hit = regs.find((r) => r.id === schoolId.trim());
+            const nameOk = hit && (hit.fullName ?? '').toLowerCase().includes(fullName.trim().split(/\s+/)[0].toLowerCase());
+            if (hit && nameOk) {
+              const fresh = `CEC-${Math.floor(100000 + Math.random() * 900000)}`;
+              hit.temporaryPassword = fresh;
+              localStorage.setItem('cec:registrations', JSON.stringify(regs));
+              const data: IssuedAccount = { schoolEmail: hit.schoolEmail ?? '', temporaryPassword: fresh, schoolId: hit.id, fullName: fullName.trim(), emailSent: false };
+              setIssuedAccount(data);
+              if (onNotify) onNotify('School account recovered (offline mode)!');
+              if (onSuccess) onSuccess(data);
+              return;
+            }
+          } catch { /* fall through to error */ }
+        }
+        setError(apiError.response?.data?.message ?? 'No school record found for that ID — apply as a new enrollee instead.');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     try {
       const response = await api.post('/auth/enrollment', {
@@ -90,12 +140,12 @@ export const Register: React.FC<RegisterProps> = ({
         const clean = fullName.trim().toLowerCase().replace(/[^a-z\s.]/g, '').replace(/\s+/g, '.');
         const schoolEmail = `${clean || 'student'}.${Math.floor(100 + Math.random() * 900)}@cec.edu.ph`;
         const temporaryPassword = `CEC-${Math.floor(100000 + Math.random() * 900000)}`;
-        // Keep a provided 6-digit ID (2 student • 3 teacher • 4 admin); otherwise issue one
+        // Keep a provided 7-digit ID (2 student • 3 teacher • 4 admin); otherwise issue one
         const lead = accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2';
         let studentId = schoolId.trim();
-        if (!new RegExp(`^${lead}\\d{5}$`).test(studentId)) {
+        if (!new RegExp(`^${lead}\\d{6}$`).test(studentId)) {
           studentId = lead;
-          for (let i = 0; i < 5; i++) studentId += Math.floor(Math.random() * 10).toString();
+          for (let i = 0; i < 6; i++) studentId += Math.floor(Math.random() * 10).toString();
         }
         try {
           const pushTo = (key: string, item: unknown) => {
@@ -187,7 +237,7 @@ export const Register: React.FC<RegisterProps> = ({
             </div>
 
             <div className="credential-row">
-              <span className="credential-label">School ID (6 digits)</span>
+              <span className="credential-label">School ID (7 digits)</span>
               <div className="credential-value-wrap">
                 <code className="credential-value">{issuedAccount.schoolId ?? '—'}</code>
                 {issuedAccount.schoolId && (
@@ -292,6 +342,26 @@ export const Register: React.FC<RegisterProps> = ({
 
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="auth-field">
+          <label>I am a <span className="required-star">*</span></label>
+          <div className="role-pills" role="tablist" aria-label="Applicant type">
+            <button type="button" role="tab" aria-selected={applicantType === 'new'}
+              className={`role-pill ${applicantType === 'new' ? 'active' : ''}`}
+              onClick={() => setApplicantType('new')}>
+              New Enrollee
+            </button>
+            <button type="button" role="tab" aria-selected={applicantType === 'old'}
+              className={`role-pill ${applicantType === 'old' ? 'active' : ''}`}
+              onClick={() => setApplicantType('old')}>
+              Old Student
+            </button>
+          </div>
+          <span className="field-hint">
+            {applicantType === 'new'
+              ? 'First time at CEC? You will be issued a school ID.'
+              : 'Already have a school ID? Claim portal access with assessment, clearance and school ID.'}
+          </span>
+        </div>
+        <div className="auth-field">
           <label>Applying as <span className="required-star">*</span></label>
           <div className="role-pills" role="tablist" aria-label="Account role">
             {(['student', 'teacher', 'admin'] as const).map((r) => (
@@ -302,7 +372,7 @@ export const Register: React.FC<RegisterProps> = ({
               </button>
             ))}
           </div>
-          <span className="field-hint">Teachers get a 3xxxxx ID, admins 4xxxxx — names appear automatically in every portal</span>
+          <span className="field-hint">Teachers get a 3xxxxxx ID, admins 4xxxxxx — names appear automatically in every portal</span>
         </div>
         <div className="auth-field">
           <label htmlFor="reg-fullname">
@@ -379,7 +449,7 @@ export const Register: React.FC<RegisterProps> = ({
         <div className="auth-form-row">
           <div className="auth-field">
             <label htmlFor="reg-school-id">
-              School ID <span className="field-hint">(if issued — 6 digits, starts with {accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2'})</span>
+              School ID {applicantType === 'old' ? <span className="required-star">*</span> : <span className="field-hint">(if issued — 7 digits, starts with {accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2'})</span>}
             </label>
             <div className="auth-input-wrap">
               <span className="auth-input-icon" aria-hidden="true">
@@ -393,13 +463,14 @@ export const Register: React.FC<RegisterProps> = ({
                 id="reg-school-id"
                 type="text"
                 inputMode="numeric"
+                required={applicantType === 'old'}
                 value={schoolId}
-                onChange={(e) => setSchoolId(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="e.g. 201589 (optional)"
+                onChange={(e) => setSchoolId(e.target.value.replace(/\D/g, '').slice(0, 7))}
+                placeholder="e.g. 2414807 (optional)"
                 autoComplete="off"
               />
             </div>
-            <span className="field-hint">Leave blank if this is your first application — one will be issued</span>
+            <span className="field-hint">{applicantType === 'old' ? 'Must match registrar records' : 'Leave blank if this is your first application — one will be issued'}</span>
           </div>
 
           <div className="auth-field">
@@ -426,7 +497,7 @@ export const Register: React.FC<RegisterProps> = ({
           </div>
         </div>
 
-        {accountRole === 'student' && (
+        {applicantType === 'new' && accountRole === 'student' && (
           <>
             <div className="auth-field">
               <label htmlFor="reg-program">Degree Program <span className="required-star">*</span></label>
@@ -476,7 +547,7 @@ export const Register: React.FC<RegisterProps> = ({
           </>
         )}
 
-        {accountRole === 'teacher' && (
+        {applicantType === 'new' && accountRole === 'teacher' && (
           <>
             <div className="auth-field">
               <label htmlFor="reg-dept">Department <span className="required-star">*</span></label>
@@ -523,7 +594,7 @@ export const Register: React.FC<RegisterProps> = ({
           </>
         )}
 
-        {accountRole === 'admin' && (
+        {applicantType === 'new' && accountRole === 'admin' && (
           <>
             <div className="auth-field">
               <label htmlFor="reg-office">Assigned Office <span className="required-star">*</span></label>
@@ -558,6 +629,34 @@ export const Register: React.FC<RegisterProps> = ({
           </>
         )}
 
+        {applicantType === 'old' && (
+          <>
+            <div className="auth-field">
+              <label htmlFor="reg-clearance">Clearance Reference No. <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                </span>
+                <input id="reg-clearance" type="text" required value={clearanceRef} onChange={(e) => setClearanceRef(e.target.value)} placeholder="e.g. CLR-2026-00123" autoComplete="off" />
+              </div>
+              <span className="field-hint">From your previous term clearance • assessment files upload after first sign-in</span>
+            </div>
+          </>
+        )}
+
+        {applicantType === 'new' && (
+          <div className="auth-info-box">
+            <div>
+              <strong>New enrollees — prepare these for verification</strong>
+              <p>PSA birth certificate • Report card / TOR • Certificate of good moral character. You will upload them under Enrollment → Document Submission after your account is issued.</p>
+            </div>
+          </div>
+        )}
+
         <div className="auth-checkbox-row">
           <label className="auth-checkbox-label">
             <input
@@ -579,10 +678,10 @@ export const Register: React.FC<RegisterProps> = ({
           {submitting ? (
             <span className="auth-btn-loading">
               <span className="auth-spinner" />
-              Issuing School Account...
+              {applicantType === 'old' ? 'Verifying school records...' : 'Issuing School Account...'}
             </span>
           ) : (
-            'Submit Application & Issue Account'
+            applicantType === 'old' ? 'Verify Records & Claim Account' : 'Submit Application & Issue Account'
           )}
         </button>
 

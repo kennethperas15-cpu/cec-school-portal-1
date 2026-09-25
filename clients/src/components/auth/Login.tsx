@@ -1,11 +1,5 @@
-import React, { useState, useEffect, useRef, type FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 import api from '@/services/api';
-import { ensureSchoolId } from '@/services/crud';
-import { setPhoto as saveProfilePhoto, getPhoto as readProfilePhoto } from '@/services/photos';
-
-const GOOGLE_CLIENT_ID = ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_GOOGLE_CLIENT_ID ?? '')
-  // Public identifier (safe to ship): lets production builds render the Google button.
-  || '955227893108-jhsaaq79ko2jck7i91mcehpp6b3na6jl.apps.googleusercontent.com';
 
 export interface UserAuthData {
   firstName: string;
@@ -36,14 +30,16 @@ export const Login: React.FC<LoginProps> = ({
   prefillPassword = '',
   onNotify,
 }) => {
-  const [role, setRole] = useState<'Student' | 'Teacher' | 'Admin'>('Student');
   const [identifier, setIdentifier] = useState(prefillIdentifier);
   const [password, setPassword] = useState(prefillPassword);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  // Single school-account sign-in: teachers and admins use the personal
+  // school account issued by admin — role always comes from the server
+  // (or the stored registration offline), never from a tab choice.
+  const role = 'Student';
 
   useEffect(() => {
     try {
@@ -132,192 +128,14 @@ export const Login: React.FC<LoginProps> = ({
     }
   };
 
-  const verifyViaGoogle = async (idToken: string) => {
-    // Static-hosting fallback: ask Google itself (authoritative) — no backend needed.
-    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
-    if (!res.ok) throw new Error('Google token check failed');
-    const info = (await res.json()) as { aud?: string; exp?: string; email?: string; email_verified?: string | boolean; given_name?: string; family_name?: string; picture?: string };
-    if (info.aud !== GOOGLE_CLIENT_ID) throw new Error('Token audience mismatch');
-    if (info.exp && Number(info.exp) * 1000 < Date.now()) throw new Error('Google session expired');
-    if (info.email_verified !== 'true' && info.email_verified !== true) throw new Error('A verified Google account is required');
-    if (!info.email) throw new Error('Google did not return an email address');
-    return info;
-  };
-
-  const handleGoogleCredential = async (credentialResponse: { credential?: string }) => {
-    const idToken = credentialResponse?.credential;
-    if (!idToken) {
-      setError('Google sign-in was cancelled. Please try again.');
-      return;
-    }
-    setGoogleLoading(true);
-    setError('');
-    try {
-      const response = await api.post('/auth/google/id-token', { idToken });
-      const user = response.data?.data?.user;
-      const token = response.data?.data?.token ?? response.data?.data?.accessToken;
-      if (!user) throw new Error('Google sign-in did not return an account.');
-      const refreshToken = response.data?.data?.refreshToken;
-      if (token) sessionStorage.setItem('cec_access_token', token);
-      if (refreshToken) sessionStorage.setItem('cec_refresh_token', refreshToken);
-      // Same person, same school ID: if this Gmail already has a school
-      // account (applied/registered), reuse its ID and role instead of the new UUID.
-      let googleId = user.id as string | undefined;
-      let googleRole: 'student' | 'teacher' | 'admin' = user.role === 'teacher' || user.role === 'admin' ? user.role : 'student';
-      try {
-        const raw = localStorage.getItem('cec:registrations');
-        const regs = raw ? (JSON.parse(raw) as { id?: string; personalEmail?: string; requestedRole?: string }[]) : [];
-        const match = regs.find((r) => r.personalEmail?.toLowerCase() === String(user.email ?? '').toLowerCase());
-        if (match?.id) {
-          googleId = match.id;
-          if (match.requestedRole === 'teacher' || match.requestedRole === 'admin') googleRole = match.requestedRole;
-        }
-      } catch { /* ignore — fall through to UUID */ }
-      googleId = ensureSchoolId(googleId, googleRole);
-      // Show the Google account picture everywhere avatars appear
-      // (manual uploads take precedence — only fill when empty)
-      if (user.picture && googleId && !readProfilePhoto(googleId)) saveProfilePhoto(googleId, user.picture);
-      if (onNotify) onNotify(`Welcome back, ${user.firstName}!`);
-      if (onSuccess) onSuccess({ firstName: user.firstName, lastName: user.lastName, role: googleRole, id: googleId, email: user.email, picture: user.picture });
-    } catch (err) {
-      // Backend unreachable (e.g. static GitHub Pages): verify with Google directly.
-      try {
-        const info = await verifyViaGoogle(idToken);
-        const gmail = String(info.email).toLowerCase();
-        let regs: { id?: string; fullName?: string; personalEmail?: string; requestedRole?: string }[] = [];
-        try {
-          const raw = localStorage.getItem('cec:registrations');
-          regs = raw ? JSON.parse(raw) : [];
-        } catch { regs = []; }
-        const match = regs.find((r) => r.personalEmail?.toLowerCase() === gmail);
-        const gRole = match?.requestedRole === 'teacher' || match?.requestedRole === 'admin' ? match.requestedRole : 'student';
-        const gId = ensureSchoolId(match?.id, gRole);
-        const fullName = match?.fullName || `${info.given_name ?? ''} ${info.family_name ?? ''}`.trim() || gmail.split('@')[0];
-        if (!match) {
-          regs.push({ id: gId, fullName, personalEmail: gmail, requestedRole: gRole });
-          try { localStorage.setItem('cec:registrations', JSON.stringify(regs)); } catch { /* ignore */ }
-        }
-        if (info.picture && !readProfilePhoto(gId)) saveProfilePhoto(gId, info.picture);
-        const parts = fullName.trim().split(/\s+/);
-        const gUser: UserAuthData = {
-          firstName: parts[0] ?? 'New', lastName: parts.slice(1).join(' ') || 'Student',
-          role: gRole, id: gId, email: gmail, picture: info.picture,
-        };
-        if (onNotify) onNotify(`Welcome back, ${gUser.firstName}!`);
-        if (onSuccess) onSuccess(gUser);
-        return;
-      } catch {
-        const apiError = err as { response?: { data?: unknown; status?: number } };
-        const data = apiError.response?.data as { message?: string } | undefined;
-        const needsServer = !apiError.response || typeof apiError.response.data === 'string' || apiError.response.status === 404;
-        setError(needsServer
-          ? 'Google sign-in needs the portal API server (port 4000) running — it cannot verify on the static GitHub Pages site. Use the localhost setup for the Google demo.'
-          : data?.message ?? 'Google sign-in failed. The server may need GOOGLE_CLIENT_ID configured.');
-      }
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const googleButtonRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !googleButtonRef.current) return;
-    let cancelled = false;
-    const renderButton = () => {
-      const g = (window as unknown as { google?: { accounts?: { id?: { initialize: (o: object) => void; renderButton: (el: HTMLElement, o: object) => void } } } }).google;
-      if (!g?.accounts?.id || !googleButtonRef.current || cancelled) return false;
-      g.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential, auto_select: false });
-      googleButtonRef.current.innerHTML = '';
-      g.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large', width: 300, text: 'signin_with' });
-      return true;
-    };
-    if (renderButton()) return () => { cancelled = true; };
-    const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]') ?? (() => {
-      const s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client';
-      s.async = true;
-      s.defer = true;
-      document.head.appendChild(s);
-      return s;
-    })();
-    script.addEventListener('load', renderButton, { once: true });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [GOOGLE_CLIENT_ID]);
-
-  const handleGoogleLogin = async () => {
-    // No Google Client ID configured → fall back to server OAuth URL flow (shows setup error gracefully)
-    if (!GOOGLE_CLIENT_ID) {
-      setGoogleLoading(true);
-      setError('');
-      try {
-        const response = await api.post('/auth/google/login-url');
-        if (response.data?.url) {
-          window.location.assign(response.data.url);
-        } else {
-          setError('Google Login service is currently unavailable.');
-        }
-      } catch (err) {
-        const apiError = err as { response?: { data?: { message?: string } } };
-        setError(apiError.response?.data?.message ?? 'Google Login needs the portal API server (port 4000) running — unavailable on the static site.');
-      } finally {
-        setGoogleLoading(false);
-      }
-      return;
-    }
-    // GIS button is rendered below; this fallback triggers One Tap prompt
-    const g = (window as unknown as { google?: { accounts?: { id?: { prompt: () => void } } } }).google;
-    if (g?.accounts?.id) g.accounts.id.prompt();
-    else setError('Google script is still loading. Please wait a moment and try again.');
-  };
-
   return (
     <div className={`auth-panel-content ${className}`}>
       <div className="auth-heading">
         <h2 className="auth-title">Sign In to CEC Portal</h2>
         <p className="auth-subtitle">
-          Access your grades, enrollment records, class schedules, and institutional services.
+          Sign in with your school ID or school email and password.
         </p>
       </div>
-
-      {/* Role Tabs */}
-      <div className="role-pills" role="tablist" aria-label="Sign-in role">
-        {(['Student', 'Teacher', 'Admin'] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            role="tab"
-            aria-selected={role === item}
-            className={`role-pill ${role === item ? 'active' : ''}`}
-            onClick={() => {
-              setRole(item);
-              setError('');
-            }}
-          >
-            {item === 'Student' && (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                <path d="M6 12v5c3 3 9 3 12 0v-5" />
-              </svg>
-            )}
-            {item === 'Teacher' && (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              </svg>
-            )}
-            {item === 'Admin' && (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-            )}
-            <span>{item === 'Teacher' ? 'Faculty' : item}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Quick Demo Autofill removed — sign in with an issued school account or Google. */}
 
       {error && (
         <div className="auth-alert auth-alert-error" role="alert">
@@ -349,13 +167,7 @@ export const Login: React.FC<LoginProps> = ({
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder={
-                role === 'Student'
-                  ? 'e.g. CEC-2024-0015 or student@cec.edu.ph'
-                  : role === 'Teacher'
-                  ? 'e.g. T-001 or faculty@cec.edu.ph'
-                  : 'e.g. ADMIN or admin@cec.edu.ph'
-              }
+              placeholder="e.g. 7-digit school ID or school email"
               autoComplete="username"
             />
           </div>
@@ -437,54 +249,9 @@ export const Login: React.FC<LoginProps> = ({
               Authenticating...
             </span>
           ) : (
-            `Sign In as ${role}`
+            'Sign In'
           )}
         </button>
-
-        {/* Google SSO Divider & Button */}
-        <div className="auth-divider">
-          <span>or continue with</span>
-        </div>
-
-        {GOOGLE_CLIENT_ID ? (
-          <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
-            <div ref={googleButtonRef} aria-label="Sign in with Google" style={{ minHeight: 40 }} />
-            {googleLoading && <span style={{ fontSize: 12, color: '#64748B' }}>Verifying Google account...</span>}
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="auth-btn auth-btn-google"
-            onClick={handleGoogleLogin}
-            disabled={googleLoading}
-            title="Admin setup required: VITE_GOOGLE_CLIENT_ID"
-          >
-          <svg className="google-icon" width="18" height="18" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-            />
-          </svg>
-          <span>{googleLoading ? 'Connecting...' : 'Sign in with Google Account'}</span>
-        </button>
-        )}
-        {!GOOGLE_CLIENT_ID && (
-          <p style={{ margin: '8px 0 0', fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>
-            Google button activates after admin adds <code>VITE_GOOGLE_CLIENT_ID</code> — see <code>docs/Google_Login_Setup.md</code>
-          </p>
-        )}
 
         {/* Footer switch to Register */}
         {onSwitchToRegister && (

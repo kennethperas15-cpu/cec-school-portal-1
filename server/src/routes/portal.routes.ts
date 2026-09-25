@@ -5,6 +5,7 @@ import { sequelize } from '../config/database.js';
 import { authmiddlewareMiddleware } from '../middleware/auth.middleware.js';
 import { requireRoles } from '../middleware/rbac.middleware.js';
 import { writeAuditLog } from '../services/audit.service.js';
+import { authService } from '../services/auth.service.js';
 
 const router = Router();
 
@@ -70,12 +71,19 @@ router.post('/enrollments/:id/decide', authmiddlewareMiddleware, requireRoles('a
       res.status(400).json({ success: false, message: 'Decision must be approved or rejected' });
       return;
     }
-    await sequelize.query(
-      `UPDATE enrollment_applications SET status = ?, reviewed_at = NOW() WHERE id = ? AND status = 'pending'`,
-      { replacements: [decision, id], type: QueryTypes.UPDATE }
-    );
-    await writeAuditLog(req, { action: `Enrollment ${decision}`, targetType: 'EnrollmentApplication', targetId: id, newValue: { status: decision } });
-    res.json({ success: true, data: { id, status: decision } });
+    if (decision === 'rejected') {
+      await sequelize.query(
+        `UPDATE enrollment_applications SET status = ?, reviewed_at = NOW() WHERE id = ? AND status = 'pending'`,
+        { replacements: [decision, id], type: QueryTypes.UPDATE }
+      );
+      await writeAuditLog(req, { action: 'Enrollment rejected', targetType: 'EnrollmentApplication', targetId: id, newValue: { status: decision } });
+      res.json({ success: true, data: { id, status: decision } });
+      return;
+    }
+    // Approved: full provisioning — users + students rows, not just a status flip
+    const provisioned = await authService.approveEnrollment(id);
+    await writeAuditLog(req, { action: 'Enrollment approved', targetType: 'EnrollmentApplication', targetId: id, newValue: { status: 'approved', schoolEmail: provisioned.schoolEmail } });
+    res.json({ success: true, data: { id, status: 'approved', ...provisioned } });
   } catch (error) { next(error); }
 });
 
