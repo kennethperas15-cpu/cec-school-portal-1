@@ -5,12 +5,31 @@ import type { UserAuthData } from './components/auth/Login';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AISupport } from './components/shared/AISupport';
+import { ensureSchoolId } from './services/crud';
 import './styles.css';
 import './login.css';
 
 const roleOf = (role: string): 'student' | 'teacher' | 'admin' => {
   if (role === 'teacher' || role === 'admin') return role;
   return 'student';
+};
+
+// One person, one school ID: prefer the official school number from the
+// server, else the issued local account, then enforce 7-digit role IDs
+// (2 student • 3 teacher • 4 admin).
+const adoptSchoolIdentity = (u: UserAuthData): UserAuthData => {
+  const role = roleOf(u.role);
+  let id = u.schoolId;
+  if (!id) {
+    try {
+      const raw = localStorage.getItem('cec:registrations');
+      const regs = raw ? (JSON.parse(raw) as { id?: string; personalEmail?: string }[]) : [];
+      const match = regs.find((r) => r.personalEmail?.toLowerCase() === String(u.email ?? '').toLowerCase());
+      if (match?.id) id = match.id;
+    } catch { /* keep server identity */ }
+    if (!id) id = u.id;
+  }
+  return { ...u, role, id: ensureSchoolId(id, role) };
 };
 
 export const App = () => {
@@ -30,7 +49,7 @@ export const App = () => {
   };
 
   if (!currentUser) {
-    return <AuthContainer onLoginSuccess={setCurrentUser} onNotify={notify} />;
+    return <AuthContainer onLoginSuccess={(u) => setCurrentUser(adoptSchoolIdentity(u))} onNotify={notify} />;
   }
 
   const props = { currentUser, onNotify: notify, onLogout: logout };

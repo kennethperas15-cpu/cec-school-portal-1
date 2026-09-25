@@ -669,10 +669,24 @@
   .auth-page {
     padding: 16px;
     align-items: start;
+    overflow-x: clip;
   }
 
   .auth-card {
     grid-template-columns: 1fr;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .auth-panel-content,
+  .auth-form,
+  .auth-field,
+  .auth-input-wrap {
+    min-width: 0;
+  }
+
+  .auth-title {
+    font-size: 24px;
   }
 
   .auth-hero {
@@ -694,5 +708,23 @@
 
   .issued-actions {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-page {
+    padding: 12px;
+  }
+
+  .auth-form-column {
+    padding: 20px 14px 14px;
+  }
+
+  .auth-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-input-wrap input {
+    font-size: 16px;
   }
 }

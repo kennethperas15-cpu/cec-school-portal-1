@@ -9,6 +9,7 @@ export interface UserAuthData {
   email?: string;
   program?: string;
   picture?: string;
+  schoolId?: string;
 }
 
 interface LoginProps {

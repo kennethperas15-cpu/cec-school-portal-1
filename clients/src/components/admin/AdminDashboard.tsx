@@ -58,6 +58,12 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('home');
   const [collapsed, setCollapsed] = useState(false);
+  // Mobile: start shut, auto-close after each navigation so content is usable
+  useEffect(() => {
+    try {
+      if (window.innerWidth < 800) setCollapsed(true);
+    } catch { /* non-browser render */ }
+  }, [active]);
   const { dark, toggle } = useTheme();
   // v2 stores: pre-launch — no demo students, teachers, or payments (all start empty)
   const enroll = useCollection<{ id: string; name: string; meta: string }>('a_enroll_v2', []);

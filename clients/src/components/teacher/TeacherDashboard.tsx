@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCollection, uid, genSchoolId } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
@@ -45,6 +45,12 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('home');
   const [collapsed, setCollapsed] = useState(false);
+  // Mobile: start shut, auto-close after each navigation so content is usable
+  useEffect(() => {
+    try {
+      if (window.innerWidth < 800) setCollapsed(true);
+    } catch { /* non-browser render */ }
+  }, [active]);
   const { dark, toggle } = useTheme();
   const [q, setQ] = useState('');
   const roster = useCollection<{ id: string; name: string; course: string; email: string }>('t_roster_v2', []);
@@ -106,8 +112,17 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const startEdit = (id: string, values: Record<string, string>) => { setEditingId(id); setDraft(values); };
   const footer = (<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}><span style={pill}>CEC Blue #0B3D91 • Gold #FFC928</span><span style={pill}>CRUD • localStorage persisted</span><span style={pill}>Thesis Ready • Toast + Audit Log</span></div>);
 
-  const crudTable = (opts: { title: string; columns: string[]; rows: React.ReactNode; form?: React.ReactNode }) => (
-    <section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>{opts.title}</h1>{opts.form}<div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}>{opts.columns.map((c) => <th key={c} style={{ padding: '12px 14px' }}>{c}</th>)}</tr></thead><tbody>{opts.rows}</tbody></table></div>{footer}</section>
+  const crudTable = (opts: { title: string; columns: string[]; rows: React.ReactNode; form?: React.ReactNode; note?: React.ReactNode }) => (
+    <section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>{opts.title}</h1>{opts.form}{opts.note}<div style={{ ...box, padding: 0, overflow: 'hidden', marginTop: opts.note ? 12 : undefined }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}>{opts.columns.map((c) => <th key={c} style={{ padding: '12px 14px' }}>{c}</th>)}</tr></thead><tbody>{opts.rows}</tbody></table></div>{footer}</section>
+  );
+
+  const phScaleNote = (
+    <p style={{ margin: '10px 0 0', fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
+      PH college scale — type a <strong>percent</strong> (75–100) or a <strong>point</strong> (1.00–5.00):
+      97–100 → 1.00 Excellent · 94–96 → 1.25 · 91–93 → 1.50 · 88–90 → 1.75 ·
+      85–87 → 2.00 · 82–84 → 2.25 · 79–81 → 2.50 · 76–78 → 2.75 · 75 → 3.00 (passing) ·
+      below 75 → 5.00 Failure.
+    </p>
   );
 
   const render = () => {
@@ -151,12 +166,12 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     if (active === 'Student Lookup') return (<section style={card}><h1 style={{ margin: 0 }}>Student Information Lookup</h1><input style={{ ...inp, marginTop: 14, maxWidth: 560 }} placeholder="Search ID or name..." value={q} onChange={(e) => setQ(e.target.value)} /><div style={box}>{roster.list.filter((r) => (r.name + r.id).toLowerCase().includes(q.toLowerCase())).map((r) => <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><PhotoAvatar userId={r.id} name={r.name} size={32} /><div style={{ flex: 1 }}><strong>{r.name}</strong> • {r.id} • {r.email}</div><button style={ghost} onClick={() => { roster.remove(r.id); onNotify('Student deleted from lookup'); }}>Delete</button></div>)}</div>{footer}</section>);
     if (active === 'Seating Chart') return (<section style={card}><h1 style={{ margin: 0 }}>Seating Chart (CRUD order)</h1><div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 14 }}>{roster.list.map((r) => <div key={r.id} style={{ background: '#eef4ff', borderRadius: 10, padding: 14, textAlign: 'center', fontSize: 13 }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}><PhotoAvatar userId={r.id} name={r.name} size={40} /></div><strong>{r.name}</strong><div><button style={ghost} onClick={() => { roster.remove(r.id); onNotify('Seat removed'); }}>Remove</button></div></div>)}</div><div style={{ marginTop: 12 }}><button style={btn} onClick={() => onNotify('Seating saved')}>Save Arrangement</button></div>{footer}</section>);
     if (active === 'Grade Encoding') {
-      return crudTable({ title: 'Grade Encoding — PH 1.00–5.00 (CRUD)', columns: ['Student', 'Prelim %', 'Midterm %', 'Final %', 'Average', 'Point', 'Remarks', 'Actions'],
-        form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!grdSt.trim()) return; grades.create({ id: uid('g'), student: grdSt.trim(), prelim: grdMid, midterm: grdMid, final: '', locked: '' }); setGrdSt(''); setGrdMid(''); onNotify('Grade row created'); }}><input style={inp} placeholder="Student name" value={grdSt} onChange={(e) => setGrdSt(e.target.value)} /><input style={inp} placeholder="Midterm %" type="number" min={60} max={100} value={grdMid} onChange={(e) => setGrdMid(e.target.value)} /><button style={btn} type="submit">Add</button></form>),
+      return crudTable({ title: 'Grade Encoding — PH 1.00–5.00 (CRUD)', note: phScaleNote, columns: ['Student', 'Prelim % / Pt', 'Midterm % / Pt', 'Final % / Pt', 'Average', 'Point', 'Remarks', 'Actions'],
+        form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!grdSt.trim()) return; grades.create({ id: uid('g'), student: grdSt.trim(), prelim: grdMid, midterm: grdMid, final: '', locked: '' }); setGrdSt(''); setGrdMid(''); onNotify('Grade row created'); }}><input style={inp} placeholder="Student name" value={grdSt} onChange={(e) => setGrdSt(e.target.value)} /><input style={inp} placeholder="Midterm % or point (1.00–5.00)" type="number" min={1} max={100} step={0.25} value={grdMid} onChange={(e) => setGrdMid(e.target.value)} /><button style={btn} type="submit">Add</button></form>),
         rows: grades.list.map((g) => {
           const avg = averagePercent([g.prelim, g.midterm, g.final]);
           const gp = avg === null ? null : percentToPoint(avg);
-          return <tr key={g.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><PhotoAvatar userId={g.id} name={g.student} size={30} /><strong>{g.student}</strong></div>{g.locked && <span style={{ ...pill, marginLeft: 8 }}>Locked</span>}</td>{(['prelim', 'midterm', 'final'] as const).map((f) => <td key={f} style={{ padding: 12 }}><input style={{ ...inp, width: 80 }} value={(g as Record<string, string>)[f] ?? ''} disabled={!!g.locked} type="number" min={60} max={100} onChange={(e) => grades.update(g.id, { [f]: e.target.value } as Partial<typeof g>)} aria-label={`${f} grade percent`} /></td>)}<td style={{ padding: 12, fontWeight: 800 }}>{avg === null ? '—' : `${avg.toFixed(1)}%`}</td><td style={{ padding: 12, fontWeight: 800, color: gp && gp.point === 5 ? '#b91c1c' : '#0B3D91' }}>{gp ? formatPoint(gp.point) : '—'}</td><td style={{ padding: 12 }}><span style={{ background: gp && gp.remarks === 'PASSED' ? '#dcfce7' : '#fee2e2', color: gp && gp.remarks === 'PASSED' ? '#15803d' : '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>{gp ? gp.remarks : '—'}</span></td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { grades.update(g.id, g.locked ? { locked: '' } : { locked: '1' }); onNotify(g.locked ? 'Grade unlocked' : 'Grade locked/finalized'); }}>{g.locked ? 'Unlock' : 'Lock'}</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { grades.remove(g.id); onNotify('Grade deleted'); }}>Delete</button></div></td></tr>;
+          return <tr key={g.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><PhotoAvatar userId={g.id} name={g.student} size={30} /><strong>{g.student}</strong></div>{g.locked && <span style={{ ...pill, marginLeft: 8 }}>Locked</span>}</td>{(['prelim', 'midterm', 'final'] as const).map((f) => <td key={f} style={{ padding: 12 }}><input style={{ ...inp, width: 80 }} value={(g as Record<string, string>)[f] ?? ''} disabled={!!g.locked} type="number" min={1} max={100} step={0.25} onChange={(e) => grades.update(g.id, { [f]: e.target.value } as Partial<typeof g>)} aria-label={`${f} grade — percent or 1.00–5.00 point`} /></td>)}<td style={{ padding: 12, fontWeight: 800 }}>{avg === null ? '—' : `${avg.toFixed(1)}%`}</td><td style={{ padding: 12, fontWeight: 800, color: gp && gp.point === 5 ? '#b91c1c' : '#0B3D91' }}>{gp ? formatPoint(gp.point) : '—'}</td><td style={{ padding: 12 }}><span style={{ background: gp && gp.remarks === 'PASSED' ? '#dcfce7' : '#fee2e2', color: gp && gp.remarks === 'PASSED' ? '#15803d' : '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>{gp ? gp.remarks : '—'}</span></td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { grades.update(g.id, g.locked ? { locked: '' } : { locked: '1' }); onNotify(g.locked ? 'Grade unlocked' : 'Grade locked/finalized'); }}>{g.locked ? 'Unlock' : 'Lock'}</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { grades.remove(g.id); onNotify('Grade deleted'); }}>Delete</button></div></td></tr>;
         }) });
     }
     if (active === 'Exam Creation') {

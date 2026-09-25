@@ -180,9 +180,10 @@ export const authService = {
     const users = await sequelize.query<{
       id: string; email: string; password_hash: string; first_name: string; last_name: string; role: string;
       failed_login_attempts: number; locked_until: Date | null;
+      student_number: string | null; employee_number: string | null;
     }>(
       `SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, r.name AS role,
-              u.failed_login_attempts, u.locked_until
+              u.failed_login_attempts, u.locked_until, s.student_number, t.employee_number
        FROM users u JOIN roles r ON r.id = u.role_id
        LEFT JOIN students s ON s.user_id = u.id
        LEFT JOIN teachers t ON t.user_id = u.id
@@ -222,7 +223,8 @@ export const authService = {
         email: users[0].email,
         firstName: users[0].first_name,
         lastName: users[0].last_name,
-        role: users[0].role
+        role: users[0].role,
+        schoolId: users[0].student_number ?? users[0].employee_number ?? undefined
       }
     };
   },

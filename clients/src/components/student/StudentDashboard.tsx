@@ -540,6 +540,12 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('home');
   const [collapsed, setCollapsed] = useState(false);
+  // Mobile: start shut, auto-close after each navigation so content is usable
+  useEffect(() => {
+    try {
+      if (window.innerWidth < 800) setCollapsed(true);
+    } catch { /* non-browser render */ }
+  }, [active]);
   const { dark, toggle } = useTheme();
   const [profile, setProfile] = useState(() => {
     try {
@@ -669,7 +675,19 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         + readOfficialAssessment().reduce((sum, l) => sum + l.amount, 0);
       const paid = history.list.reduce((sum, h) => sum + peso(`${h.name} ${h.role}`), 0);
       const remaining = Math.max(0, assessed - paid);
-      const latestApp = enrollApps.list[enrollApps.list.length - 1];
+      // Best status wins: a newer rejected/withdrawn form must not shadow an approval
+      const rankOf = (role: string): number => {
+        const r = role.toLowerCase();
+        if (r.includes('enroll')) return 4;
+        if (r.includes('approv')) return 3;
+        if (r.includes('verif')) return 2;
+        if (r.includes('reject')) return 0;
+        return 1;
+      };
+      const bestApp = enrollApps.list.length
+        ? enrollApps.list.reduce((best, a) => (rankOf(a.role) > rankOf(best.role) ? a : best))
+        : undefined;
+      const latestApp = bestApp;
       // Gate: only ADMIN-confirmed enrollment unlocks progress
       // (manual Approve or admin-enabled auto-approve — never pipeline auto-enroll)
       const enrolled = enrollApps.list.some((a) => a.role === 'Approved' || a.role.includes('Approved (auto)'));

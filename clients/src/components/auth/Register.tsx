@@ -341,6 +341,7 @@ export const Register: React.FC<RegisterProps> = ({
       )}
 
       <form className="auth-form" onSubmit={handleSubmit}>
+        {accountRole === 'student' && (
         <div className="auth-field">
           <label>I am a <span className="required-star">*</span></label>
           <div className="role-pills" role="tablist" aria-label="Applicant type">
@@ -361,13 +362,14 @@ export const Register: React.FC<RegisterProps> = ({
               : 'Already have a school ID? Claim portal access with assessment, clearance and school ID.'}
           </span>
         </div>
+        )}
         <div className="auth-field">
           <label>Applying as <span className="required-star">*</span></label>
           <div className="role-pills" role="tablist" aria-label="Account role">
             {(['student', 'teacher', 'admin'] as const).map((r) => (
               <button key={r} type="button" role="tab" aria-selected={accountRole === r}
                 className={`role-pill ${accountRole === r ? 'active' : ''}`}
-                onClick={() => setAccountRole(r)}>
+                onClick={() => { setAccountRole(r); if (r !== 'student') setApplicantType('new'); }}>
                 {r === 'student' ? 'Student' : r === 'teacher' ? 'Teacher' : 'Admin'}
               </button>
             ))}
