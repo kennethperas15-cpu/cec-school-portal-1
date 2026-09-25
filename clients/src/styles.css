@@ -40,7 +40,7 @@ button{font-family:inherit}.course-button{border-left:0;border-right:0;border-bo
 .dashboard-actions{display:flex!important;gap:14px!important;align-items:center;position:relative}
 .dashboard-alert-button{position:relative;width:34px;height:34px;border:1px solid #e3eaf3;background:#fff;border-radius:10px;color:#6f8097;font-size:20px;line-height:1;cursor:pointer}
 .dashboard-alert-button:hover{background:#edf4ff;color:#1456bd;border-color:#c8ddfa}
-.dashboard-alert-button span{position:absolute;right:6px;top:6px;width:6px;height:6px;border-radius:50%;background:#e85f51;border:1px solid #fff}
+.dashboard-alert-button>.notification-bell{position:static;width:auto;height:auto;border:0;background:transparent}
 .dashboard-avatar{box-shadow:0 5px 14px rgba(11,61,145,.18)}
 .dashboard-search{transition:border-color .2s,box-shadow .2s}
 .dashboard-search:focus{outline:0;border-color:#5c98e5!important;box-shadow:0 0 0 4px rgba(92,152,229,.13)}
@@ -84,3 +84,22 @@ button{font-family:inherit}.course-button{border-left:0;border-right:0;border-bo
   .dashboard-main>section{padding:20px!important}
   .role-home-heading{display:block}.role-home-date{display:inline-block;margin-top:14px}.role-home-metrics{grid-template-columns:1fr 1fr}.role-home-columns{grid-template-columns:1fr}.role-home-actions>strong{width:100%}
 }
+
+/* Dashboard interaction polish */
+@keyframes dashboard-reveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.role-home{animation:dashboard-reveal .35s ease both}
+.role-home-metric{transition:transform .2s,box-shadow .2s}
+.role-home-metric:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(31,59,92,.09)}
+.role-home-actions button{transition:background .2s,color .2s,transform .2s}
+.role-home-actions button:hover{transform:translateY(-1px)}
+.role-home-actions button:focus-visible,.role-home-panel-heading button:focus-visible,.role-home-item:focus-visible{outline:3px solid #8bbcf0;outline-offset:2px}
+.role-home-panel{min-width:0}
+.role-home-panel-heading{gap:10px}
+.role-home-panel-heading button{white-space:nowrap}
+.role-home-panel-heading button span{font-size:13px;margin-left:3px}
+.role-home-empty{margin:6px 0;color:#94a1b0;font-size:12px;line-height:1.5}
+.role-home-empty span{display:block;margin-top:3px;color:#b0bac6;font-size:11px}
+.role-home-item{transition:background .2s,padding .2s}
+.role-home-item:hover{padding-left:5px;padding-right:5px}
+@media(max-width:800px){.role-home-actions{padding:12px}.role-home-actions button{flex:1;justify-content:center;min-width:140px}.role-home-panel{padding:15px}}
+@media(prefers-reduced-motion:reduce){.role-home{animation:none}.role-home-metric,.role-home-actions button,.role-home-item{transition:none}}
