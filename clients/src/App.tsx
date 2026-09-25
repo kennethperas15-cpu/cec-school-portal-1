@@ -4,6 +4,7 @@ import { AuthContainer } from './components/auth/AuthContainer';
 import type { UserAuthData } from './components/auth/Login';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
+import { AISupport } from './components/shared/AISupport';
 import './styles.css';
 import './login.css';
 
@@ -40,7 +41,7 @@ export const App = () => {
       ? <TeacherDashboard {...props} />
       : <StudentDashboard {...props} />;
 
-  return <>{dashboard}{message && <div className="toast" role="status">{message}</div>}</>;
+  return <>{dashboard}<AISupport role={role} />{message && <div className="toast" role="status">{message}</div>}</>;
 };
 
 export default App;
