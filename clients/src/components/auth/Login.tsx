@@ -99,6 +99,32 @@ export const Login: React.FC<LoginProps> = ({
       if (onNotify) onNotify(`Welcome back, ${user.firstName}!`);
       if (onSuccess) onSuccess(user);
     } catch (requestError) {
+      // Registration can intentionally run without the API for static demos.
+      // Authenticate credentials issued by that same local registration store.
+      try {
+        const raw = localStorage.getItem('cec:registrations');
+        const registrations = raw ? JSON.parse(raw) as {
+          id?: string; fullName?: string; schoolEmail?: string; temporaryPassword?: string; requestedRole?: string;
+        }[] : [];
+        const registration = registrations.find((item) =>
+          (item.schoolEmail ?? '').toLowerCase() === identifier.trim().toLowerCase() || item.id === identifier.trim()
+        );
+        if (registration && registration.temporaryPassword === password) {
+          const nameParts = (registration.fullName ?? 'CEC User').trim().split(/\s+/);
+          const localUser: UserAuthData = {
+            firstName: nameParts[0] ?? 'CEC',
+            lastName: nameParts.slice(1).join(' '),
+            role: registration.requestedRole ?? role.toLowerCase(),
+            id: registration.id,
+            email: registration.schoolEmail,
+          };
+          if (onNotify) onNotify(`Welcome back, ${localUser.firstName}!`);
+          if (onSuccess) onSuccess(localUser);
+          return;
+        }
+      } catch {
+        // Storage is optional; preserve the normal API error below.
+      }
       const apiError = requestError as { response?: { data?: { message?: string } } };
       setError(apiError.response?.data?.message ?? 'Invalid credentials. Please check your school ID/email and password.');
     } finally {

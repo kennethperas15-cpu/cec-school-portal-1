@@ -105,6 +105,7 @@ export const authService = {
     const temporaryPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     const applicationId = crypto.randomUUID();
+    const studentNumber = `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`;
 
     await sequelize.transaction(async (transaction) => {
       await sequelize.query(
@@ -131,7 +132,7 @@ export const authService = {
           {
             replacements: [
               crypto.randomUUID(), userId,
-              `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`,
+              studentNumber,
               input.program, input.yearLevel
             ],
             transaction
@@ -151,7 +152,14 @@ export const authService = {
       });
       emailSent = true;
     }
-    return { applicationId, status: 'approved', schoolEmail, temporaryPassword, emailSent };
+    return {
+      applicationId,
+      status: 'approved',
+      schoolEmail,
+      schoolId: requestedRole === 'student' ? studentNumber : undefined,
+      temporaryPassword,
+      emailSent,
+    };
   },
 
   async login(identifier: string, password: string) {
@@ -162,9 +170,12 @@ export const authService = {
       `SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, r.name AS role,
               u.failed_login_attempts, u.locked_until
        FROM users u JOIN roles r ON r.id = u.role_id
-       WHERE (LOWER(u.email) = LOWER(?) OR u.id = ?) AND u.is_active = TRUE
+       LEFT JOIN students s ON s.user_id = u.id
+       LEFT JOIN teachers t ON t.user_id = u.id
+       WHERE (LOWER(u.email) = LOWER(?) OR u.id = ? OR s.student_number = ? OR t.employee_number = ?)
+         AND u.is_active = TRUE
        LIMIT 1`,
-      { replacements: [identifier.trim(), identifier.trim()], type: QueryTypes.SELECT }
+      { replacements: [identifier.trim(), identifier.trim(), identifier.trim(), identifier.trim()], type: QueryTypes.SELECT }
     );
     if (!users.length || users[0].password_hash === 'ACTIVATION_PENDING') {
       throw new Error('Invalid email or password');
