@@ -16,6 +16,8 @@ import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
 import { AdminReports } from './reporting/AdminReports';
 import { LiveReport } from './reporting/LiveReports';
+import { useAcademicConfig } from '../../services/academicConfig';
+import type { DashboardSection } from '../shared/RoleDashboardHome';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 const NAVY = '#0B3D91';
@@ -65,6 +67,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     } catch { /* non-browser render */ }
   }, [active]);
   const { dark, toggle } = useTheme();
+  const academicConfig = useAcademicConfig();
   // v2 stores: pre-launch — no demo students, teachers, or payments (all start empty)
   const enroll = useCollection<{ id: string; name: string; meta: string }>('a_enroll_v2', []);
   const accounts = useCollection<{ id: string; name: string; role: string }>('a_accounts_v2', []);
@@ -202,19 +205,33 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
         const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/);
         return m ? Number(m[1]) : 0;
       };
-      const outstanding = bills.list.reduce((n, b) => n + peso(`${b.name} ${b.role}`), 0);
+      const openBills = bills.list.filter((bill) => !/paid|closed|verified/i.test(`${bill.name} ${bill.role}`));
+      const outstanding = openBills.reduce((n, b) => n + peso(`${b.name} ${b.role}`), 0);
       const teachers = faculty.list.length + accounts.list.filter((a) => a.role === 'teacher').length;
       const students = accounts.list.filter((a) => a.role === 'student').length;
+      const adminSections: DashboardSection[] = [
+        { title: 'Enrollment queue', target: 'Enrollment Approval', emptyMessage: 'No applications are waiting for review.', items: enroll.list.slice(0, 5).map((application) => ({ title: application.name, detail: `${application.id} • ${application.meta}`, status: 'Review', target: 'Enrollment Approval' })) },
+        { title: 'Billing follow-up', target: 'Payment Monitoring', emptyMessage: 'No open billing records are available.', items: openBills.slice(0, 5).map((bill) => ({ title: bill.name, detail: bill.role, status: 'Open', target: 'Payment Monitoring' })) },
+        { title: 'Faculty and accounts', target: 'Teacher Records', emptyMessage: 'Faculty and teacher accounts will appear here when created.', items: [...faculty.list.map((item) => ({ title: item.name, detail: item.role, status: 'Faculty', target: 'Teacher Records' })), ...accounts.list.filter((account) => account.role === 'teacher').map((item) => ({ title: item.name, detail: `${item.id} • Teacher account`, status: 'Account', target: 'Account Creation' }))].slice(0, 5) },
+        { title: 'Academic calendar', target: 'Calendar', emptyMessage: 'No calendar events are configured.', items: cal.list.slice(0, 5).map((event) => ({ title: event.name, detail: event.role, status: 'Calendar', target: 'Calendar' })) },
+      ];
+      const priority = enroll.list[0]
+        ? { title: `Review enrollment: ${enroll.list[0].name}`, detail: `${enroll.list[0].meta} • ${enroll.list.length} application${enroll.list.length === 1 ? '' : 's'} in queue.`, actionLabel: 'Open approval queue', target: 'Enrollment Approval' }
+        : openBills[0]
+          ? { title: `Follow up on ${openBills[0].name}`, detail: `₱${outstanding.toLocaleString()} across open billing records.`, actionLabel: 'Open billing', target: 'Payment Monitoring' }
+          : { title: 'No urgent items in the current queues', detail: 'Enrollment and billing queues are clear. Check the calendar or system status.', actionLabel: 'Review calendar', target: 'Calendar', tone: 'clear' as const };
       return (
         <RoleDashboardHome
           role="admin"
           name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'}
           onNavigate={navigate}
+          dashboardSections={adminSections}
+          priority={priority}
           liveMetrics={[
-            { label: 'Total students', value: String(students), detail: students ? 'Enrolled via portal' : 'No students yet' },
-            { label: 'Active teachers', value: String(teachers), detail: teachers ? 'Across departments' : 'No teachers yet' },
-            { label: 'Pending applications', value: String(enroll.list.length), detail: enroll.list.length ? 'In approval queue' : 'Queue empty' },
-            { label: 'Outstanding balances', value: outstanding > 0 ? `₱${outstanding.toLocaleString()}` : '₱0', detail: outstanding > 0 ? 'Across open invoices' : 'No balances yet' },
+            { label: 'Total students', value: String(students), detail: students ? 'Student accounts in the portal' : 'No student accounts recorded' },
+            { label: 'Active teachers', value: String(teachers), detail: teachers ? 'Faculty records and teacher accounts' : 'No teacher accounts recorded' },
+            { label: 'Pending applications', value: String(enroll.list.length), detail: enroll.list.length ? 'Current enrollment approval queue' : 'No applications awaiting review' },
+            { label: 'Outstanding balances', value: outstanding > 0 ? `₱${outstanding.toLocaleString()}` : '₱0', detail: outstanding > 0 ? 'Unpaid billing records' : 'No open billing balances recorded' },
           ]}
         />
       );
@@ -403,7 +420,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   return (
     <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><button onClick={() => setCollapsed((c) => !c)} aria-label="Toggle sidebar" style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', fontSize: 16 }}>☰</button><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>ADMIN PORTAL • 1ST SEM 2024-2025</div></div></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><button onClick={() => setCollapsed((c) => !c)} aria-label="Toggle sidebar" style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', fontSize: 16 }}>☰</button><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>ADMIN PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div></div>
         <span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>ADMIN</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
         <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />
         <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><NotificationCenter role="admin" onNavigate={navigate} /><button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button><span key={photoTick}><PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'} size={36} /></span></div>

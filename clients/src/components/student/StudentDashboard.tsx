@@ -18,6 +18,8 @@ import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
 import { WorkflowTracker, type WorkflowStep } from '../shared/WorkflowTracker';
 import { readStage, DOC_STAGES, SUBMIT_STAGES, SUBMIT_STEPS, writeStage, autoVerifyDoc } from '../../services/docStages';
+import { useAcademicConfig } from '../../services/academicConfig';
+import type { DashboardSection } from '../shared/RoleDashboardHome';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 type Rec = { id: string; name: string; role: string };
@@ -516,6 +518,41 @@ const readPicks = (): Offering[] => {
   } catch { return []; }
 };
 
+const offeringDays = (schedule: string): number[] => {
+  const prefix = schedule.match(/^[a-z,\s/]+/i)?.[0]?.replace(/[\s,/]/g, '').toUpperCase() ?? '';
+  const tokens = [{ code: 'TH', day: 4 }, { code: 'SU', day: 0 }, { code: 'M', day: 1 }, { code: 'T', day: 2 }, { code: 'W', day: 3 }, { code: 'F', day: 5 }, { code: 'S', day: 6 }];
+  const days: number[] = [];
+  let remaining = prefix;
+  while (remaining) {
+    const token = tokens.find((entry) => remaining.startsWith(entry.code));
+    if (!token) return [];
+    days.push(token.day);
+    remaining = remaining.slice(token.code.length);
+  }
+  return days;
+};
+
+const nextOffering = (picks: Offering[], now: Date) => {
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const candidates = picks.flatMap((offering) => {
+    const time = offering.schedule.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!time) return [];
+    const hour = Number(time[1]) % 12 + (time[3].toUpperCase() === 'PM' ? 12 : 0);
+    const startMinutes = hour * 60 + Number(time[2]);
+    return offeringDays(offering.schedule).map((day) => {
+      let daysAway = (day - now.getDay() + 7) % 7;
+      if (daysAway === 0 && startMinutes <= nowMinutes) daysAway = 7;
+      return { offering, daysAway, startMinutes };
+    });
+  });
+  candidates.sort((a, b) => a.daysAway - b.daysAway || a.startMinutes - b.startMinutes);
+  const next = candidates[0];
+  if (!next) return null;
+  const date = new Date(now);
+  date.setDate(date.getDate() + next.daysAway);
+  return { ...next, dayLabel: next.daysAway === 0 ? 'Today' : new Intl.DateTimeFormat('en', { weekday: 'long' }).format(date) };
+};
+
 const sectionTagOf = (picks: Offering[]): string => {
   if (!picks.length) return '—';
   const secs = [...new Set(picks.map((p) => p.section))];
@@ -547,6 +584,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     } catch { /* non-browser render */ }
   }, [active]);
   const { dark, toggle } = useTheme();
+  const academicConfig = useAcademicConfig();
   const [profile, setProfile] = useState(() => {
     try {
       const raw = localStorage.getItem('cec:s_profile');
@@ -662,14 +700,20 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
 
   const render = () => {
     if (active === 'Dashboard') {
-      // Live college-based GWA from official teacher-encoded grades
-      let official: { prelim: string; midterm: string; final: string }[] = [];
+      let allOfficial: { id: string; student?: string; studentId?: string; prelim: string; midterm: string; final: string }[] = [];
       try {
         const raw = localStorage.getItem('cec:t_grades_v2');
-        official = raw ? JSON.parse(raw) : [];
-      } catch { official = []; }
-      const liveGwa = gwa(official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); return avg === null ? 0 : percentToPoint(avg).point; }));
-      // Live balance: official finance assessment + adjustments, minus recorded payments
+        allOfficial = raw ? JSON.parse(raw) : [];
+      } catch { allOfficial = []; }
+      const profileMatchesAccount = !currentUser?.id || profile.id === currentUser.id;
+      const identityNames = [currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '', profileMatchesAccount ? profile.name : ''].filter(Boolean).map((value) => value.trim().toLowerCase());
+      const identityIds = [currentUser?.id, profileMatchesAccount ? profile.id : ''].filter(Boolean).map((value) => String(value).trim().toLowerCase());
+      const official = allOfficial.filter((grade) => {
+        if (grade.studentId && identityIds.includes(grade.studentId.trim().toLowerCase())) return true;
+        return !!grade.student && identityNames.includes(grade.student.trim().toLowerCase());
+      });
+      const gradedPoints = official.map((g) => averagePercent([g.prelim, g.midterm, g.final])).filter((average): average is number => average !== null).map((average) => percentToPoint(average).point);
+      const liveGwa = gwa(gradedPoints);
       const peso = (s: string) => parseAmount(s);
       const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0)
         + readOfficialAssessment().reduce((sum, l) => sum + l.amount, 0);
@@ -688,20 +732,69 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         ? enrollApps.list.reduce((best, a) => (rankOf(a.role) > rankOf(best.role) ? a : best))
         : undefined;
       const latestApp = bestApp;
-      // Gate: only ADMIN-confirmed enrollment unlocks progress
-      // (manual Approve or admin-enabled auto-approve — never pipeline auto-enroll)
-      const enrolled = enrollApps.list.some((a) => a.role === 'Approved' || a.role.includes('Approved (auto)'));
+      const enrolled = enrollApps.list.some((a) => ['approved', 'enrolled'].includes(a.role.toLowerCase()) || a.role.includes('Approved (auto)'));
+      const pendingApplication = !!latestApp && !enrolled && !latestApp.role.toLowerCase().includes('reject');
+      const missingDocuments = ['school-assessment', 'school-id-doc'].filter((id) => !docs.list.some((doc) => doc.id === id));
+      const nextClass = nextOffering(readPicks(), new Date());
+      const openAssignments = assigns.list.filter((item) => !/submitted|complete|graded/i.test(item.role));
+      const nextQuiz = quizzes.list.find((item) => !/taken|complete|submitted/i.test(item.role));
+      let upcomingExam: { title: string; date: string; items: string } | undefined;
+      try {
+        const raw = localStorage.getItem('cec:t_exams_v2');
+        const exams = raw ? JSON.parse(raw) as { title: string; date: string; items: string }[] : [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        upcomingExam = exams.filter((exam) => {
+          const date = new Date(`${exam.date}T00:00:00`);
+          return !Number.isNaN(date.getTime()) && date >= today;
+        }).sort((a, b) => a.date.localeCompare(b.date))[0];
+      } catch { upcomingExam = undefined; }
+      let latestAnnouncement: { title: string; detail: string } | undefined;
+      try {
+        const raw = localStorage.getItem('cec:t_posts_v2');
+        const posts = raw ? JSON.parse(raw) as { title: string; body?: string }[] : [];
+        if (posts[0]) latestAnnouncement = { title: posts[0].title, detail: posts[0].body || 'New faculty announcement' };
+      } catch { latestAnnouncement = undefined; }
+      const taskItems: DashboardSection['items'] = [];
+      if (!latestApp) taskItems.push({ title: 'Start enrollment', detail: 'Submit an application to unlock your academic records.', status: 'Action needed', target: 'Online Enrollment' });
+      else if (latestApp.role.toLowerCase().includes('reject')) taskItems.push({ title: 'Update your enrollment application', detail: 'Your application was returned. Review and submit it again.', status: 'Returned', target: 'Online Enrollment' });
+      else if (pendingApplication && missingDocuments.length) taskItems.push({ title: 'Submit required enrollment documents', detail: `${missingDocuments.length} required item${missingDocuments.length === 1 ? '' : 's'} still missing: ${missingDocuments.join(', ')}.`, status: 'Action needed', target: 'Document Submission' });
+      else if (pendingApplication) taskItems.push({ title: 'Track enrollment review', detail: `${latestApp.name} • ${latestApp.role}`, status: 'In review', target: 'Status Tracker' });
+      if (assessed > 0 && remaining > 0) taskItems.push({ title: `Settle ₱${remaining.toLocaleString()} balance`, detail: `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()} in your billing records.`, status: 'Payment due', target: 'Payment Portal' });
+      const todayItems: DashboardSection['items'] = [];
+      if (nextClass) todayItems.push({ title: nextClass.offering.subject, detail: `${nextClass.dayLabel} • ${nextClass.offering.schedule} • ${nextClass.offering.room}`, status: nextClass.dayLabel, target: 'Class Schedule' });
+      if (openAssignments[0]) todayItems.push({ title: openAssignments[0].name, detail: openAssignments[0].role || 'Assignment not submitted', status: 'Assignment', target: 'Assignments' });
+      if (nextQuiz) todayItems.push({ title: nextQuiz.name, detail: nextQuiz.role || 'Quiz not completed', status: 'Quiz / exam', target: 'Quiz / Exam' });
+      if (upcomingExam) todayItems.push({ title: upcomingExam.title, detail: `${upcomingExam.date} • ${upcomingExam.items} items`, status: 'Upcoming exam', target: 'Quiz / Exam' });
+      if (latestAnnouncement) todayItems.push({ title: latestAnnouncement.title, detail: latestAnnouncement.detail, status: 'Announcement', target: 'Announcement Board' });
+      const scopedAttendance = (attendance.list as (Rec & { student?: string; studentId?: string })[]).filter((item) => (item.studentId && identityIds.includes(item.studentId.toLowerCase())) || (item.student && identityNames.includes(item.student.trim().toLowerCase())));
+      const attendanceCount = scopedAttendance.length;
+      const attendancePresent = scopedAttendance.filter((item) => /present/i.test(item.role)).length;
+      const studentSections: DashboardSection[] = [
+        { title: 'Today & next up', target: 'Class Schedule', emptyMessage: 'No class, assignment, quiz, or announcement is scheduled in your current records.', items: todayItems },
+        { title: 'Enrollment & payments', target: 'Status Tracker', emptyMessage: 'No enrollment, document, or payment actions need attention.', items: taskItems },
+        { title: 'Academic progress', target: 'Grades / Report Card', emptyMessage: enrolled ? 'Your grades and student-linked attendance will appear here as they are posted.' : 'Enroll online to unlock your academic records.', items: [
+          ...(liveGwa === null ? [] : [{ title: `Current average: ${formatPoint(liveGwa)}`, detail: `PH grade point average from ${gradedPoints.length} grade record${gradedPoints.length === 1 ? '' : 's'} matched to your account.`, status: 'Grades', target: 'Grades / Report Card' }]),
+          ...(attendanceCount ? [{ title: `Attendance: ${Math.round((attendancePresent / attendanceCount) * 100)}% present`, detail: `${attendancePresent} present out of ${attendanceCount} attendance records linked to your account.`, status: 'Attendance', target: 'Attendance Records' }] : []),
+        ] },
+      ];
+      const priority = taskItems[0]
+        ? { title: taskItems[0].title, detail: taskItems[0].detail, actionLabel: 'Take action', target: taskItems[0].target ?? 'Status Tracker' }
+        : openAssignments[0]
+          ? { title: `Next up: ${openAssignments[0].name}`, detail: openAssignments[0].role || 'Review and submit this assignment.', actionLabel: 'Open assignment', target: 'Assignments' }
+          : { title: nextClass ? `Next class: ${nextClass.offering.subject}` : 'You are all caught up', detail: nextClass ? `${nextClass.dayLabel} • ${nextClass.offering.schedule} • ${nextClass.offering.room}` : 'No enrollment, document, payment, or assignment tasks are currently recorded.', actionLabel: nextClass ? 'View schedule' : 'View academic records', target: nextClass ? 'Class Schedule' : 'Grades / Report Card', tone: 'clear' as const };
       return (
         <RoleDashboardHome
           role="student"
           name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'}
           onNavigate={navigate}
-          blankSections
+          dashboardSections={studentSections}
+          priority={priority}
           liveMetrics={[
-            { label: 'Enrollment status', value: latestApp ? latestApp.role.replace(/ •.*$/, '') : 'Not enrolled', detail: latestApp ? latestApp.name : 'Apply online or walk-in at the registrar' },
-            { label: 'Current average', value: !enrolled ? 'Not enrolled' : liveGwa === null ? '—' : formatPoint(liveGwa), detail: !enrolled ? 'Enroll online or walk-in to unlock grades' : official.length ? `GWA across ${official.length} encoded subject${official.length === 1 ? '' : 's'}` : 'Awaiting teacher encoding' },
-            ...(enrolled ? [] : [{ label: 'Attendance', value: 'Not enrolled', detail: 'Enroll to unlock attendance' }]),
-            { label: 'Outstanding balance', value: !enrolled ? 'Not enrolled' : assessed <= 0 ? '—' : remaining <= 0 ? 'Fully Paid' : `₱${remaining.toLocaleString()}`, detail: !enrolled ? 'Enroll online or walk-in to see assessment' : assessed <= 0 ? 'No assessment yet' : `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()}` },
+            { label: 'Enrollment status', value: latestApp ? latestApp.role.replace(/ •.*$/, '') : 'Application needed', detail: latestApp ? `${latestApp.name} • ${academicConfig.semester} ${academicConfig.schoolYear}` : 'Start an online application or visit the registrar' },
+            { label: 'Current average', value: liveGwa === null ? '—' : formatPoint(liveGwa), detail: liveGwa === null ? 'No grade records match your student account yet' : `PH grade point average • ${gradedPoints.length} matched record${gradedPoints.length === 1 ? '' : 's'}` },
+            { label: 'Attendance', value: attendanceCount ? `${Math.round((attendancePresent / attendanceCount) * 100)}%` : '—', detail: attendanceCount ? `${attendancePresent} present across ${attendanceCount} records linked to your account` : 'No student-linked attendance records yet' },
+            { label: 'Outstanding balance', value: assessed <= 0 ? '—' : remaining <= 0 ? 'Fully paid' : `₱${remaining.toLocaleString()}`, detail: assessed <= 0 ? 'No assessment recorded for this student' : `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()} in student billing records` },
           ]}
         />
       );
@@ -720,12 +813,16 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     }
     if (active === 'Password Recovery') return (<section style={card}><h1 style={{ margin: 0 }}>Password Recovery</h1><form style={{ display: 'flex', gap: 10, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); onNotify('Recovery link sent'); }}><input required style={inp} placeholder="student@cec.edu.ph" /><button style={btn} type="submit">Send Link</button></form><Footer /></section>);
     if (active === 'Grades / Report Card') {
-      let official: { id: string; student: string; prelim: string; midterm: string; final: string }[] = [];
+      let allOfficial: { id: string; student?: string; studentId?: string; prelim: string; midterm: string; final: string }[] = [];
       try {
         const raw = localStorage.getItem('cec:t_grades_v2');
-        official = raw ? JSON.parse(raw) : [];
-      } catch { official = []; }
-      const pts = official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); return avg === null ? 0 : percentToPoint(avg).point; });
+        allOfficial = raw ? JSON.parse(raw) : [];
+      } catch { allOfficial = []; }
+      const profileMatchesAccount = !currentUser?.id || profile.id === currentUser.id;
+      const names = [currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '', profileMatchesAccount ? profile.name : ''].filter(Boolean).map((value) => value.trim().toLowerCase());
+      const ids = [currentUser?.id, profileMatchesAccount ? profile.id : ''].filter(Boolean).map((value) => String(value).trim().toLowerCase());
+      const official = allOfficial.filter((grade) => (grade.studentId && ids.includes(grade.studentId.trim().toLowerCase())) || (grade.student && names.includes(grade.student.trim().toLowerCase())));
+      const pts = official.map((g) => averagePercent([g.prelim, g.midterm, g.final])).filter((avg): avg is number => avg !== null).map((avg) => percentToPoint(avg).point);
       const myGwa = gwa(pts);
       return (<section style={card}><h1 style={{ margin: 0 }}>Grades / Report Card — PH 1.00–5.00{myGwa !== null && <span style={{ fontSize: 15 }}> • GWA: <strong>{formatPoint(myGwa)}</strong></span>}</h1>
         {!official.length && <div style={box}>No grades encoded yet — waiting for teacher grade encoding.</div>}
@@ -740,7 +837,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         return (<section style={card}><h1 style={{ margin: 0 }}>Class Schedule (COR)</h1><div style={box}>No schedules yet — pick them at <strong>Section Selection</strong> and they appear here automatically with EDP codes.</div><Footer /></section>);
       }
       return (<section style={card}><h1 style={{ margin: 0 }}>Class Schedule (COR)</h1>
-        <p style={{ color: '#6b7890', fontSize: 13 }}>Section: <strong>{tag}</strong> • {picks.length} subjects • {total} units • 1st Semester 2026–2027</p>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Section: <strong>{tag}</strong> • {picks.length} subjects • {total} units • {academicConfig.semester} {academicConfig.schoolYear}</p>
         <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 10 }}>EDP Code</th><th style={{ padding: 10 }}>Subject</th><th style={{ padding: 10 }}>Descriptive Title</th><th style={{ padding: 10 }}>Schedule</th><th style={{ padding: 10 }}>Room</th><th style={{ padding: 10 }}>Type</th><th style={{ padding: 10 }}>Units</th></tr></thead><tbody>
           {picks.map((o) => <tr key={o.edp} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 10 }}><strong>{o.edp}</strong></td><td style={{ padding: 10 }}>{o.subject}</td><td style={{ padding: 10 }}>{o.descriptive}</td><td style={{ padding: 10 }}>{o.schedule}</td><td style={{ padding: 10 }}>{o.room}</td><td style={{ padding: 10 }}>{o.type}</td><td style={{ padding: 10 }}>{o.units}</td></tr>)}
           <tr style={{ borderTop: '2px solid #0B3D91' }}><td colSpan={6} style={{ padding: 10, textAlign: 'right', fontWeight: 800 }}>Total units</td><td style={{ padding: 10, fontWeight: 800 }}>{total}</td></tr>
@@ -933,7 +1030,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   return (
     <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', fontSize: 16 }} aria-label="Toggle sidebar">☰</button><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • 1ST SEM 2024-2025</div></div></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', fontSize: 16 }} aria-label="Toggle sidebar">☰</button><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div></div>
         <span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
         <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} />
         <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><NotificationCenter role="student" onNavigate={navigate} /><button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button><span key={photoTick}><PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : profile.name} size={36} /></span></div>

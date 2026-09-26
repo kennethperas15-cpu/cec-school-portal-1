@@ -93,3 +93,134 @@ main.dashboard-main {
 .cec-dark main.dashboard-main {
   background-image: none;
 }
+
+/* Role dashboard grid and actionable overview rows */
+.role-home {
+  width: 100%;
+  max-width: 1280px !important;
+}
+.role-home-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.role-home-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+.role-home-columns .role-home-panel:last-child {
+  grid-column: auto;
+}
+.role-home-metric,
+.role-home-panel {
+  min-width: 0;
+}
+.role-home-metric strong,
+.role-home-metric small {
+  overflow-wrap: anywhere;
+}
+.role-home-priority {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid #f1d39d;
+  border-left: 4px solid #d48622;
+  border-radius: 10px;
+  background: #fffaf0;
+}
+.role-home-priority.clear {
+  border-color: #b8e1d0;
+  border-left-color: #24855f;
+  background: #f3fbf7;
+}
+.role-home-priority>div>span {
+  color: #9a6a1d;
+  font-size: 9px;
+  font-weight: 800;
+}
+.role-home-priority.clear>div>span {
+  color: #24855f;
+}
+.role-home-priority h2 {
+  margin: 4px 0;
+  color: #2a3d54;
+  font-size: 15px;
+}
+.role-home-priority p {
+  margin: 0;
+  color: #758398;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.role-home-priority>button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: #0b3d91;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.role-home-priority.clear>button {
+  background: #216c50;
+}
+.role-home-entry {
+  border-top: 1px solid #eef2f6;
+}
+.role-home-entry .role-home-item {
+  border-top: 0;
+}
+.role-home-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 0 10px 39px;
+}
+.role-home-item-actions button {
+  border: 1px solid #dce6f2;
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: #f8fbff;
+  color: #315c91;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.role-home-item-actions button:hover {
+  background: #eaf2fc;
+}
+.role-home-empty {
+  padding: 10px 0;
+  color: #76869b;
+  line-height: 1.5;
+}
+@media (max-width: 1250px) {
+  .role-home-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .role-home-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 800px) {
+  .role-home-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .role-home-priority {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 480px) {
+  .role-home-metrics {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

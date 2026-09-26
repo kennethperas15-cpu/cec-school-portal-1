@@ -6,12 +6,14 @@ export type DashboardRole = 'student' | 'teacher' | 'admin';
 type Props = {
   role: DashboardRole;
   name: string;
-  onNavigate: (label: string) => void;
+  onNavigate: (label: string, context?: string) => void;
   liveMetrics?: { label: string; value: string; detail: string }[];
   blankSections?: boolean;
+  dashboardSections?: DashboardSection[];
+  priority?: { title: string; detail: string; actionLabel: string; target: string; tone?: 'urgent' | 'clear' };
 };
 
-type DashboardSection = { title: string; target: string; items: { title: string; detail: string; status?: string; target?: string }[] };
+export type DashboardSection = { title: string; target: string; emptyMessage?: string; items: { title: string; detail: string; status?: string; target?: string; actions?: { label: string; target: string; context?: string }[] }[] };
 
 const roleContent: Record<DashboardRole, {
   eyebrow: string;
@@ -92,9 +94,10 @@ const roleContent: Record<DashboardRole, {
   },
 };
 
-export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate, liveMetrics, blankSections }) => {
+export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate, liveMetrics, dashboardSections, priority }) => {
   const academicConfig = useAcademicConfig();
   const content = roleContent[role];
+  const sections = dashboardSections ?? content.sections;
   const metrics = content.metrics.map((m) => {
     const live = liveMetrics?.find((l) => l.label === m.label);
     return live ? { ...m, value: live.value, detail: live.detail } : m;
@@ -109,8 +112,9 @@ export const RoleDashboardHome: React.FC<Props> = ({ role, name, onNavigate, liv
         <span className="role-home-date">CEC Portal • {academicConfig.semester} {academicConfig.schoolYear}</span>
       </div>
       <div className="role-home-metrics" aria-label="Dashboard summary">{metrics.map((metric) => <div className={`role-home-metric ${metric.tone}`} key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small></div>)}</div>
+      {priority && <section className={`role-home-priority ${priority.tone ?? 'urgent'}`} aria-label="Priority action"><div><span>PRIORITY</span><h2>{priority.title}</h2><p>{priority.detail}</p></div><button type="button" onClick={() => onNavigate(priority.target)}>{priority.actionLabel}<b aria-hidden="true">→</b></button></section>}
       <div className="role-home-actions"><strong>Quick actions</strong>{content.actions.map((action) => <button key={action.label} type="button" onClick={() => onNavigate(action.target)}><span>{action.icon}</span>{action.label}<b>→</b></button>)}</div>
-      <div className="role-home-columns">{content.sections.map((section) => <div className="role-home-panel" key={section.title}><div className="role-home-panel-heading"><h2>{section.title}</h2><button type="button" onClick={() => onNavigate(section.target)}>View all <span aria-hidden="true">→</span></button></div>{blankSections ? <p className="role-home-empty">No data yet <span>Waiting for admin to provide subjects.</span></p> : section.items.map((item) => <button type="button" className="role-home-item" key={item.title} onClick={() => onNavigate(item.target ?? section.target)}><span className="role-home-item-icon">{item.title[0]}</span><span><strong>{item.title}</strong><small>{item.detail}</small></span>{item.status && <em>{item.status}</em>}</button>)}</div>)}</div>
+      <div className="role-home-columns">{sections.map((section) => <div className="role-home-panel" key={section.title}><div className="role-home-panel-heading"><h2>{section.title}</h2><button type="button" onClick={() => onNavigate(section.target)}>View all <span aria-hidden="true">→</span></button></div>{section.items.length ? section.items.map((item, index) => <div className="role-home-entry" key={`${item.title}-${index}`}><button type="button" className="role-home-item" onClick={() => onNavigate(item.target ?? section.target)}><span className="role-home-item-icon">{item.title[0]}</span><span><strong>{item.title}</strong><small>{item.detail}</small></span>{item.status && <em>{item.status}</em>}</button>{item.actions?.length ? <div className="role-home-item-actions">{item.actions.map((action) => <button key={action.label} type="button" onClick={() => onNavigate(action.target, action.context)}>{action.label}</button>)}</div> : null}</div>) : <div className="role-home-empty">{section.emptyMessage ?? 'Nothing to show yet.'}</div>}</div>)}</div>
     </section>
   );
 };
