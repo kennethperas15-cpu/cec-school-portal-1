@@ -57,7 +57,6 @@
     display: none;
   }
   .dashboard-search,
-  .command-trigger,
   .dashboard-home-link,
   header.dashboard-topbar > span {
     display: none !important;
