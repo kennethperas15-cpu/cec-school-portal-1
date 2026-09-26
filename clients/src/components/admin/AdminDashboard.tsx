@@ -191,7 +191,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     ...bills.list.map((item) => ({ title: item.name, detail: item.role, target: 'Billing & Invoices' })),
     ...broadcasts.list.map((item) => ({ title: item.name, detail: item.role, target: 'System Announcements' })),
   ];
-  const footer = (<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}><span style={pill}>CEC Blue #0B3D91 • Gold #FFC928</span><span style={pill}>Changes saved locally</span><span style={pill}>Thesis Ready • Toast + Audit Log</span></div>);
+  const footer = null;
 
   const table = (title: string, cols: string[], rows: React.ReactNode, form?: React.ReactNode) => (
     <section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>{title}</h1>{form}<div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}>{cols.map((c) => <th key={c} style={{ padding: 12 }}>{c}</th>)}</tr></thead><tbody>{rows}</tbody></table></div>{footer}</section>

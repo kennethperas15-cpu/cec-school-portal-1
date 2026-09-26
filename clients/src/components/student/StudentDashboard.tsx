@@ -46,7 +46,7 @@ const ghost: React.CSSProperties = { border: '1px solid #e2e7ef', background: '#
 const inp: React.CSSProperties = { border: '1px solid #e2e7ef', borderRadius: 10, padding: '12px 14px', fontSize: 14, width: '100%', background: '#fff' };
 const lbl: React.CSSProperties = { fontSize: 12, color: '#6b7890', letterSpacing: '.04em', marginBottom: 6, display: 'block' };
 
-const Footer = () => (<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}><span style={pill}>CEC Blue #0B3D91 • Gold #FFC928</span><span style={pill}>24 Subsystems • 31 Modules Functional</span><span style={pill}>Changes saved locally</span></div>);
+const Footer = () => null;
 
 const CrudSection = ({ title, col, onNotify, hint }: { title: string; col: Col; onNotify: (t: string) => void; hint: string }) => {
   const [v, setV] = useState('');

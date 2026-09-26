@@ -156,7 +156,7 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     ...messages.list.map((item) => ({ title: item.title, detail: item.where, target: 'Messaging' })),
   ];
   const startEdit = (id: string, values: Record<string, string>) => { setEditingId(id); setDraft(values); };
-  const footer = (<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}><span style={pill}>CEC Blue #0B3D91 • Gold #FFC928</span><span style={pill}>Changes saved locally</span><span style={pill}>Thesis Ready • Toast + Audit Log</span></div>);
+  const footer = null;
 
   const crudTable = (opts: { title: string; columns: string[]; rows: React.ReactNode; form?: React.ReactNode; note?: React.ReactNode }) => (
     <section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>{opts.title}</h1>{opts.form}{opts.note}<div style={{ ...box, padding: 0, overflow: 'hidden', marginTop: opts.note ? 12 : undefined }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}>{opts.columns.map((c) => <th key={c} style={{ padding: '12px 14px' }}>{c}</th>)}</tr></thead><tbody>{opts.rows}</tbody></table></div>{footer}</section>
