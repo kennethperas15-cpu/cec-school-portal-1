@@ -103,3 +103,7 @@ button{font-family:inherit}.course-button{border-left:0;border-right:0;border-bo
 .role-home-item:hover{padding-left:5px;padding-right:5px}
 @media(max-width:800px){.role-home-actions{padding:12px}.role-home-actions button{flex:1;justify-content:center;min-width:140px}.role-home-panel{padding:15px}}
 @media(prefers-reduced-motion:reduce){.role-home{animation:none}.role-home-metric,.role-home-actions button,.role-home-item{transition:none}}
+
+.auth-page .auth-tabs .auth-tab:not(.active):hover{background:#fff;color:#0b3d91;border-color:#b7ccec;box-shadow:0 3px 10px rgba(11,61,145,.12)}
+.auth-page .auth-tabs .auth-tab.active:hover{background:#fff;color:#0b3d91;border-color:#b7ccec;box-shadow:0 4px 12px rgba(11,61,145,.16)}
+.auth-page .auth-tabs .auth-tab:focus-visible{outline:3px solid #f0bd38;outline-offset:2px;position:relative;z-index:1}
