@@ -5,6 +5,7 @@ import type { UserAuthData } from './components/auth/Login';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AISupport } from './components/shared/AISupport';
+import { LoadingScreen } from './components/shared/LoadingScreen';
 import { ensureSchoolId } from './services/crud';
 import './styles.css';
 import './login.css';
@@ -34,6 +35,7 @@ const adoptSchoolIdentity = (u: UserAuthData): UserAuthData => {
 
 export const App = () => {
   const [currentUser, setCurrentUser] = useState<UserAuthData | null>(null);
+  const [pendingUser, setPendingUser] = useState<UserAuthData | null>(null);
   const [message, setMessage] = useState('');
 
   const notify = (text: string) => {
@@ -45,11 +47,25 @@ export const App = () => {
     sessionStorage.removeItem('cec_access_token');
     sessionStorage.removeItem('cec_refresh_token');
     setCurrentUser(null);
+    setPendingUser(null);
     notify('You have been signed out.');
   };
 
   if (!currentUser) {
-    return <AuthContainer onLoginSuccess={(u) => setCurrentUser(adoptSchoolIdentity(u))} onNotify={notify} />;
+    if (pendingUser) {
+      return (
+        <LoadingScreen
+          name={`${pendingUser.firstName} ${pendingUser.lastName}`}
+          role={pendingUser.role}
+          onDone={() => {
+            setCurrentUser(pendingUser);
+            setPendingUser(null);
+            notify(`Welcome back, ${pendingUser.firstName}!`);
+          }}
+        />
+      );
+    }
+    return <AuthContainer onLoginSuccess={(u) => setPendingUser(adoptSchoolIdentity(u))} onNotify={notify} />;
   }
 
   const props = { currentUser, onNotify: notify, onLogout: logout };
