@@ -106,12 +106,15 @@ export const authService = {
     const temporaryPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     const applicationId = crypto.randomUUID();
-    // Keep a caller-provided 7-digit school ID (2 student • 3 teacher • 4 admin)
+    // 7-digit school IDs only (2 student • 3 teacher • 4 admin): keep a
+    // valid provided one, otherwise issue a fresh one — never CEC- formats.
     const idLead = requestedRole === 'teacher' ? '3' : requestedRole === 'admin' ? '4' : '2';
     const providedId = typeof input.schoolId === 'string' && new RegExp(`^${idLead}\\d{6}$`).test(input.schoolId.trim())
       ? input.schoolId.trim()
       : null;
-    const studentNumber = providedId ?? `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`;
+    let issuedId = idLead;
+    for (let i = 0; i < 6; i++) issuedId += Math.floor(Math.random() * 10).toString();
+    const studentNumber = providedId ?? issuedId;
 
     await sequelize.transaction(async (transaction) => {
       await sequelize.query(
@@ -357,13 +360,15 @@ export const authService = {
         { replacements: [userId, applicationId], transaction }
       );
       if (application.requested_role === 'student') {
+        let approvalId = '2';
+        for (let i = 0; i < 6; i++) approvalId += Math.floor(Math.random() * 10).toString();
         await sequelize.query(
           `INSERT INTO students (id, user_id, student_number, program, year_level)
            VALUES (?, ?, ?, ?, ?)`,
           {
             replacements: [
               crypto.randomUUID(), userId,
-              `CEC-${new Date().getFullYear()}-${userId.slice(0, 8).toUpperCase()}`,
+              approvalId,
               application.program, application.year_level
             ],
             transaction

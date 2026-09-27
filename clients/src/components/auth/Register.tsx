@@ -38,6 +38,7 @@ export const Register: React.FC<RegisterProps> = ({
   const [accountRole, setAccountRole] = useState<'student' | 'teacher' | 'admin'>('student');
   const [applicantType, setApplicantType] = useState<'new' | 'old'>('new');
   const [clearanceRef, setClearanceRef] = useState('');
+  const idLead = accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2';
   const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -140,12 +141,19 @@ export const Register: React.FC<RegisterProps> = ({
         const clean = fullName.trim().toLowerCase().replace(/[^a-z\s.]/g, '').replace(/\s+/g, '.');
         const schoolEmail = `${clean || 'student'}.${Math.floor(100 + Math.random() * 900)}@cec.edu.ph`;
         const temporaryPassword = `CEC-${Math.floor(100000 + Math.random() * 900000)}`;
-        // Keep a provided 7-digit ID (2 student • 3 teacher • 4 admin); otherwise issue one
+        // Students: keep a provided 7-digit ID, otherwise issue one.
+        // Teachers/admins: ID must be typed (assigned, never random).
         const lead = accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2';
         let studentId = schoolId.trim();
-        if (!new RegExp(`^${lead}\\d{6}$`).test(studentId)) {
-          studentId = lead;
-          for (let i = 0; i < 6; i++) studentId += Math.floor(Math.random() * 10).toString();
+        if (accountRole === 'student') {
+          if (!new RegExp(`^${lead}\\d{6}$`).test(studentId)) {
+            studentId = lead;
+            for (let i = 0; i < 6; i++) studentId += Math.floor(Math.random() * 10).toString();
+          }
+        } else if (!new RegExp(`^${lead}\\d{6}$`).test(studentId)) {
+          setError(`Enter the assigned 7-digit ${accountRole} ID (starts with ${lead}) — it is never auto-generated.`);
+          setSubmitting(false);
+          return;
         }
         try {
           const pushTo = (key: string, item: unknown) => {
@@ -451,7 +459,7 @@ export const Register: React.FC<RegisterProps> = ({
         <div className="auth-form-row">
           <div className="auth-field">
             <label htmlFor="reg-school-id">
-              School ID {applicantType === 'old' ? <span className="required-star">*</span> : <span className="field-hint">(if issued — 7 digits, starts with {accountRole === 'teacher' ? '3' : accountRole === 'admin' ? '4' : '2'})</span>}
+              School ID {applicantType === 'old' || accountRole !== 'student' ? <span className="required-star">*</span> : <span className="field-hint">(if issued — 7 digits, starts with {idLead})</span>}
             </label>
             <div className="auth-input-wrap">
               <span className="auth-input-icon" aria-hidden="true">
@@ -465,7 +473,7 @@ export const Register: React.FC<RegisterProps> = ({
                 id="reg-school-id"
                 type="text"
                 inputMode="numeric"
-                required={applicantType === 'old'}
+                required={applicantType === 'old' || accountRole !== 'student'}
                 value={schoolId}
                 onChange={(e) => setSchoolId(e.target.value.replace(/\D/g, '').slice(0, 7))}
                 placeholder="e.g. 2414807 (optional)"
