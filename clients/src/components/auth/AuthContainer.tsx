@@ -4,11 +4,12 @@ import './Login.css';
 
 const Register = lazy(() => import('./Register').then(({ Register: component }) => ({ default: component })));
 const ForgotPassword = lazy(() => import('./ForgotPassword').then(({ ForgotPassword: component }) => ({ default: component })));
+const EnrollmentLanding = lazy(() => import('../enrollment/EnrollmentLanding').then(({ EnrollmentLanding: component }) => ({ default: component })));
 
 interface AuthContainerProps {
   onLoginSuccess: (user: UserAuthData) => void;
   onNotify?: (message: string) => void;
-  initialTab?: 'login' | 'register' | 'forgot';
+  initialTab?: 'login' | 'register' | 'forgot' | 'enroll';
 }
 
 const campusSlides = [
@@ -34,11 +35,20 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
   onNotify,
   initialTab = 'login',
 }) => {
-  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot' | 'enroll'>(initialTab);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [prefilledIdentifier, setPrefilledIdentifier] = useState('');
   const [prefilledPassword, setPrefilledPassword] = useState('');
   const activeSlide = campusSlides[currentSlide];
+
+  // Deep link: opening the portal with ?enroll=1 lands straight on the
+  // public enrollment form (shareable enrollment link).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('enroll') === '1') setActiveTab('enroll');
+    } catch { /* ignore */ }
+  }, []);
 
   // Auto-advance campus slideshow
   useEffect(() => {
@@ -197,6 +207,20 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
               </svg>
               <span>Recovery</span>
             </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'enroll'}
+              className={`auth-tab ${activeTab === 'enroll' ? 'active' : ''}`}
+              onClick={() => setActiveTab('enroll')}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                <path d="M6 12v5c3 3 9 3 12 0v-5" />
+              </svg>
+              <span>Enroll</span>
+            </button>
           </div>
 
           {/* Active View */}
@@ -222,6 +246,13 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
 
               {activeTab === 'forgot' && (
                 <ForgotPassword
+                  onSwitchToLogin={() => setActiveTab('login')}
+                  onNotify={onNotify}
+                />
+              )}
+
+              {activeTab === 'enroll' && (
+                <EnrollmentLanding
                   onSwitchToLogin={() => setActiveTab('login')}
                   onNotify={onNotify}
                 />

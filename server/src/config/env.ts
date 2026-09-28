@@ -7,7 +7,7 @@ if (nodeEnv === 'production' && jwtSecret === 'development-secret') {
 }
 export const env = {
   port: Number(process.env.PORT ?? 4000),
-  databaseUrl: process.env.DATABASE_URL ?? 'mysql://cec_app:change-me@localhost:3306/cec_portal',
+  databaseUrl: process.env.DATABASE_URL ?? 'postgres://postgres:change-me@localhost:5432/postgres',
   jwtSecret,
   accessTokenTtl: process.env.ACCESS_TOKEN_TTL ?? '15m',
   refreshTokenTtl: process.env.REFRESH_TOKEN_TTL ?? '7d',

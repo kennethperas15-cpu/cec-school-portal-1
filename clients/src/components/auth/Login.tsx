@@ -1,5 +1,5 @@
 import React, { useState, useEffect, type FormEvent } from 'react';
-import api from '@/services/api';
+import api, { setTokens } from '@/services/api';
 
 export interface UserAuthData {
   firstName: string;
@@ -85,8 +85,7 @@ export const Login: React.FC<LoginProps> = ({
 
       const token = response.data?.data?.token ?? response.data?.data?.accessToken;
       const refreshToken = response.data?.data?.refreshToken;
-      if (token) sessionStorage.setItem('cec_access_token', token);
-      if (refreshToken) sessionStorage.setItem('cec_refresh_token', refreshToken);
+      setTokens(token, refreshToken, rememberMe);
       if (rememberMe) {
         localStorage.setItem('cec_remember_identifier', identifier.trim());
       } else {
@@ -101,12 +100,12 @@ export const Login: React.FC<LoginProps> = ({
       try {
         const raw = localStorage.getItem('cec:registrations');
         const registrations = raw ? JSON.parse(raw) as {
-          id?: string; fullName?: string; schoolEmail?: string; temporaryPassword?: string; requestedRole?: string;
+          id?: string; fullName?: string; schoolEmail?: string; temporaryPassword?: string; password?: string; requestedRole?: string;
         }[] : [];
         const registration = registrations.find((item) =>
           (item.schoolEmail ?? '').toLowerCase() === identifier.trim().toLowerCase() || item.id === identifier.trim()
         );
-        if (registration && registration.temporaryPassword === password) {
+        if (registration && (registration.temporaryPassword === password || registration.password === password)) {
           const nameParts = (registration.fullName ?? 'CEC User').trim().split(/\s+/);
           const localUser: UserAuthData = {
             firstName: nameParts[0] ?? 'CEC',

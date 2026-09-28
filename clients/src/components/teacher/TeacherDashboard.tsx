@@ -3,6 +3,7 @@ import { useCollection, uid, genSchoolId } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
 import { pushNotification } from '../../services/notify';
+import { useLiveAnnouncements } from '../../hooks/useLiveAnnouncements';
 import { setPhoto, readPhotoFile } from '../../services/photos';
 import { PhotoAvatar } from '../shared/PhotoAvatar';
 import { AlertPopup } from '../shared/AlertPopup';
@@ -125,6 +126,13 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [attSn, setAttSn] = useState(''); const [attSs, setAttSs] = useState('Present');
   const [genF1, setGenF1] = useState('');
   const [popup, setPopup] = useState<{ title: string; message: string; lines?: string[] } | null>(null);
+  // Live admin announcements for faculty.
+  const { items: liveAdminAnnouncements } = useLiveAnnouncements('teachers', {
+    onNew: (a) => {
+      setPopup({ title: `New announcement: ${a.title}`, message: a.content });
+      onNotify(`New announcement: ${a.title}`);
+    },
+  });
   const [photoTick, setPhotoTick] = useState(0);
   const [photoError, setPhotoError] = useState('');
   const myPhotoId = currentUser?.id || 'T-001';
@@ -303,7 +311,19 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!genF1.trim()) return; const title = genF1.trim(); messages.create({ id: uid('msg'), title, when: 'Today', where: 'Sent to section' }); setGenF1(''); pushNotification(['student'], { title: `New message from faculty`, detail: title, category: 'Communication', target: 'Messaging' }); setPopup({ title: 'Message sent', message: 'Students received a popup notification.', lines: [title] }); onNotify('Message sent'); }}><input style={inp} placeholder="Message section..." value={genF1} onChange={(e) => setGenF1(e.target.value)} /><button style={btn} type="submit">Send</button></form>),
         rows: (messages.list as { id: string; title: string; where: string }[]).map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.title}</strong></td><td style={{ padding: 12, color: '#6b7890' }}>{r.where}</td><td style={{ padding: 12 }}><RowActions onEdit={() => { openEditDialog('Edit message', r.title, (v) => { messages.update(r.id, { title: v }); onNotify('Updated'); }); }} onDelete={() => { messages.remove(r.id); onNotify('Deleted'); }} /></td></tr>) });
     }
-    if (active === 'Materials' || active === 'Assignments' || active === 'Announcements' || active === 'Forum' || active === 'Class Schedule' || active === 'Consultation Slots') {
+    if (active === 'Announcements') {
+      const col = posts as unknown as ReturnType<typeof useCollection>;
+      return (<>
+        <section style={card}><h1 style={{ margin: 0 }}>Administration Announcements</h1>
+          <p style={{ color: '#6b7890', fontSize: 13 }}>Live from the administration — new posts appear here automatically.</p>
+          <div style={box}>{liveAdminAnnouncements.map((a) => <div key={a.id} style={{ padding: '12px 0', borderBottom: '1px solid #eef1f6' }}><strong style={{ fontSize: 14 }}>{a.title}</strong><div style={{ fontSize: 13, color: '#33415c', marginTop: 4, whiteSpace: 'pre-wrap' }}>{a.content}</div><div style={{ fontSize: 11, color: '#8a94a6', marginTop: 4 }}>{a.published_at ? new Date(a.published_at).toLocaleString() : ''}{a.published_by_name ? ` • ${a.published_by_name}` : ''}</div></div>)}
+            {!liveAdminAnnouncements.length && <div style={{ color: '#6b7890', fontSize: 13 }}>No administration announcements yet.</div>}</div></section>
+        {crudTable({ title: 'Section Announcements', columns: ['Title', 'Detail', 'Actions'],
+        form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!genF1.trim()) return; col.create({ id: uid('x'), title: genF1.trim(), body: '', type: '', due: '', submitted: '', date: '', items: '', when: '', where: '' } as unknown as { id: string }); setGenF1(''); onNotify('Section announcement created'); }}><input style={inp} placeholder="New section announcement title" value={genF1} onChange={(e) => setGenF1(e.target.value)} /><button style={btn} type="submit">Add</button></form>),
+        rows: (col.list as { id: string; title: string }[]).map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.title}</strong></td><td style={{ padding: 12, color: '#6b7890' }}>{Object.values(r).slice(2, 4).join(' • ')}</td><td style={{ padding: 12 }}><RowActions onEdit={() => { openEditDialog('Edit title', r.title, (v) => { col.update(r.id, { title: v } as Partial<{ id: string }>); onNotify('Updated'); }); }} onDelete={() => { col.remove(r.id); onNotify('Deleted'); }} /></td></tr>) })}
+      </>);
+    }
+    if (active === 'Materials' || active === 'Assignments' || active === 'Forum' || active === 'Class Schedule' || active === 'Consultation Slots') {
       const map: Record<string, ReturnType<typeof useCollection>> = { Materials: materials as unknown as ReturnType<typeof useCollection>, Assignments: assigns as unknown as ReturnType<typeof useCollection>, Announcements: posts as unknown as ReturnType<typeof useCollection>, Forum: forum as unknown as ReturnType<typeof useCollection>, Messaging: messages as unknown as ReturnType<typeof useCollection>, 'Announcement Posting': posts as unknown as ReturnType<typeof useCollection>, 'Class Schedule': sched as unknown as ReturnType<typeof useCollection>, 'Consultation Slots': consults as unknown as ReturnType<typeof useCollection> };
       const col = map[active] ?? materials as unknown as ReturnType<typeof useCollection>;
       return crudTable({ title: active, columns: ['Title', 'Detail', 'Actions'],

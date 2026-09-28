@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../config/database.js';
+import { sql } from '../config/sql.js';
 import { authmiddlewareMiddleware } from '../middleware/auth.middleware.js';
 import { requireRoles } from '../middleware/rbac.middleware.js';
 import { writeAuditLog } from '../services/audit.service.js';
@@ -11,14 +12,14 @@ const router = Router();
 
 router.get('/health', async (_req, res, next) => {
   try {
-    await sequelize.query('SELECT 1', { type: QueryTypes.SELECT });
+    await sql('SELECT 1', { type: QueryTypes.SELECT });
     res.json({ success: true, db: 'connected' });
   } catch (error) { next(error); }
 });
 
 router.get('/config/academic', async (_req, res, next) => {
   try {
-    const rows = await sequelize.query<{ config_key: string; config_value: string }>(
+    const rows = await sql<{ config_key: string; config_value: string }>(
       `SELECT config_key, config_value FROM system_config WHERE is_public = TRUE AND config_key IN ('school_year', 'semester')`,
       { type: QueryTypes.SELECT }
     );
@@ -31,8 +32,9 @@ router.get('/config/academic', async (_req, res, next) => {
 router.get('/enrollments', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
   try {
     const status = typeof req.query.status === 'string' ? req.query.status : 'pending';
-    const rows = await sequelize.query(
-      `SELECT id, email, first_name, last_name, program, year_level, phone, requested_role, status, created_at
+    const rows = await sql(
+      `SELECT id, email, first_name, last_name, program, year_level, phone, requested_role, status,
+              payment_reference_no, payment_status, student_status, assigned_school_id, school_year, semester, created_at
        FROM enrollment_applications WHERE status = ? ORDER BY created_at DESC LIMIT 100`,
       { replacements: [status], type: QueryTypes.SELECT }
     );
@@ -53,7 +55,7 @@ router.post('/enrollments', async (req, res, next) => {
     const firstName = parts.shift() ?? '';
     const lastName = parts.join(' ') || firstName;
     const id = crypto.randomUUID();
-    await sequelize.query(
+    await sql(
       `INSERT INTO enrollment_applications
        (id, google_subject, email, first_name, last_name, program, year_level, phone, requested_role, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
@@ -61,6 +63,45 @@ router.post('/enrollments', async (req, res, next) => {
     );
     res.status(201).json({ success: true, data: { id, status: 'pending' } });
   } catch (error) { next(error); }
+});
+
+// Public over-the-counter enrollment submission (new + returning students).
+// Settles nothing online: only the Accounting Office reference number is
+// collected here. Returns the reserved school ID + summary for the slip.
+router.post('/enrollment/submit', async (req, res, next) => {
+  try {
+    const {
+      applicantType, fullName, personalEmail, phone, address, program, yearLevel,
+      schoolYear, semester, schoolId, paymentReferenceNo, educationLevel,
+    } = req.body as {
+      applicantType?: string; fullName?: string; personalEmail?: string; phone?: string; address?: string;
+      program?: string; yearLevel?: number; schoolYear?: string; semester?: number;
+      schoolId?: string; paymentReferenceNo?: string; educationLevel?: string;
+    };
+    if (applicantType !== 'new' && applicantType !== 'returning') {
+      res.status(400).json({ success: false, message: 'Choose New Student or Returning Student' });
+      return;
+    }
+    const result = await authService.submitPublicEnrollment({
+      applicantType, fullName, personalEmail, phone, address, program, yearLevel,
+      schoolYear, semester, schoolId, paymentReferenceNo: paymentReferenceNo ?? '', educationLevel,
+    });
+    res.status(201).json({ success: true, data: result, message: 'Enrollment submitted — pending accounting verification' });
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes('Reference Number') || error.message.includes('Reference number') ||
+      error.message.includes('full name') || error.message.includes('Full name') ||
+      error.message.includes('email') || error.message.includes('contact') ||
+      error.message.includes('program') || error.message.includes('Program') ||
+      error.message.includes('year') || error.message.includes('Year') ||
+      error.message.includes('semester') || error.message.includes('Semester') ||
+      error.message.includes('7-digit') || error.message.includes('No school record')
+    )) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
 });
 
 router.post('/enrollments/:id/decide', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
@@ -72,7 +113,7 @@ router.post('/enrollments/:id/decide', authmiddlewareMiddleware, requireRoles('a
       return;
     }
     if (decision === 'rejected') {
-      await sequelize.query(
+      await sql(
         `UPDATE enrollment_applications SET status = ?, reviewed_at = NOW() WHERE id = ? AND status = 'pending'`,
         { replacements: [decision, id], type: QueryTypes.UPDATE }
       );
@@ -87,6 +128,46 @@ router.post('/enrollments/:id/decide', authmiddlewareMiddleware, requireRoles('a
   } catch (error) { next(error); }
 });
 
+// ---- Live announcements: admin publishes once, every portal polls it ----
+router.get('/announcements', async (req, res, next) => {
+  try {
+    const audience = typeof req.query.audience === 'string' ? req.query.audience : 'all';
+    const rows = await sql(
+      `SELECT a.id, a.title, a.content, a.audience, a.published_at,
+              TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS published_by_name
+       FROM announcements a LEFT JOIN users u ON u.id = a.published_by
+       WHERE a.published_at IS NOT NULL AND (a.audience = 'all' OR a.audience = ?)
+       ORDER BY a.published_at DESC LIMIT 50`,
+      { replacements: [audience], type: QueryTypes.SELECT }
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) { next(error); }
+});
+
+router.post('/announcements', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
+  try {
+    const { title, content, audience } = req.body as { title?: string; content?: string; audience?: string };
+    if (!title?.trim() || !content?.trim()) {
+      res.status(400).json({ success: false, message: 'Title and details are required' });
+      return;
+    }
+    if (audience && !['all', 'students', 'teachers', 'admins'].includes(audience)) {
+      res.status(400).json({ success: false, message: 'Invalid audience' });
+      return;
+    }
+    const rows = await sql<{ id: number }>(
+      `INSERT INTO announcements (title, content, audience, published_by, published_at)
+       VALUES (?, ?, ?, ?, NOW()) RETURNING id`,
+      {
+        replacements: [title.trim(), content.trim(), audience ?? 'all', req.user?.id ?? null],
+        type: QueryTypes.SELECT,
+      }
+    );
+    await writeAuditLog(req, { action: 'Announcement published', targetType: 'Announcement', targetId: String(rows[0]?.id ?? ''), newValue: { title: title.trim(), audience: audience ?? 'all' } });
+    res.status(201).json({ success: true, data: { id: rows[0]?.id ?? null, title: title.trim(), audience: audience ?? 'all' } });
+  } catch (error) { next(error); }
+});
+
 // ---- Shared portal items (all modules, all roles) ----
 router.get('/items', async (req, res, next) => {
   try {
@@ -94,7 +175,7 @@ router.get('/items', async (req, res, next) => {
     const module = typeof req.query.module === 'string' ? req.query.module : undefined;
     const where = [portal ? 'portal = ?' : '1=1', module ? 'module = ?' : '1=1'].join(' AND ');
     const replacements = [portal, module].filter((v): v is string => !!v);
-    const rows = await sequelize.query(
+    const rows = await sql(
       `SELECT id, portal, module, title, detail, status, owner, created_at FROM portal_items WHERE ${where} ORDER BY created_at DESC LIMIT 200`,
       { replacements, type: QueryTypes.SELECT }
     );
@@ -112,7 +193,7 @@ router.post('/items', authmiddlewareMiddleware, requireRoles('admin', 'teacher',
       return;
     }
     const id = crypto.randomUUID();
-    await sequelize.query(
+    await sql(
       `INSERT INTO portal_items (id, portal, module, title, detail, status, owner) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       { replacements: [id, portal.trim(), module.trim(), title.trim(), detail ?? null, status ?? 'New', owner ?? null], type: QueryTypes.INSERT }
     );
@@ -125,7 +206,7 @@ router.put('/items/:id', authmiddlewareMiddleware, requireRoles('admin', 'teache
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const { title, detail, status, owner } = req.body as { title?: string; detail?: string; status?: string; owner?: string };
-    await sequelize.query(
+    await sql(
       `UPDATE portal_items SET title = COALESCE(?, title), detail = COALESCE(?, detail), status = COALESCE(?, status), owner = COALESCE(?, owner) WHERE id = ?`,
       { replacements: [title ?? null, detail ?? null, status ?? null, owner ?? null, id], type: QueryTypes.UPDATE }
     );
@@ -137,7 +218,7 @@ router.put('/items/:id', authmiddlewareMiddleware, requireRoles('admin', 'teache
 router.delete('/items/:id', authmiddlewareMiddleware, requireRoles('admin', 'teacher'), async (req, res, next) => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    await sequelize.query(`DELETE FROM portal_items WHERE id = ?`, { replacements: [id], type: QueryTypes.UPDATE });
+    await sql(`DELETE FROM portal_items WHERE id = ?`, { replacements: [id], type: QueryTypes.UPDATE });
     await writeAuditLog(req, { action: 'Portal item deleted', targetType: 'PortalItem', targetId: id });
     res.json({ success: true, data: { id } });
   } catch (error) { next(error); }

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authService } from '../services/auth.service.js';
 import { env } from '../config/env.js';
+import { authmiddlewareMiddleware } from '../middleware/auth.middleware.js';
+import { requireRoles } from '../middleware/rbac.middleware.js';
 import { loginRateLimit } from '../middleware/rate-limit.middleware.js';
 
 const router = Router();
@@ -43,6 +45,12 @@ router.post('/enrollment', async (req, res, next) => {
       res.status(400).json({ success: false, message: 'Invalid requested role' });
       return;
     }
+    // Public applications are student-only. Staff accounts are provisioned by
+    // an administrator through POST /auth/staff — never from this page.
+    if (requestedRole && requestedRole !== 'student') {
+      res.status(403).json({ success: false, message: 'Staff accounts are provisioned by the administrator — this page accepts student applications only' });
+      return;
+    }
     const result = await authService.submitEnrollment({ fullName, personalEmail, phone, program, yearLevel, requestedRole, googleToken, schoolId });
     res.status(201).json({
       success: true,
@@ -52,6 +60,59 @@ router.post('/enrollment', async (req, res, next) => {
         : 'Account was created, but email delivery is not configured'
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/register', async (req, res, next) => {
+  try {
+    // Public student self-registration: role is always student, enforced in
+    // the service independently of anything the client sends.
+    const { schoolId, password, educationLevel } = req.body as {
+      schoolId?: string; password?: string; educationLevel?: string;
+    };
+    if (!schoolId?.trim() || !password || !educationLevel) {
+      res.status(400).json({ success: false, message: 'School ID, password, and education level are required' });
+      return;
+    }
+    const result = await authService.registerStudent({ schoolId, password, educationLevel });
+    res.status(201).json({ success: true, data: result, message: 'Student account activated' });
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes('7-digit') || error.message.includes('at least 8') ||
+      error.message.includes('education level') || error.message.includes('No school record') ||
+      error.message.includes('already registered')
+    )) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.post('/staff', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
+  try {
+    const { fullName, personalEmail, phone, staffId, role, department, position, office } = req.body as {
+      fullName?: string; personalEmail?: string; phone?: string; staffId?: string;
+      role?: 'teacher' | 'admin'; department?: string; position?: string; office?: string;
+    };
+    if (!fullName?.trim() || !personalEmail?.trim() || !staffId?.trim() || !role) {
+      res.status(400).json({ success: false, message: 'Full name, email, staff ID, and role are required' });
+      return;
+    }
+    const result = await authService.createStaffAccount({
+      fullName, personalEmail, phone, staffId, role, department, position, office,
+    });
+    res.status(201).json({ success: true, data: result, message: `${role === 'teacher' ? 'Teacher' : 'Admin'} account provisioned` });
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes('must be') || error.message.includes('required') ||
+      error.message.includes('7 digits') || error.message.includes('already exists') ||
+      error.message.includes('not configured')
+    )) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
     next(error);
   }
 });

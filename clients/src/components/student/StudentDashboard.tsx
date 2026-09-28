@@ -4,6 +4,7 @@ import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
 import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
 import { pushNotification } from '../../services/notify';
+import { useLiveAnnouncements } from '../../hooks/useLiveAnnouncements';
 import { refreshPipeline, readOfficialAssessment, parseAmount } from '../../services/pipeline';
 import { setPhoto, readPhotoFile } from '../../services/photos';
 import { ensureSchoolId } from '../../services/crud';
@@ -34,7 +35,7 @@ const GROUPS: Group[] = [
   { id: 'enroll', label: 'ENROLLMENT', icon: '▤', items: [{ label: 'Online Enrollment', route: 's_enr_online' }, { label: 'Section Selection', route: 's_enr_sections' }, { label: 'Document Submission', route: 's_enr_docs' }, { label: 'Status Tracker', route: 's_enr_status' }] },
   { id: 'fin', label: 'FINANCIAL', icon: '▦', items: [{ label: 'Tuition Assessment', route: 's_fin_assess' }, { label: 'Payment Portal', route: 's_fin_pay' }, { label: 'Billing History', route: 's_fin_billing' }, { label: 'Scholarship Application', route: 's_fin_scholar' }] },
   { id: 'lms', label: 'LMS', icon: '▥', items: [{ label: 'Course Material', route: 's_lms_materials' }, { label: 'Assignments', route: 's_lms_assign' }, { label: 'Quiz / Exam', route: 's_lms_quiz' }, { label: 'Announcements', route: 's_lms_announce' }, { label: 'Discussion Forum', route: 's_lms_forum' }] },
-  { id: 'lib', label: 'LIBRARY', icon: '▧', items: [{ label: 'Book Catalog', route: 's_lib_catalog' }, { label: 'Borrowing Tracker', route: 's_lib_borrow' }, { label: 'Reservations', route: 's_lib_reserve' }, { label: 'Fines / Penalties', route: 's_lib_fines' }] },
+  { id: 'lib', label: 'LIBRARY', icon: '▧', items: [{ label: 'Library Catalog', route: 's_lib_catalog' }] },
   { id: 'comm', label: 'COMMUNICATION', icon: '✉', items: [{ label: 'Notification Center', route: 's_com_notif' }, { label: 'Announcement Board', route: 's_com_board' }, { label: 'Messaging', route: 's_com_msg' }] },
   { id: 'support', label: 'SUPPORT SERVICES', icon: '◫', items: [{ label: 'Guidance Appointment', route: 's_sup_guide' }, { label: 'Document Request', route: 's_sup_docs' }, { label: 'Complaint / Feedback', route: 's_sup_feedback' }] },
 ];
@@ -604,9 +605,9 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const materials = useCollection<Rec>('s_materials', [{ id: 'm1', name: 'Week 5 Slides - Normalization', role: 'PDF • CS 302' }]);
   const assigns = useCollection<Rec>('s_assigns', [{ id: 'a1', name: 'ER Diagram Project', role: 'Due Oct 20 • Not submitted' }]);
   const quizzes = useCollection<Rec>('s_quiz', [{ id: 'q1', name: 'Quiz 3 - SQL Joins', role: '10 items • Not taken' }]);
-  const books = useCollection<Rec>('s_books', [{ id: 'b1', name: 'Database System Concepts', role: 'Available' }]);
-  const borrows = useCollection<Rec>('s_borrows', [{ id: 'br1', name: 'Intro to Algorithms', role: 'Due Oct 25 • Borrowed' }]);
-  const fines = useCollection<Rec>('s_fines', [{ id: 'f1', name: 'Overdue — Lab manual', role: '₱50 • Unpaid' }]);
+  // Library is catalog-only: students browse what the physical library holds.
+  // The list is curated by the library/admin side (shared `s_books` store).
+  const catalog = useCollection<Rec>('s_books', []);
   const notifs = useCollection<Rec>('s_notifs', [{ id: 'n1', name: 'Library extended hours', role: 'Open until 9PM exam week' }]);
   const messages = useCollection<Rec>('s_messages', [{ id: 'msg1', name: 'To adviser: midterm coverage?', role: 'Sent • Today' }]);
   const guide = useCollection<Rec>('s_guide', [{ id: 'g1', name: 'Academic advising — Oct 22 10AM', role: 'Requested' }]);
@@ -619,6 +620,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [scholarName, setScholarName] = useState('');
   const [payMethod, setPayMethod] = useState('GCash');
   const [payRef, setPayRef] = useState('');
+  const [catalogQuery, setCatalogQuery] = useState('');
   // Connected pipeline: registrar docs + accounting payment → EDP auto-enroll
   useEffect(() => {
     refreshPipeline({ name: profile.name, email: profile.email });
@@ -627,6 +629,13 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [popup, setPopup] = useState<{ title: string; message: string; lines?: string[] } | null>(null);
+  // Live admin announcements: pop up the moment one is published.
+  const { items: liveAnnouncements, live: announcementsLive } = useLiveAnnouncements('students', {
+    onNew: (a) => {
+      setPopup({ title: `New announcement: ${a.title}`, message: a.content, lines: a.published_by_name ? [`From ${a.published_by_name}`] : undefined });
+      onNotify(`New announcement: ${a.title}`);
+    },
+  });
   const [photoTick, setPhotoTick] = useState(0);
   const [photoError, setPhotoError] = useState('');
   const myPhotoId = profile.id || 'CEC-2024-0015';
@@ -1017,15 +1026,24 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     if (active === 'Quiz / Exam') {
       return (<section style={card}><h1 style={{ margin: 0 }}>Quiz / Exam</h1><div style={box}>{quizzes.list.map((qz) => <div key={qz.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{qz.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{qz.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { const score = 7 + Math.floor(Math.random() * 4); quizzes.update(qz.id, { role: `Score ${score}/10 • Taken` }); onNotify(`Quiz submitted: ${score}/10`); }}>Take quiz</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { quizzes.remove(qz.id); onNotify('Quiz deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
     }
-    if (active === 'Book Catalog') return <TwoFieldForm title="Book Catalog" col={books} onNotify={onNotify} ph1="Book title" ph2="Availability" />;
-    if (active === 'Borrowing Tracker') {
-      return (<section style={card}><h1 style={{ margin: 0 }}>Borrowing Tracker</h1><div style={box}>{borrows.list.map((b) => <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{b.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{b.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { borrows.update(b.id, { role: 'Returned' }); onNotify('Book returned (Update)'); }}>Return</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { borrows.remove(b.id); onNotify('Record deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
+    if (active === 'Library Catalog') {
+      const q = catalogQuery.trim().toLowerCase();
+      const matches = catalog.list.filter((b) => !q || `${b.name} ${b.role}`.toLowerCase().includes(q));
+      return (<section style={card}><h1 style={{ margin: 0 }}>Library Catalog</h1>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Browse what the physical CEC library holds. Borrowing is done in person at the library counter — just note the title and visit.</p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 520 }}>
+          <input style={inp} placeholder="Search by title or author…" value={catalogQuery} onChange={(e) => setCatalogQuery(e.target.value)} aria-label="Search library catalog" />
+        </div>
+        <div style={box}>{matches.map((b) => <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{b.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{b.role}</div></div><span style={{ background: '#eef4ff', color: '#0B3D91', borderRadius: 999, padding: '4px 12px', fontSize: 11, fontWeight: 700 }}>In library</span></div>)}
+          {!matches.length && <div style={{ color: '#6b7890', fontSize: 13 }}>{catalog.list.length ? 'No titles match your search.' : 'No books listed yet — the library catalog is updated by the library staff.'}</div>}</div><Footer /></section>);
     }
-    if (active === 'Reservations') return <TwoFieldForm title="Reservations" col={books} onNotify={onNotify} ph1="Book title" ph2="Pickup date" />;
-    if (active === 'Fines / Penalties') {
-      return (<section style={card}><h1 style={{ margin: 0 }}>Fines / Penalties</h1><div style={box}>{fines.list.map((f) => <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{f.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{f.role}</div></div><button style={btn} onClick={() => { fines.update(f.id, { role: 'Paid' }); onNotify('Fine paid (Update)'); }}>Pay</button></div>)}</div><Footer /></section>);
+    if (active === 'Announcement Board') {
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Announcement Board</h1>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Live from the administration{announcementsLive ? ' • connected' : ' • offline — showing last synced'}.</p>
+        <div style={box}>{liveAnnouncements.map((a) => <div key={a.id} style={{ padding: '12px 0', borderBottom: '1px solid #eef1f6' }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}><strong style={{ fontSize: 14 }}>{a.title}</strong><span style={{ background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>NEW</span></div><div style={{ fontSize: 13, color: '#33415c', marginTop: 4, whiteSpace: 'pre-wrap' }}>{a.content}</div><div style={{ fontSize: 11, color: '#8a94a6', marginTop: 4 }}>{a.published_at ? new Date(a.published_at).toLocaleString() : ''}{a.published_by_name ? ` • ${a.published_by_name}` : ''}</div></div>)}
+          {!liveAnnouncements.length && <div style={{ color: '#6b7890', fontSize: 13 }}>No announcements yet — new ones from the administration appear here automatically.</div>}</div><Footer /></section>);
     }
-    if (active === 'Notification Center' || active === 'Announcement Board' || active === 'Announcements') return <CrudSection title={active} col={notifs} onNotify={onNotify} hint="General" />;
+    if (active === 'Notification Center' || active === 'Announcements') return <CrudSection title={active} col={notifs} onNotify={onNotify} hint="General" />;
     if (active === 'Messaging' || active === 'Discussion Forum') return <TwoFieldForm title={active} col={messages} onNotify={onNotify} ph1="Message" ph2="To / Topic" />;
     if (active === 'Guidance Appointment') return <TwoFieldForm title="Guidance Appointment" col={guide} onNotify={onNotify} ph1="e.g. Advising — Oct 22 10AM" ph2="Status" />;
     if (active === 'Document Request') return <TwoFieldForm title="Document Request" col={docreq} onNotify={onNotify} ph1="Document type" ph2="Status" />;

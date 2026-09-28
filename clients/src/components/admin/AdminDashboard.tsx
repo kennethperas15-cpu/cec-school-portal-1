@@ -2,8 +2,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useCollection, uid, genSchoolId, isValidSchoolId, type SchoolRole } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
-import api from '../../services/api';
+import api, { clearTokens } from '../../services/api';
 import { pushNotification } from '../../services/notify';
+import { publishAnnouncement } from '../../services/announcements';
 import { DOC_STAGES, SUBMIT_STAGES, listTrackedDocs, writeStage } from '../../services/docStages';
 import { pipelineBadges } from '../../services/pipeline';
 import { setPhoto, readPhotoFile } from '../../services/photos';
@@ -30,6 +31,7 @@ const GROUPS: Group[] = [
   { id: 'academic', label: 'ACADEMIC MGMT', icon: '▥', items: [{ label: 'Curriculum Setup', route: 'a_acad_curriculum' }, { label: 'Subject Offering', route: 'a_acad_subjects' }, { label: 'Calendar', route: 'a_acad_calendar' }, { label: 'Room Allocation', route: 'a_acad_rooms' }] },
   { id: 'finance', label: 'FINANCIAL MGMT', icon: '▦', items: [{ label: 'Billing & Invoices', route: 'a_fin_billing' }, { label: 'Fee Structure', route: 'a_fin_fees' }, { label: 'Payment Monitoring', route: 'a_fin_payments' }, { label: 'Scholarships', route: 'a_fin_scholar' }] },
   { id: 'hr', label: 'HR / FACULTY', icon: '⍾', items: [{ label: 'Teacher Records', route: 'a_hr_records' }, { label: 'Load Assignment', route: 'a_hr_load' }, { label: 'Credentials', route: 'a_hr_cred' }] },
+  { id: 'lib', label: 'LIBRARY', icon: '▧', items: [{ label: 'Library Catalog', route: 'a_lib_catalog' }] },
   { id: 'comm', label: 'COMMUNICATION', icon: '✉', items: [{ label: 'Broadcast Messaging', route: 'a_comm_broadcast' }, { label: 'System Announcements', route: 'a_comm_announce' }] },
   { id: 'reporting', label: 'REPORTING', icon: '◫', items: [{ label: 'Enrollment Stats', route: 'a_rep_enroll' }, { label: 'Academic Performance', route: 'a_rep_acad' }, { label: 'Revenue Dashboard', route: 'a_rep_revenue' }] },
   { id: 'system', label: 'SYSTEM ADMIN', icon: '⚙', items: [{ label: 'System Config', route: 'a_sys_config' }, { label: 'Audit Log', route: 'a_sys_audit' }, { label: 'Backup & Restore', route: 'a_sys_backup' }, { label: 'Security', route: 'a_sys_security' }] },
@@ -84,6 +86,8 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const loads = useCollection<{ id: string; name: string; role: string }>('a_loads_v2', []);
   const creds = useCollection<{ id: string; name: string; role: string }>('a_creds_v2', []);
   const scholars = useCollection<{ id: string; name: string; role: string }>('a_scholars_v2', []);
+  // Library catalog: shared `s_books` store — entries appear in the student catalog.
+  const libBooks = useCollection<{ id: string; name: string; role: string }>('s_books', []);
   const syscfg = useCollection('a_syscfg', [{ id: 'school_year', name: 'Current school year', role: '2026–2027' }]);
   const [perms, setPerms] = useState<Record<string, boolean>>({ 'Teacher-Students': true, 'Teacher-Teachers': true, 'Admin-Students': true, 'Admin-Teachers': true, 'Admin-Finance': true, 'Admin-Admin': true });
   const [fn, setFn] = useState(''); const [fi, setFi] = useState(''); const [fr, setFr] = useState('student');
@@ -91,6 +95,8 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [walkN, setWalkN] = useState(''); const [walkE, setWalkE] = useState(''); const [walkP, setWalkP] = useState('');
   const [autoApprove, setAutoApprove] = useState(() => { try { return localStorage.getItem('cec:auto_approve') === '1'; } catch { return false; } });
   const [boxVal, setBoxVal] = useState('');
+  const [boxDetail, setBoxDetail] = useState('');
+  const [broadcastAudience, setBroadcastAudience] = useState<'all' | 'students' | 'teachers'>('all');
   const [facId, setFacId] = useState('');
   const [remoteReceipts, setRemoteReceipts] = useState<{ id: string; title: string; detail?: string | null; status?: string | null }[]>([]);
   useEffect(() => {
@@ -127,7 +133,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
       enroll.setList((current) => {
         const ids = new Set(current.map((r) => r.id));
         const missing = rows.filter((r) => !ids.has(r.id)).map((r) => ({
-          id: r.id, name: `${r.first_name} ${r.last_name}`.trim(), meta: `${r.program} • Year ${r.year_level} • MySQL pending`,
+          id: r.id, name: `${r.first_name} ${r.last_name}`.trim(), meta: `${r.program} • Year ${r.year_level} • MySQL pending${r.payment_reference_no ? ` • Ref ${r.payment_reference_no}` : ''}${r.assigned_school_id ? ` • ID ${r.assigned_school_id}` : ''}`,
         }));
         return missing.length ? [...missing, ...current] : current;
       });
@@ -323,7 +329,15 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     if (active === 'Broadcast Messaging' || active === 'System Announcements') {
       return table(active, ['Title', 'Detail', 'Actions'],
         broadcasts.list.map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.name}</strong></td><td style={{ padding: 12 }}>{r.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog('Edit broadcast', r.name, (v) => { broadcasts.update(r.id, { name: v }); onNotify('Updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { broadcasts.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim()) return; const title = boxVal.trim(); broadcasts.create({ id: uid('bc'), name: title, role: 'All roles • Just now' }); setBoxVal(''); pushNotification('all', { title: `System announcement: ${title}`, detail: 'Published by admin — check your Announcement Board.', category: 'Communication', target: 'Announcement Board' }); setPopup({ title: 'Broadcast sent', message: 'All roles received a popup notification entry.', lines: [title] }); onNotify('Broadcast sent to all roles'); }}><input style={inp} placeholder="Announcement to all roles" value={boxVal} onChange={(e) => setBoxVal(e.target.value)} /><button style={btn} type="submit">Broadcast</button></form>));
+        (<form style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim() || !boxDetail.trim()) { onNotify('Enter an announcement title and details'); return; } const title = boxVal.trim(); const detail = boxDetail.trim(); const audienceLabel = broadcastAudience === 'all' ? 'All roles' : broadcastAudience === 'students' ? 'Students' : 'Teachers'; broadcasts.create({ id: uid('bc'), name: title, role: `${audienceLabel} • Just now` }); setBoxVal(''); setBoxDetail(''); pushNotification(broadcastAudience === 'all' ? 'all' : [broadcastAudience === 'students' ? 'student' : 'teacher'], { title: `System announcement: ${title}`, detail: `${detail} — check your Announcement Board.`, category: 'Communication', target: 'Announcement Board' }); void publishAnnouncement({ title, content: detail, audience: broadcastAudience }).catch(() => undefined); setPopup({ title: 'Broadcast sent', message: 'Everyone receives it live on their Announcement Board.', lines: [title] }); onNotify(`Broadcast sent to ${audienceLabel.toLowerCase()}`); }}>
+          <input style={{ ...inp, flex: '1 1 200px' }} placeholder="Announcement title" value={boxVal} onChange={(e) => setBoxVal(e.target.value)} aria-label="Announcement title" />
+          <input style={{ ...inp, flex: '2 1 280px' }} placeholder="Details — what, when, where" value={boxDetail} onChange={(e) => setBoxDetail(e.target.value)} aria-label="Announcement details" />
+          <select style={{ ...inp, flex: '0 1 150px', width: 'auto' }} value={broadcastAudience} onChange={(e) => setBroadcastAudience(e.target.value as 'all' | 'students' | 'teachers')} aria-label="Audience">
+            <option value="all">Everyone</option>
+            <option value="students">Students</option>
+            <option value="teachers">Teachers</option>
+          </select>
+          <button style={btn} type="submit">Broadcast</button></form>));
     }
     if (active === 'Fee Structure' || active === 'Billing & Invoices' || active === 'Teacher Records' || active === 'Room Allocation' || active === 'Subject Offering' || active === 'Broadcast Messaging' || active === 'System Announcements') {
       const map: Record<string, typeof fees> = { 'Fee Structure': fees, 'Billing & Invoices': bills, 'Teacher Records': faculty, 'Room Allocation': rooms, 'Subject Offering': offers, 'Broadcast Messaging': broadcasts, 'System Announcements': broadcasts };
@@ -345,6 +359,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     if (active === 'Calendar') return <AdminTable title="Academic Calendar" col={cal} colA="Event" colB="Date" phA="e.g. Midterm exams" phB="2026-10-20" onNotify={onNotify} footer={footer} />;
     if (active === 'Load Assignment') return <AdminTable title="Load Assignment" col={loads} colA="Faculty" colB="Units • Sections" phA="e.g. Ms. Reyes" phB="e.g. 9 units" onNotify={onNotify} footer={footer} />;
     if (active === 'Credentials') return <AdminTable title="Faculty Credentials" col={creds} colA="Credential" colB="Validity" phA="e.g. PRC License" phB="Valid until 2028-01-01" onNotify={onNotify} footer={footer} />;
+    if (active === 'Library Catalog') return <AdminTable title="Library Catalog" col={libBooks} colA="Book title" colB="Author • Availability" phA="e.g. Database System Concepts" phB="e.g. Silberschatz • Available" onNotify={onNotify} footer={<p style={{ color: '#6b7890', fontSize: 13 }}>Books listed here appear in the student Library Catalog for the physical library.</p>} />;
     if (active === 'Password Reset') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Password Reset</h1><div style={{ ...box }}><ChangePassword identifier={currentUser?.email || myPhotoId} onNotify={onNotify} /></div><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); if (!resetWho.trim()) return; onNotify(`Reset link sent to accounts matching "${resetWho.trim()}"`); pushNotification(['student', 'teacher'], { title: 'Password reset issued', detail: 'Admin issued a password reset for your account.', category: 'System', target: 'Password Recovery' }); setResetWho(''); }}><input style={inp} placeholder="Name, ID or email" value={resetWho} onChange={(e) => setResetWho(e.target.value)} aria-label="Account to reset" /><button style={btn} type="submit">Send reset</button></form><div style={box}>{accounts.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{a.name}</strong> • {a.id}</span><button style={ghost} onClick={() => onNotify(`Reset link sent to ${a.name}`)}>Reset</button></div>)}</div>{footer}</section>);
     }
@@ -413,7 +428,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
       }}>Download backup</button><label style={{ ...ghost, display: 'inline-block' }}>Restore<input type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const data = JSON.parse(String(r.result)) as Record<string, string>; Object.entries(data).forEach(([k, v]) => { if (k.startsWith('cec:')) localStorage.setItem(k, v); }); onNotify('Backup restored — refresh to see it'); } catch { onNotify('Invalid backup file'); } }; r.readAsText(f); }} /></label><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (!window.confirm('Clear ALL local portal records (students, teachers, payments, docs)? The MySQL database is untouched.')) return; const keep = ['cec:theme', 'cec_session_user', 'cec_access_token', 'cec_remember_identifier']; const keys: string[] = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('cec:') && !keep.includes(k)) keys.push(k); } keys.forEach((k) => localStorage.removeItem(k)); onNotify(`Cleared ${keys.length} record stores — refresh for empty systems`); }}>Reset demo data</button></div></div>{footer}</section>);
     }
     if (active === 'Security') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Security Monitoring</h1><div style={box}><div style={{ fontSize: 14 }}>Auto-approve new enrollments: <strong>{autoApprove ? 'ON' : 'OFF'}</strong> (toggle in Enrollment Approval)</div><div style={{ fontSize: 14, marginTop: 8 }}>Active session: <strong>{currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role})` : '—'}</strong></div><div style={{ fontSize: 14, marginTop: 8 }}>Demo accounts use fixed credentials for thesis presentation; MySQL passwords are bcrypt-hashed.</div><div style={{ marginTop: 12 }}><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { localStorage.removeItem('cec_access_token'); onLogout(); onNotify('All sessions revoked — signed out'); }}>Revoke sessions &amp; sign out</button></div></div>{footer}</section>);
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Security Monitoring</h1><div style={box}><div style={{ fontSize: 14 }}>Auto-approve new enrollments: <strong>{autoApprove ? 'ON' : 'OFF'}</strong> (toggle in Enrollment Approval)</div><div style={{ fontSize: 14, marginTop: 8 }}>Active session: <strong>{currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role})` : '—'}</strong></div><div style={{ fontSize: 14, marginTop: 8 }}>Demo accounts use fixed credentials for thesis presentation; MySQL passwords are bcrypt-hashed.</div><div style={{ marginTop: 12 }}><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { try { localStorage.removeItem('cec:session_user'); } catch { /* ignore */ } clearTokens(); onLogout(); onNotify('All sessions revoked — signed out'); }}>Revoke sessions &amp; sign out</button></div></div>{footer}</section>);
     }
     return (<section style={card}><h1 style={{ margin: 0 }}>{active}</h1><div style={box}>Route <strong>{route}</strong> ready.</div>{footer}</section>);
   };

@@ -10,7 +10,7 @@ export type Conversation = {
 export function useMessenger() {
   const conversations = useMemo<Conversation[]>(() => [
     { id: '1', title: 'Academic Affairs', lastMessage: 'Your transcript has been processed.', unread: 2 },
-    { id: '2', title: 'Campus Services', lastMessage: 'The library reservation is confirmed.', unread: 1 },
+    { id: '2', title: 'Campus Services', lastMessage: 'New books arrived in the library catalog.', unread: 1 },
   ], []);
 
   const sendMessage = ({ conversationId, content }: { conversationId: string; content: string; type: 'text' }) => {

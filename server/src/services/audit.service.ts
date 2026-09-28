@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { QueryTypes } from 'sequelize';
-import { sequelize } from '../config/database.js';
+import { sql } from '../config/sql.js';
 
 export const writeAuditLog = async (req: Request, input: { action: string; targetType: string; targetId: string; previousValue?: unknown; newValue?: unknown }) => {
   if (!req.user) return;
@@ -12,7 +12,7 @@ export const writeAuditLog = async (req: Request, input: { action: string; targe
     newValue: input.newValue ?? null,
     userAgent: req.get('user-agent') ?? null,
   });
-  await sequelize.query(
+  await sql(
     `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, metadata, ip_address)
      VALUES (?, ?, ?, ?, ?, ?)`,
     {
