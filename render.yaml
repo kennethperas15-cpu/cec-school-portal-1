@@ -5,6 +5,7 @@ services:
   - type: web
     name: cec-portal-api
     runtime: node
+    plan: free
     rootDir: server
     buildCommand: npm install && npm run build
     startCommand: npm start
