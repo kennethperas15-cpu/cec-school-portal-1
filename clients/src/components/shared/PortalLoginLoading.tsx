@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { AzureDragon } from './AzureDragon';
 
 type Props = {
   name: string;
@@ -66,31 +65,6 @@ export const PortalLoginLoading: React.FC<Props> = ({ name, role, onDone }) => {
       </video>
       {/* Dim veil for legibility */}
       <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 42%, rgba(11,18,38,.18) 0%, rgba(11,18,38,.72) 78%)' }} />
-
-      {/* Center stage: canvas dragon + crest over the film */}
-      <div style={{ position: 'relative', width: 'min(420px, 88vw)', height: 'min(320px, 52vw)' }}>
-        <img
-          src={`${BASE}cec-logo.png`}
-          alt="Cebu Eastern College official crest"
-          width={92}
-          height={92}
-          decoding="async"
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: 92,
-            height: 92,
-            objectFit: 'contain',
-            transform: 'translate(-50%,-50%)',
-            filter: 'drop-shadow(0 0 26px rgba(91,155,245,.85))',
-          }}
-        />
-        <div style={{ position: 'absolute', left: '50%', top: '50%', width: 150, height: 150, transform: 'translate(-50%,-50%)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,.35) 0%, rgba(59,130,246,0) 70%)' }} aria-hidden="true" />
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <AzureDragon loops={1} loopDurationMs={1500} swoopDurationMs={800} />
-        </div>
-      </div>
 
       <h1 style={{ position: 'relative', margin: '10px 0 2px', fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', letterSpacing: '-.01em', textShadow: '0 2px 14px rgba(0,0,0,.6)' }}>
         Cebu Eastern College
