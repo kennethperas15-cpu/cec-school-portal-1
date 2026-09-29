@@ -48,8 +48,20 @@ export const PortalLoginLoading: React.FC<Props> = ({ name, role, onDone }) => {
         fontFamily: 'Inter,system-ui,sans-serif',
       }}
     >
-      {/* Center stage: dragon flies over the glowing crest, then rests on it */}
-      <div style={{ position: 'relative', width: 'min(420px, 88vw)', height: 'min(320px, 52vw)' }}>
+      {/* Center stage: AI dragon loop behind, canvas dragon + crest on top.
+          Video hides itself on error so the canvas dragon always remains. */}
+      <div style={{ position: 'relative', width: 'min(420px, 88vw)', height: 'min(320px, 52vw)', borderRadius: 18, overflow: 'hidden' }}>
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+          onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+        >
+          <source src={`${BASE}cec-dragon-loop.webm`} type="video/webm" />
+        </video>
         <img
           src={`${BASE}cec-logo.png`}
           alt="Cebu Eastern College official crest"
