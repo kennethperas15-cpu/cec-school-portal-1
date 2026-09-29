@@ -1,0 +1,20 @@
+# Render blueprint for the CEC School Portal API.
+# Dashboard: New → Blueprint → select cec-school-portal-1 → Apply.
+# Then fill DATABASE_URL (Supabase pooler URI) in the dashboard.
+services:
+  - type: web
+    name: cec-portal-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: https://kennethperas15-cpu.github.io
