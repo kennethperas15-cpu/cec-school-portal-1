@@ -42,26 +42,33 @@ export const PortalLoginLoading: React.FC<Props> = ({ name, role, onDone }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 24,
-        backgroundColor: 'rgba(15,23,42,.92)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        backgroundColor: '#0B1226',
         fontFamily: 'Inter,system-ui,sans-serif',
+        overflow: 'hidden',
       }}
     >
-      {/* Center stage: AI dragon loop behind, canvas dragon + crest on top.
-          Video hides itself on error so the canvas dragon always remains. */}
-      <div style={{ position: 'relative', width: 'min(420px, 88vw)', height: 'min(320px, 52vw)', borderRadius: 18, overflow: 'hidden' }}>
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          aria-hidden="true"
-          onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
-        >
-          <source src={`${BASE}cec-dragon-loop.webm`} type="video/webm" />
-        </video>
+      {/* Full-screen AI dragon loop. Overscaled ~12% and shifted up-left so the
+          generator's corner bug stays outside the visible frame. Hides itself
+          on error so the canvas dragon always remains. */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
+        onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', transform: 'scale(1.12) translate(-2%,-3%)',
+        }}
+      >
+        <source src={`${BASE}cec-dragon-loop.webm`} type="video/webm" />
+      </video>
+      {/* Dim veil for legibility */}
+      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 42%, rgba(11,18,38,.18) 0%, rgba(11,18,38,.72) 78%)' }} />
+
+      {/* Center stage: canvas dragon + crest over the film */}
+      <div style={{ position: 'relative', width: 'min(420px, 88vw)', height: 'min(320px, 52vw)' }}>
         <img
           src={`${BASE}cec-logo.png`}
           alt="Cebu Eastern College official crest"
@@ -85,21 +92,21 @@ export const PortalLoginLoading: React.FC<Props> = ({ name, role, onDone }) => {
         </div>
       </div>
 
-      <h1 style={{ margin: '10px 0 2px', fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', letterSpacing: '-.01em' }}>
+      <h1 style={{ position: 'relative', margin: '10px 0 2px', fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', letterSpacing: '-.01em', textShadow: '0 2px 14px rgba(0,0,0,.6)' }}>
         Cebu Eastern College
       </h1>
-      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, letterSpacing: '.14em', color: '#93C5FD', textTransform: 'uppercase', textAlign: 'center' }}>
+      <p style={{ position: 'relative', margin: '0 0 6px', fontSize: 12, fontWeight: 800, letterSpacing: '.14em', color: '#93C5FD', textTransform: 'uppercase', textAlign: 'center', textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>
         {role} Portal • 1st Sem 2026–2027
       </p>
-      <p style={{ margin: '0 0 16px', fontSize: 14, color: '#CBD5E1', textAlign: 'center' }}>
+      <p style={{ position: 'relative', margin: '0 0 16px', fontSize: 14, color: '#CBD5E1', textAlign: 'center', textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>
         Welcome, <strong style={{ color: '#fff' }}>{name}</strong>
       </p>
 
-      <div style={{ width: 'min(320px, 80vw)' }} role="status" aria-live="polite">
-        <div style={{ height: 8, background: 'rgba(148,163,184,.2)', borderRadius: 999, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', width: 'min(320px, 80vw)' }} role="status" aria-live="polite">
+        <div style={{ height: 8, background: 'rgba(148,163,184,.25)', borderRadius: 999, overflow: 'hidden' }}>
           <div style={{ width: `${progress}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#3B82F6,#5B9BF5,#FFCA28)', transition: 'width .6s ease', boxShadow: '0 0 12px rgba(91,155,245,.8)' }} />
         </div>
-        <div className="cec-load-pulse" style={{ marginTop: 10, fontSize: 13, color: '#BFDBFE', fontWeight: 600, textAlign: 'center' }}>{STAGES[stage]}</div>
+        <div className="cec-load-pulse" style={{ marginTop: 10, fontSize: 13, color: '#BFDBFE', fontWeight: 600, textAlign: 'center', textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{STAGES[stage]}</div>
       </div>
 
       <style>{`
