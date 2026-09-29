@@ -121,8 +121,14 @@ export const Login: React.FC<LoginProps> = ({
       } catch {
         // Storage is optional; preserve the normal API error below.
       }
-      const apiError = requestError as { response?: { data?: { message?: string } } };
-      setError(apiError.response?.data?.message ?? 'Invalid credentials. Please check your school ID/email and password.');
+      const apiError = requestError as { response?: { status?: number; data?: { message?: string } } };
+      if (!apiError.response) {
+        setError('Cannot reach the portal server — it may be waking up. Wait about a minute, then try Sign In again.');
+      } else if (apiError.response.status === 401) {
+        setError('Invalid credentials. Please check your school ID/email and password.');
+      } else {
+        setError(apiError.response.data?.message ?? 'Sign-in failed. Please try again in a moment.');
+      }
     } finally {
       setLoading(false);
     }
