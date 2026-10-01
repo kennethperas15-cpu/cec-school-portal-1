@@ -6,6 +6,7 @@ import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AISupport } from './components/shared/AISupport';
 import { PortalLoginLoading } from './components/shared/PortalLoginLoading';
+import { CecWebsite } from './components/CecWebsite';
 import api, { clearTokens, getRefreshToken, isRemembered, setTokens } from './services/api';
 import { ensureSchoolId } from './services/crud';
 import './styles.css';
@@ -58,6 +59,8 @@ export const App = () => {
   const [currentUser, setCurrentUser] = useState<UserAuthData | null>(null);
   const [pendingUser, setPendingUser] = useState<UserAuthData | null>(null);
   const [restoring, setRestoring] = useState(true);
+  const [portalTab, setPortalTab] = useState<'login' | 'enroll'>('login');
+  const [portalRequested, setPortalRequested] = useState(false);
   const [message, setMessage] = useState('');
 
   const notify = (text: string) => {
@@ -154,7 +157,28 @@ export const App = () => {
         />
       );
     }
-    return <AuthContainer onLoginSuccess={(u) => setPendingUser(adoptSchoolIdentity(u))} onNotify={notify} />;
+    if (!portalRequested) {
+      return (
+        <CecWebsite
+          onApply={() => {
+            setPortalTab('enroll');
+            setPortalRequested(true);
+          }}
+          onLogin={() => {
+            setPortalTab('login');
+            setPortalRequested(true);
+          }}
+        />
+      );
+    }
+    return (
+      <AuthContainer
+        key={portalTab}
+        initialTab={portalTab}
+        onLoginSuccess={(u) => setPendingUser(adoptSchoolIdentity(u))}
+        onNotify={notify}
+      />
+    );
   }
 
   const props = { currentUser, onNotify: notify, onLogout: logout };

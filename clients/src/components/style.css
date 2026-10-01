@@ -1,0 +1,124 @@
+.CEC-WEBSITE,
+.CEC-WEBSITE *,
+.CEC-WEBSITE *::before,
+.CEC-WEBSITE *::after {
+	box-sizing: border-box;
+}
+
+.CEC-WEBSITE {
+	max-width: 100%;
+	overflow-x: clip;
+}
+
+.CEC-WEBSITE img {
+	max-width: 100%;
+}
+
+@media (max-width: 760px) {
+	.CEC-WEBSITE .header {
+		flex-wrap: wrap;
+		gap: 12px;
+		padding: 12px 16px;
+	}
+
+	.CEC-WEBSITE .header .navbar {
+		display: none;
+	}
+
+	.CEC-WEBSITE .header > .frame:last-child {
+		gap: 8px;
+		margin-left: auto;
+	}
+
+	.CEC-WEBSITE .header > .frame:last-child .img {
+		display: none;
+	}
+
+	.CEC-WEBSITE .header .text-wrapper {
+		font-size: 14px;
+		white-space: normal;
+	}
+
+	.CEC-WEBSITE .hero {
+		gap: 32px;
+		padding: 48px 18px;
+	}
+
+	.CEC-WEBSITE .hero .frame-4,
+	.CEC-WEBSITE .programs-section .frame-21,
+	.CEC-WEBSITE .programs-section .frame-29,
+	.CEC-WEBSITE .campus-life .frame-32,
+	.CEC-WEBSITE .admissions-roadmap .frame-41,
+	.CEC-WEBSITE .admissions-roadmap .frame-46,
+	.CEC-WEBSITE .campus-visit .frame-51,
+	.CEC-WEBSITE .footer .frame-58 {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.CEC-WEBSITE .hero .frame-4 {
+		gap: 32px;
+	}
+
+	.CEC-WEBSITE .hero .p {
+		font-size: 34px;
+		line-height: 1.15;
+		white-space: normal;
+	}
+
+	.CEC-WEBSITE .hero .text-wrapper-7 {
+		font-size: 16px;
+		line-height: 1.6;
+	}
+
+	.CEC-WEBSITE .hero .frame-7 {
+		align-items: stretch;
+		flex-direction: column;
+		width: 100%;
+	}
+
+	.CEC-WEBSITE .hero .frame-7 button {
+		justify-content: center;
+		max-width: 100%;
+		white-space: normal;
+	}
+
+	.CEC-WEBSITE .programs-section,
+	.CEC-WEBSITE .campus-life,
+	.CEC-WEBSITE .admissions-roadmap,
+	.CEC-WEBSITE .campus-visit,
+	.CEC-WEBSITE .footer {
+		padding: 48px 18px;
+	}
+
+	.CEC-WEBSITE .programs-section .colleges-centers-of,
+	.CEC-WEBSITE .campus-life .text-wrapper-26,
+	.CEC-WEBSITE .admissions-roadmap .text-wrapper-33,
+	.CEC-WEBSITE .campus-visit .text-wrapper-43 {
+		font-size: 30px;
+		line-height: 1.2;
+		white-space: normal;
+	}
+
+	.CEC-WEBSITE .programs-section .frame-22,
+	.CEC-WEBSITE .campus-life .frame-33,
+	.CEC-WEBSITE .admissions-roadmap .frame-42,
+	.CEC-WEBSITE .admissions-roadmap .frame-45,
+	.CEC-WEBSITE .footer .frame-59,
+	.CEC-WEBSITE .footer .frame-63 {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.CEC-WEBSITE .admissions-roadmap .text-wrapper-38,
+	.CEC-WEBSITE .admissions-roadmap .text-wrapper-39,
+	.CEC-WEBSITE .admissions-roadmap .admissions-are-open,
+	.CEC-WEBSITE .admissions-roadmap .tuition-discount,
+	.CEC-WEBSITE .campus-life [class*="text-wrapper-"],
+	.CEC-WEBSITE .campus-visit [class*="text-wrapper-"],
+	.CEC-WEBSITE .footer [class*="text-wrapper-"] {
+		max-width: 100%;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+}

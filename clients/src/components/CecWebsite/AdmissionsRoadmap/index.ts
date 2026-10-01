@@ -1,1 +1,1 @@
-export { Admission } from "./Admission";
+export { AdmissionsRoadmap } from "./AdmissionsRoadmap";
