@@ -129,25 +129,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
             </div>
           </div>
 
-          {/* Institutional Highlights */}
-          <div className="auth-features">
-            <div className="auth-feature-chip">
-              <span className="chip-icon">🎓</span>
-              <span>Online Enrollment</span>
-            </div>
-            <div className="auth-feature-chip">
-              <span className="chip-icon">📊</span>
-              <span>Real-Time Grades</span>
-            </div>
-            <div className="auth-feature-chip">
-              <span className="chip-icon">🔒</span>
-              <span>Secure Single Sign-On</span>
-            </div>
-            <div className="auth-feature-chip">
-              <span className="chip-icon">📚</span>
-              <span>Digital Library</span>
-            </div>
-          </div>
+          {/* Institutional Highlights removed per request */}
 
           <div className="auth-hero-footer">
             <span>Virtue • Knowledge • Service</span>
@@ -175,22 +157,6 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
                 <line x1="15" y1="12" x2="3" y2="12" />
               </svg>
               <span>Sign In</span>
-            </button>
-
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'register'}
-              className={`auth-tab ${activeTab === 'register' ? 'active' : ''}`}
-              onClick={() => setActiveTab('register')}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="8.5" cy="7" r="4" />
-                <line x1="20" y1="8" x2="20" y2="14" />
-                <line x1="23" y1="11" x2="17" y2="11" />
-              </svg>
-              <span>Apply / Register</span>
             </button>
 
             <button

@@ -35,7 +35,6 @@ const GROUPS: Group[] = [
   { id: 'enroll', label: 'ENROLLMENT', icon: '▤', items: [{ label: 'Online Enrollment', route: 's_enr_online' }, { label: 'Section Selection', route: 's_enr_sections' }, { label: 'Document Submission', route: 's_enr_docs' }, { label: 'Status Tracker', route: 's_enr_status' }] },
   { id: 'fin', label: 'FINANCIAL', icon: '▦', items: [{ label: 'Tuition Assessment', route: 's_fin_assess' }, { label: 'Payment Portal', route: 's_fin_pay' }, { label: 'Billing History', route: 's_fin_billing' }, { label: 'Scholarship Application', route: 's_fin_scholar' }] },
   { id: 'lms', label: 'LMS', icon: '▥', items: [{ label: 'Course Material', route: 's_lms_materials' }, { label: 'Assignments', route: 's_lms_assign' }, { label: 'Quiz / Exam', route: 's_lms_quiz' }, { label: 'Announcements', route: 's_lms_announce' }, { label: 'Discussion Forum', route: 's_lms_forum' }] },
-  { id: 'lib', label: 'LIBRARY', icon: '▧', items: [{ label: 'Library Catalog', route: 's_lib_catalog' }] },
   { id: 'comm', label: 'COMMUNICATION', icon: '✉', items: [{ label: 'Notification Center', route: 's_com_notif' }, { label: 'Announcement Board', route: 's_com_board' }, { label: 'Messaging', route: 's_com_msg' }] },
   { id: 'support', label: 'SUPPORT SERVICES', icon: '◫', items: [{ label: 'Guidance Appointment', route: 's_sup_guide' }, { label: 'Document Request', route: 's_sup_docs' }, { label: 'Complaint / Feedback', route: 's_sup_feedback' }] },
 ];
@@ -483,7 +482,7 @@ const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: 
     <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Update status/detail', r.role, (nv) => { col.update(r.id, { role: nv }); onNotify('Updated'); })}>Update</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}</div><Footer /></section>);
 };
 
-type Offering = { edp: string; subject: string; descriptive: string; schedule: string; room: string; type: 'Lec' | 'Lab'; units: number; section: string };
+type Offering = { edp: string; subject: string; descriptive: string; schedule: string; room: string; type: 'Lec' | 'Lab'; units: number; section: string; batch?: number; teacher?: string };
 
 // EDP offerings (BSIT 3rd Year, 1st Sem) — pick ONE schedule per subject.
 // Uniform section picks → Regular; mixed/OPEN picks → Irregular (OPEN).
@@ -516,6 +515,15 @@ const readPicks = (): Offering[] => {
   try {
     const raw = localStorage.getItem('cec:s_picks');
     return raw ? (JSON.parse(raw) as Offering[]) : [];
+  } catch { return []; }
+};
+
+// Admin-published study-load batches (Submit batch → plottable here).
+const readPublishedLoads = (): Offering[] => {
+  try {
+    const raw = localStorage.getItem('cec:studyload_offerings');
+    const rows = raw ? (JSON.parse(raw) as Offering[]) : [];
+    return rows.filter((r) => r && r.edp && r.subject && r.schedule);
   } catch { return []; }
 };
 
@@ -560,7 +568,23 @@ const sectionTagOf = (picks: Offering[]): string => {
   return secs.length === 1 && secs[0] !== 'OPEN' ? `Regular (${secs[0]})` : 'Irregular (OPEN)';
 };
 
-// Stable pseudo-random remaining slots (1–60) per offering.
+// Bucket a schedule ("MWF 08:00 AM-09:30 AM") by start time for time filtering.
+const scheduleBucket = (schedule: string): 'morning' | 'afternoon' | 'evening' | null => {
+  const m = schedule.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return null;
+  const hour = (Number(m[1]) % 12) + (m[3].toUpperCase() === 'PM' ? 12 : 0);
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+};
+
+const readDayPreference = (): 'all' | 'morning' | 'afternoon' | 'evening' => {
+  try {
+    const raw = localStorage.getItem('cec:enroll_pref');
+    const pref = raw ? (JSON.parse(raw) as { preference?: string }).preference : null;
+    return pref === 'morning' || pref === 'afternoon' || pref === 'evening' ? pref : 'all';
+  } catch { return 'all'; }
+};
 // Takes derive from saved picks: nothing saved yet → full availability;
 // each taken subject is minus one slot.
 const slotSeed = (edp: string): number => {
@@ -605,9 +629,6 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const materials = useCollection<Rec>('s_materials', [{ id: 'm1', name: 'Week 5 Slides - Normalization', role: 'PDF • CS 302' }]);
   const assigns = useCollection<Rec>('s_assigns', [{ id: 'a1', name: 'ER Diagram Project', role: 'Due Oct 20 • Not submitted' }]);
   const quizzes = useCollection<Rec>('s_quiz', [{ id: 'q1', name: 'Quiz 3 - SQL Joins', role: '10 items • Not taken' }]);
-  // Library is catalog-only: students browse what the physical library holds.
-  // The list is curated by the library/admin side (shared `s_books` store).
-  const catalog = useCollection<Rec>('s_books', []);
   const notifs = useCollection<Rec>('s_notifs', [{ id: 'n1', name: 'Library extended hours', role: 'Open until 9PM exam week' }]);
   const messages = useCollection<Rec>('s_messages', [{ id: 'msg1', name: 'To adviser: midterm coverage?', role: 'Sent • Today' }]);
   const guide = useCollection<Rec>('s_guide', [{ id: 'g1', name: 'Academic advising — Oct 22 10AM', role: 'Requested' }]);
@@ -616,6 +637,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [attFilter, setAttFilter] = useState('');
   const [secSel, setSecSel] = useState<string[]>([]);
   const [schedMode, setSchedMode] = useState<'auto' | 'regular' | 'irregular'>('auto');
+  const [schedFilter, setSchedFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening'>(readDayPreference);
   const [payAmt, setPayAmt] = useState('');
   const [scholarName, setScholarName] = useState('');
   const [payMethod, setPayMethod] = useState('GCash');
@@ -881,27 +903,31 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         <p style={{ color: '#6b7890', fontSize: 13 }}>Applications go straight to Admin → Enrollment Approval. Turn on auto-approve there for instant approval.</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><select style={inp} value={enrSm} onChange={(e) => setEnrSm(e.target.value)}><option>1st Semester</option><option>2nd Semester</option></select><button style={btn} type="submit">Submit</button></form><Footer /></section>);
     }
     if (active === 'Section Selection') {
-      const subjects8 = [...new Set(OFFERINGS.map((o) => o.subject))];
+      // Admin-published study-load batches merge with the base offerings.
+      const published = readPublishedLoads().filter((o) => !OFFERINGS.some((x) => x.edp === o.edp));
+      const catalog = [...OFFERINGS, ...published];
+      const publishedBatches = [...new Set(published.map((o) => o.batch).filter((b): b is number => typeof b === 'number'))];
+      const subjects8 = [...new Set(catalog.map((o) => o.subject))];
       const saved = readPicks();
       const tag = sectionTagOf(saved);
       const togglePick = (edp: string, subject: string) => {
         setSchedMode('auto');
         setSecSel((s) => {
           // Empty choice (or re-pick) removes a wrong choice
-          if (!edp) return s.filter((e) => { const o = OFFERINGS.find((x) => x.edp === e); return !o || o.subject !== subject; });
+          if (!edp) return s.filter((e) => { const o = catalog.find((x) => x.edp === e); return !o || o.subject !== subject; });
           if (s.includes(edp)) return s.filter((e) => e !== edp);
-          const without = s.filter((e) => { const o = OFFERINGS.find((x) => x.edp === e); return !o || o.subject !== subject; });
+          const without = s.filter((e) => { const o = catalog.find((x) => x.edp === e); return !o || o.subject !== subject; });
           return [...without, edp];
         });
       };
-      const chosen: Offering[] = secSel.map((e) => OFFERINGS.find((o) => o.edp === e)).filter((o): o is Offering => !!o);
+      const chosen: Offering[] = secSel.map((e) => catalog.find((o) => o.edp === e)).filter((o): o is Offering => !!o);
       const previewTag = sectionTagOf(chosen);
       const applyMode = (mode: 'auto' | 'regular' | 'irregular') => {
         setSchedMode(mode);
         if (mode === 'auto') return;
-        const subjects8b = [...new Set(OFFERINGS.map((o) => o.subject))];
+        const subjects8b = [...new Set(catalog.map((o) => o.subject))];
         const preset = subjects8b.map((subj) => {
-          const opts = OFFERINGS.filter((o) => o.subject === subj);
+          const opts = catalog.filter((o) => o.subject === subj);
           const pick = mode === 'regular'
             ? opts.find((o) => o.section !== 'OPEN') ?? opts[0]
             : opts.find((o) => o.section === 'OPEN') ?? opts[1] ?? opts[0];
@@ -953,16 +979,26 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
               <option value="irregular">Irregular — OPEN</option>
             </select>
           </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#33415c' }}>Class time
+            <select value={schedFilter} onChange={(e) => setSchedFilter(e.target.value as 'all' | 'morning' | 'afternoon' | 'evening')} aria-label="Class time filter" style={{ ...inp, width: 'auto', padding: '10px 12px' }}>
+              <option value="all">All day</option>
+              <option value="morning">Morning</option>
+              <option value="afternoon">Afternoon</option>
+              <option value="evening">Evening</option>
+            </select>
+          </label>
         </div>
-        <p style={{ color: '#6b7890', fontSize: 13 }}>Pick <strong>one schedule per subject</strong> — not a section. All picks in one section → <strong>Regular</strong>; mixed/OPEN picks → <strong>Irregular (OPEN)</strong>. {saved.length ? <>Current EDP tag: <strong>{tag}</strong></> : 'No schedules saved yet.'} {chosen.length ? <>Picking now: <strong>{previewTag}</strong></> : null}</p>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Pick <strong>one schedule per subject</strong> — not a section. All picks in one section → <strong>Regular</strong>; mixed/OPEN picks → <strong>Irregular (OPEN)</strong>. {publishedBatches.length ? <>Includes registrar-published {publishedBatches.map((b) => `Batch ${b}`).join(', ')}. </> : null}{saved.length ? <>Current EDP tag: <strong>{tag}</strong></> : 'No schedules saved yet.'} {chosen.length ? <>Picking now: <strong>{previewTag}</strong></> : null}</p>
         <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 10 }}>Subject / Descriptive</th><th style={{ padding: 10 }}>Schedule (pick one)</th><th style={{ padding: 10 }}>EDP Code</th><th style={{ padding: 10 }}>Room</th><th style={{ padding: 10 }}>Type</th><th style={{ padding: 10 }}>Units</th><th style={{ padding: 10 }}>Availability</th></tr></thead><tbody>
           {subjects8.map((subj) => {
-            const opts = OFFERINGS.filter((o) => o.subject === subj);
+            const opts = catalog.filter((o) => o.subject === subj);
+            const visibleOpts = schedFilter === 'all' ? opts : opts.filter((o) => scheduleBucket(o.schedule) === schedFilter);
             const picked = opts.find((o) => secSel.includes(o.edp)) ?? null;
-            const shown = picked ?? opts[0];
+            const shown = picked ?? visibleOpts[0] ?? null;
+            if (!shown) return <tr key={subj} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 10 }}><strong>{subj}</strong></td><td colSpan={6} style={{ padding: 10, color: '#8a94a6', fontSize: 12 }}>No {schedFilter} schedules for this subject — switch Class time to All day.</td></tr>;
             const left = slotsLeft(shown.edp);
             const full = left <= 0;
-            return <tr key={subj} style={{ borderTop: '1px solid #eef1f6', background: picked ? '#eef4ff' : undefined }}><td style={{ padding: 10 }}><strong>{subj}</strong><br /><small style={{ color: '#6b7890' }}>{shown.descriptive}</small></td><td style={{ padding: 10 }}><div style={{ display: 'grid', gap: 6 }}>{opts.map((o) => { const l = slotsLeft(o.edp); const f = l <= 0; return <label key={o.edp} style={{ display: 'flex', gap: 8, alignItems: 'center', opacity: f ? .55 : undefined }}><input type="radio" name={`pick-${subj}`} checked={secSel.includes(o.edp)} disabled={f} onClick={() => togglePick(o.edp, subj)} onChange={() => undefined} aria-label={`${o.subject} ${o.schedule}`} /><span>{o.schedule}<br /><small style={{ color: '#6b7890' }}>{f ? 'Full' : `${l} left`}</small></span></label>; })}</div></td><td style={{ padding: 10 }}><strong>{picked ? shown.edp : '—'}</strong></td><td style={{ padding: 10 }}>{picked ? shown.room : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.type : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.units : '—'}</td><td style={{ padding: 10 }}>{!picked ? <span style={{ color: '#8a94a6', fontSize: 11 }}>Not picked</span> : full ? <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Full</span> : <span style={{ background: left < 10 ? '#fef3c7' : '#dcfce7', color: left < 10 ? '#92400e' : '#15803d', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Available • {left} left</span>}</td></tr>;
+            return <tr key={subj} style={{ borderTop: '1px solid #eef1f6', background: picked ? '#eef4ff' : undefined }}><td style={{ padding: 10 }}><strong>{subj}</strong><br /><small style={{ color: '#6b7890' }}>{shown.descriptive}</small></td><td style={{ padding: 10 }}><div style={{ display: 'grid', gap: 6 }}>{visibleOpts.map((o) => { const l = slotsLeft(o.edp); const f = l <= 0; return <label key={o.edp} style={{ display: 'flex', gap: 8, alignItems: 'center', opacity: f ? .55 : undefined }}><input type="radio" name={`pick-${subj}`} checked={secSel.includes(o.edp)} disabled={f} onClick={() => togglePick(o.edp, subj)} onChange={() => undefined} aria-label={`${o.subject} ${o.schedule}`} /><span>{o.schedule}<br /><small style={{ color: '#6b7890' }}>{o.batch ? `Batch ${o.batch} • ` : ''}{f ? 'Full' : `${l} left`}</small></span></label>; })}</div></td><td style={{ padding: 10 }}><strong>{picked ? shown.edp : '—'}</strong></td><td style={{ padding: 10 }}>{picked ? shown.room : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.type : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.units : '—'}</td><td style={{ padding: 10 }}>{!picked ? <span style={{ color: '#8a94a6', fontSize: 11 }}>Not picked</span> : full ? <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Full</span> : <span style={{ background: left < 10 ? '#fef3c7' : '#dcfce7', color: left < 10 ? '#92400e' : '#15803d', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Available • {left} left</span>}</td></tr>;
           })}
         </tbody></table></div>
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}><button style={btn} onClick={savePicks}>Save schedules ({chosen.length} picked • {chosen.reduce((n, o) => n + o.units, 0)} units)</button></div><Footer /></section>);
@@ -1027,15 +1063,6 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       return (<section style={card}><h1 style={{ margin: 0 }}>Quiz / Exam</h1><div style={box}>{quizzes.list.map((qz) => <div key={qz.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{qz.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{qz.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { const score = 7 + Math.floor(Math.random() * 4); quizzes.update(qz.id, { role: `Score ${score}/10 • Taken` }); onNotify(`Quiz submitted: ${score}/10`); }}>Take quiz</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { quizzes.remove(qz.id); onNotify('Quiz deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
     }
     if (active === 'Library Catalog') {
-      const q = catalogQuery.trim().toLowerCase();
-      const matches = catalog.list.filter((b) => !q || `${b.name} ${b.role}`.toLowerCase().includes(q));
-      return (<section style={card}><h1 style={{ margin: 0 }}>Library Catalog</h1>
-        <p style={{ color: '#6b7890', fontSize: 13 }}>Browse what the physical CEC library holds. Borrowing is done in person at the library counter — just note the title and visit.</p>
-        <div style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 520 }}>
-          <input style={inp} placeholder="Search by title or author…" value={catalogQuery} onChange={(e) => setCatalogQuery(e.target.value)} aria-label="Search library catalog" />
-        </div>
-        <div style={box}>{matches.map((b) => <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{b.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{b.role}</div></div><span style={{ background: '#eef4ff', color: '#0B3D91', borderRadius: 999, padding: '4px 12px', fontSize: 11, fontWeight: 700 }}>In library</span></div>)}
-          {!matches.length && <div style={{ color: '#6b7890', fontSize: 13 }}>{catalog.list.length ? 'No titles match your search.' : 'No books listed yet — the library catalog is updated by the library staff.'}</div>}</div><Footer /></section>);
     }
     if (active === 'Announcement Board') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Announcement Board</h1>

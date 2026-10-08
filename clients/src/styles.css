@@ -127,3 +127,59 @@ button{font-family:inherit}.course-button{border-left:0;border-right:0;border-bo
 .auth-page .auth-tabs .auth-tab:not(.active):hover{background:#fff;color:#0b3d91;border-color:#b7ccec;box-shadow:0 3px 10px rgba(11,61,145,.12)}
 .auth-page .auth-tabs .auth-tab.active:hover{background:#fff;color:#0b3d91;border-color:#b7ccec;box-shadow:0 4px 12px rgba(11,61,145,.16)}
 .auth-page .auth-tabs .auth-tab:focus-visible{outline:3px solid #f0bd38;outline-offset:2px;position:relative;z-index:1}
+
+/* ==========================================================================
+   Landing Page
+   ========================================================================== */
+.landing-page{min-height:100vh;background:#f5f7fb;font-family:Inter,system-ui,sans-serif;color:#1b2b42}
+.landing-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:#0B3D91;color:#fff;position:sticky;top:0;z-index:10}
+.landing-brand{display:flex;align-items:center;gap:12px}
+.landing-logo{width:38px;height:38px;border-radius:10px;background:#fff;padding:2px;object-fit:contain}
+.landing-school{font-size:17px;font-weight:800;letter-spacing:-.02em}
+.landing-menu-btn{display:none;flex-direction:column;gap:5px;background:none;border:0;cursor:pointer;padding:8px}
+.landing-bar{display:block;width:26px;height:3px;background:#fff;border-radius:3px;transition:transform .25s,opacity .25s}
+.landing-menu-btn.open .landing-bar:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+.landing-menu-btn.open .landing-bar:nth-child(2){opacity:0}
+.landing-menu-btn.open .landing-bar:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
+.landing-nav{display:flex;gap:8px;align-items:center}
+.landing-nav-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:9px 18px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .16s}
+.landing-nav-btn:hover{background:rgba(255,255,255,.22)}
+.landing-hero{text-align:center;padding:80px 28px 50px;background:linear-gradient(160deg,#0B3D91 0%,#164EAA 60%,#1a6fd8 100%);color:#fff}
+.landing-hero-content{max-width:720px;margin:0 auto}
+.landing-hero h1{font-size:40px;letter-spacing:-.03em;margin:0 0 14px;line-height:1.15}
+.landing-hero p{font-size:16px;opacity:.9;margin:0;line-height:1.6}
+.landing-announcements{max-width:1180px;margin:0 auto;padding:44px 28px}
+.landing-section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.landing-section-heading h2{font-size:24px;color:#0B3D91;margin:0}
+.landing-live-dot{font-size:12px;font-weight:800;color:#94a1b0}.landing-live-dot.live{color:#15803d}
+.landing-empty{text-align:center;padding:40px 20px;color:#8a94a6;font-size:14px}
+.landing-announcement-card{background:#fff;border:1px solid #e4ebf3;border-radius:14px;padding:20px 24px;margin-bottom:14px;box-shadow:0 6px 18px rgba(11,61,145,.04);transition:box-shadow .2s}
+.landing-announcement-card:hover{box-shadow:0 10px 28px rgba(11,61,145,.1)}
+.landing-announcement-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.landing-announcement-header strong{font-size:16px;color:#172b47}
+.landing-announcement-date{font-size:11px;color:#8a94a6;white-space:nowrap}
+.landing-announcement-body{font-size:14px;color:#334155;margin:0 0 8px;line-height:1.6}
+.landing-announcement-author{font-size:11px;font-weight:800;color:#1b64c1;letter-spacing:.04em}
+
+/* ==========================================================================
+   Login Popup Modal
+   ========================================================================== */
+.login-popup-backdrop{position:fixed;inset:0;background:rgba(7,15,35,.6);backdrop-filter:blur(4px);display:grid;place-items:center;padding:20px;z-index:100}
+.login-popup-card{width:min(460px,100%);background:#fff;border-radius:22px;padding:38px 32px;box-shadow:0 28px 70px rgba(7,15,35,.35);position:relative;border:1px solid #e4ebf3}
+.login-popup-close{position:absolute;right:14px;top:14px;background:none;border:0;font-size:20px;cursor:pointer;color:#8a94a6;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;transition:background .15s}
+.login-popup-close:hover{background:#f3f5f8;color:#1b2b42}
+.login-popup-brand{display:flex;align-items:center;gap:12px;margin-bottom:26px}
+.login-popup-logo{width:40px;height:40px;border-radius:10px;background:#fff;padding:2px;object-fit:contain}
+.login-popup-brand span{font-size:17px;font-weight:800;color:#0b1a33}
+@media(max-width:700px){.landing-nav{display:none;flex-direction:column;position:absolute;top:60px;left:0;right:0;background:#0B3D91;padding:14px 28px;border-bottom:1px solid rgba(255,255,255,.2);z-index:20}.landing-nav.open{display:flex}.landing-menu-btn{display:flex}.landing-hero h1{font-size:26px}.landing-hero{padding:50px 18px 36px}}
+.landing-section{padding:80px 28px}.landing-section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.landing-section-heading h2{font-size:24px;color:#0B3D91;margin:0}.landing-section-tag{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6b7890;background:#eef4ff;border:1px solid #dce7f5;border-radius:999px;padding:6px 14px}
+.landing-about-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.landing-about-card{background:#fff;border:1px solid #e4ebf3;border-radius:14px;padding:24px;box-shadow:0 6px 18px rgba(11,61,145,.04);transition:box-shadow .2s}
+.landing-about-card:hover{box-shadow:0 10px 28px rgba(11,61,145,.1)}.landing-about-card p{font-size:14px;color:#334155;line-height:1.7;margin:0}
+.landing-programs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.landing-program-card{background:#fff;border:1px solid #e4ebf3;border-top:3px solid #10449b;border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(11,61,145,.04);transition:box-shadow .2s}
+.landing-program-card:hover{box-shadow:0 10px 28px rgba(11,61,145,.1)}.landing-program-code{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.1em;color:#fff;background:#0B3D91;padding:3px 10px;border-radius:999px;text-transform:uppercase}.landing-program-name{font-size:15px;color:#172b47;font-weight:700;margin:8px 0 6px;line-height:1.4}.landing-program-level{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.landing-program-units{font-size:12px;color:#8a94a6;font-weight:700}
+.landing-trophies-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.landing-trophy-card{background:#fff;border:1px solid #e4ebf3;border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(11,61,145,.04);transition:box-shadow .2s;border-left:4px solid #2e9d73}
+.landing-trophy-card:hover{box-shadow:0 10px 28px rgba(11,61,145,.1)}.landing-trophy-year{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.1em;color:#fff;background:#2e9d73;padding:3px 10px;border-radius:999px;text-transform:uppercase}.landing-trophy-title{font-size:16px;color:#172b47;font-weight:700;margin:8px 0 6px;line-height:1.4}.landing-trophy-detail{font-size:13px;color:#6b7890;line-height:1.6;margin:0}
+.landing-payment-notice{display:flex;gap:20px;align-items:flex-start;padding:32px 28px;background:#fff3cd;border:1px solid #fde68a;border-radius:16px;box-shadow:0 8px 24px rgba(251,191,36,.15)}.landing-notice-icon{font-size:34px;line-height:1}.landing-payment-notice h3{font-size:18px;color:#92400e;margin:0 0 6px;letter-spacing:.04em}.landing-payment-notice p{font-size:14px;color:#78350f;line-height:1.7;margin:0}.landing-payment-notice strong{color:#92400e;font-weight:800}
+/* Scroll reveal - content fades in as user scrolls */
+.landing-scroll-section{opacity:0}.landing-scroll-section--visible{opacity:1;transition:opacity 0.7s ease}
+@media(max-width:700px){.landing-about-grid{grid-template-columns:1fr}.landing-programs-grid{grid-template-columns:1fr}.landing-trophies-grid{grid-template-columns:1fr}}

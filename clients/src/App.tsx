@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AuthContainer } from './components/auth/AuthContainer';
+import { LandingPage } from './components/landing/LandingPage';
 import type { UserAuthData } from './components/auth/Login';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
@@ -154,7 +155,7 @@ export const App = () => {
         />
       );
     }
-    return <AuthContainer onLoginSuccess={(u) => setPendingUser(adoptSchoolIdentity(u))} onNotify={notify} />;
+    return <LandingPage onLoginSuccess={(u) => setPendingUser(adoptSchoolIdentity(u))} onNotify={notify} onSwitchToRegister={() => {}} onSwitchToEnroll={() => {}} />;
   }
 
   const props = { currentUser, onNotify: notify, onLogout: logout };

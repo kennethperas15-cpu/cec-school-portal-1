@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useCollection, uid, genSchoolId, isValidSchoolId, type SchoolRole } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
@@ -15,8 +15,6 @@ import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
-import { AdminReports } from './reporting/AdminReports';
-import { LiveReport } from './reporting/LiveReports';
 import { useAcademicConfig } from '../../services/academicConfig';
 import type { DashboardSection } from '../shared/RoleDashboardHome';
 
@@ -27,13 +25,10 @@ type Group = { id: string; label: string; icon: string; items: { label: string; 
 const GROUPS: Group[] = [
   { id: 'home', label: 'DASHBOARD', icon: '⌂', items: [{ label: 'Dashboard', route: 'a_dashboard' }] },
   { id: 'account', label: 'ACCOUNT MGMT', icon: '◈', items: [{ label: 'RBAC Management', route: 'a_auth_rbac' }, { label: 'Account Creation', route: 'a_auth_accounts' }, { label: 'Password Reset', route: 'a_auth_reset' }] },
-  { id: 'enroll', label: 'ENROLLMENT MGMT', icon: '▤', items: [{ label: 'Enrollment Approval', route: 'a_enroll_approval' }, { label: 'Document Verification', route: 'a_enroll_docs' }, { label: 'Section Assignment', route: 'a_enroll_sections' }, { label: 'Capacity Control', route: 'a_enroll_capacity' }, { label: 'Status Monitoring', route: 'a_enroll_status' }] },
-  { id: 'academic', label: 'ACADEMIC MGMT', icon: '▥', items: [{ label: 'Curriculum Setup', route: 'a_acad_curriculum' }, { label: 'Subject Offering', route: 'a_acad_subjects' }, { label: 'Calendar', route: 'a_acad_calendar' }, { label: 'Room Allocation', route: 'a_acad_rooms' }] },
+  { id: 'enroll', label: 'ENROLLMENT MGMT', icon: '▤', items: [{ label: 'Enrollment Approval', route: 'a_enroll_approval' }, { label: 'Document Verification', route: 'a_enroll_docs' }, { label: 'Study Load Builder', route: 'a_acad_offerings' }, { label: 'Status Monitoring', route: 'a_enroll_status' }] },
   { id: 'finance', label: 'FINANCIAL MGMT', icon: '▦', items: [{ label: 'Billing & Invoices', route: 'a_fin_billing' }, { label: 'Fee Structure', route: 'a_fin_fees' }, { label: 'Payment Monitoring', route: 'a_fin_payments' }, { label: 'Scholarships', route: 'a_fin_scholar' }] },
   { id: 'hr', label: 'HR / FACULTY', icon: '⍾', items: [{ label: 'Teacher Records', route: 'a_hr_records' }, { label: 'Load Assignment', route: 'a_hr_load' }, { label: 'Credentials', route: 'a_hr_cred' }] },
-  { id: 'lib', label: 'LIBRARY', icon: '▧', items: [{ label: 'Library Catalog', route: 'a_lib_catalog' }] },
   { id: 'comm', label: 'COMMUNICATION', icon: '✉', items: [{ label: 'Broadcast Messaging', route: 'a_comm_broadcast' }, { label: 'System Announcements', route: 'a_comm_announce' }] },
-  { id: 'reporting', label: 'REPORTING', icon: '◫', items: [{ label: 'Enrollment Stats', route: 'a_rep_enroll' }, { label: 'Academic Performance', route: 'a_rep_acad' }, { label: 'Revenue Dashboard', route: 'a_rep_revenue' }] },
   { id: 'system', label: 'SYSTEM ADMIN', icon: '⚙', items: [{ label: 'System Config', route: 'a_sys_config' }, { label: 'Audit Log', route: 'a_sys_audit' }, { label: 'Backup & Restore', route: 'a_sys_backup' }, { label: 'Security', route: 'a_sys_security' }] },
 ];
 const pill: React.CSSProperties = { border: '1px solid #e2e7ef', background: '#fff', borderRadius: 999, padding: '6px 12px', fontSize: 12, color: '#6b7890' };
@@ -79,15 +74,9 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const offers = useCollection<{ id: string; name: string; role: string }>('a_offers_v2', []);
   const bills = useCollection<{ id: string; name: string; role: string }>('a_bills_v2', []);
   const broadcasts = useCollection<{ id: string; name: string; role: string }>('a_broadcast_v2', []);
-  const assign = useCollection<{ id: string; name: string; role: string }>('a_assign_v2', []);
-  const cap = useCollection<{ id: string; name: string; role: string }>('a_capacity_v2', []);
-  const curr = useCollection('a_curriculum', [{ id: 'BSIT', name: 'BS Information Technology', role: '8 semesters • 42 subjects' }]);
-  const cal = useCollection('a_calendar', [{ id: 'ev1', name: 'Enrollment opens', role: '2026-10-01' }]);
   const loads = useCollection<{ id: string; name: string; role: string }>('a_loads_v2', []);
   const creds = useCollection<{ id: string; name: string; role: string }>('a_creds_v2', []);
   const scholars = useCollection<{ id: string; name: string; role: string }>('a_scholars_v2', []);
-  // Library catalog: shared `s_books` store — entries appear in the student catalog.
-  const libBooks = useCollection<{ id: string; name: string; role: string }>('s_books', []);
   const syscfg = useCollection('a_syscfg', [{ id: 'school_year', name: 'Current school year', role: '2026–2027' }]);
   const [perms, setPerms] = useState<Record<string, boolean>>({ 'Teacher-Students': true, 'Teacher-Teachers': true, 'Admin-Students': true, 'Admin-Teachers': true, 'Admin-Finance': true, 'Admin-Admin': true });
   const [fn, setFn] = useState(''); const [fi, setFi] = useState(''); const [fr, setFr] = useState('student');
@@ -95,6 +84,37 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [walkN, setWalkN] = useState(''); const [walkE, setWalkE] = useState(''); const [walkP, setWalkP] = useState('');
   const [autoApprove, setAutoApprove] = useState(() => { try { return localStorage.getItem('cec:auto_approve') === '1'; } catch { return false; } });
   const [boxVal, setBoxVal] = useState('');
+  // Study-load builder draft (unified subject + teacher + room + schedule)
+  const [slSubject, setSlSubject] = useState('');
+  const [slTeacher, setSlTeacher] = useState('');
+  const [slRoom, setSlRoom] = useState('');
+  const [slDays, setSlDays] = useState<string[]>(['M', 'W', 'F']);
+  const [slStart, setSlStart] = useState('08:00');
+  const [slEnd, setSlEnd] = useState('09:30');
+  const [slSection, setSlSection] = useState('');
+  const [slCap, setSlCap] = useState('40');
+  const studyloads = useCollection<{ id: string; name: string; role: string; meta: string; subject: string; teacher: string; room: string; days: string[]; start: string; end: string; section: string; cap: string; batch: number }>('a_studyloads_v2', []);
+  const [slMax, setSlMax] = useState(() => {
+    try {
+      return Math.max(1, Number(localStorage.getItem('cec:sl_batch_max')) || 8);
+    } catch {
+      return 8;
+    }
+  });
+  const [slSubmitted, setSlSubmitted] = useState<number[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cec:sl_submitted') ?? '[]') as number[];
+    } catch {
+      return [];
+    }
+  });
+  const setBatchMax = (v: number) => {
+    const max = Math.max(1, Math.min(99, Math.floor(v) || 8));
+    setSlMax(max);
+    try {
+      localStorage.setItem('cec:sl_batch_max', String(max));
+    } catch { /* ignore */ }
+  };
   const [boxDetail, setBoxDetail] = useState('');
   const [broadcastAudience, setBroadcastAudience] = useState<'all' | 'students' | 'teachers'>('all');
   const [facId, setFacId] = useState('');
@@ -220,13 +240,13 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
         { title: 'Enrollment queue', target: 'Enrollment Approval', emptyMessage: 'No applications are waiting for review.', items: enroll.list.slice(0, 5).map((application) => ({ title: application.name, detail: `${application.id} • ${application.meta}`, status: 'Review', target: 'Enrollment Approval' })) },
         { title: 'Billing follow-up', target: 'Payment Monitoring', emptyMessage: 'No open billing records are available.', items: openBills.slice(0, 5).map((bill) => ({ title: bill.name, detail: bill.role, status: 'Open', target: 'Payment Monitoring' })) },
         { title: 'Faculty and accounts', target: 'Teacher Records', emptyMessage: 'Faculty and teacher accounts will appear here when created.', items: [...faculty.list.map((item) => ({ title: item.name, detail: item.role, status: 'Faculty', target: 'Teacher Records' })), ...accounts.list.filter((account) => account.role === 'teacher').map((item) => ({ title: item.name, detail: `${item.id} • Teacher account`, status: 'Account', target: 'Account Creation' }))].slice(0, 5) },
-        { title: 'Academic calendar', target: 'Calendar', emptyMessage: 'No calendar events are configured.', items: cal.list.slice(0, 5).map((event) => ({ title: event.name, detail: event.role, status: 'Calendar', target: 'Calendar' })) },
+        { title: 'Study loads', target: 'Study Load Builder', emptyMessage: 'No study loads built yet.', items: studyloads.list.slice(0, 5).map((s) => ({ title: s.name, detail: s.role, status: 'Load', target: 'Study Load Builder' })) },
       ];
       const priority = enroll.list[0]
         ? { title: `Review enrollment: ${enroll.list[0].name}`, detail: `${enroll.list[0].meta} • ${enroll.list.length} application${enroll.list.length === 1 ? '' : 's'} in queue.`, actionLabel: 'Open approval queue', target: 'Enrollment Approval' }
         : openBills[0]
           ? { title: `Follow up on ${openBills[0].name}`, detail: `₱${outstanding.toLocaleString()} across open billing records.`, actionLabel: 'Open billing', target: 'Payment Monitoring' }
-          : { title: 'No urgent items in the current queues', detail: 'Enrollment and billing queues are clear. Check the calendar or system status.', actionLabel: 'Review calendar', target: 'Calendar', tone: 'clear' as const };
+          : { title: 'No urgent items in the current queues', detail: 'Enrollment and billing queues are clear. Build or review study loads.', actionLabel: 'Open study loads', target: 'Study Load Builder', tone: 'clear' as const };
       return (
         <RoleDashboardHome
           role="admin"
@@ -243,9 +263,6 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
         />
       );
     }
-    if (active === 'Enrollment Stats') return <><LiveReport kind="enrollment" onNotify={onNotify} />{enroll.list.length + accounts.list.length > 0 ? <><div style={{ height: 16 }} /><AdminReports onNotify={onNotify} /></> : null}</>;
-    if (active === 'Academic Performance') return <LiveReport kind="academic" onNotify={onNotify} />;
-    if (active === 'Revenue Dashboard') return <LiveReport kind="revenue" onNotify={onNotify} />;
     if (active === 'Enrollment Approval') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Enrollment Approval</h1>
         <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}><div><strong>Auto-approve new applications: {autoApprove ? 'ON' : 'OFF'}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>Online + walk-in applications land here. Advance each one yourself: Docs ✓ → Approve → Enroll ✓. Nothing moves without a registrar click.</div><div style={{ display: 'flex', gap: 8, marginTop: 8 }}>{(() => { const p = pipelineBadges(); return (<><span style={{ ...pill, background: p.docs ? '#ecfdf5' : '#fff' }}>Registrar docs {p.docs ? '✓' : '—'}</span><span style={{ ...pill, background: p.pay ? '#ecfdf5' : '#fff' }}>Accounting pay {p.pay ? '✓' : '—'}</span></>); })()}</div></div><button style={autoApprove ? ghost : btn} onClick={toggleAuto}>{autoApprove ? 'Turn OFF' : 'Turn ON'}</button></div>
@@ -339,15 +356,13 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
           </select>
           <button style={btn} type="submit">Broadcast</button></form>));
     }
-    if (active === 'Fee Structure' || active === 'Billing & Invoices' || active === 'Teacher Records' || active === 'Room Allocation' || active === 'Subject Offering' || active === 'Broadcast Messaging' || active === 'System Announcements') {
-      const map: Record<string, typeof fees> = { 'Fee Structure': fees, 'Billing & Invoices': bills, 'Teacher Records': faculty, 'Room Allocation': rooms, 'Subject Offering': offers, 'Broadcast Messaging': broadcasts, 'System Announcements': broadcasts };
+    if (active === 'Fee Structure' || active === 'Billing & Invoices' || active === 'Teacher Records' || active === 'Broadcast Messaging' || active === 'System Announcements') {
+      const map: Record<string, typeof fees> = { 'Fee Structure': fees, 'Billing & Invoices': bills, 'Teacher Records': faculty, 'Broadcast Messaging': broadcasts, 'System Announcements': broadcasts };
       const col = map[active] ?? fees;
       return table(active, ['Name', 'Detail', 'Actions'],
         col.list.map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{r.name}</td><td style={{ padding: 12 }}>{r.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => {         openEditDialog('Edit record', r.name, (v) => { col.update(r.id, { name: v }); onNotify('Updated'); }) }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>),
         (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim()) return; col.create({ id: uid('x'), name: boxVal.trim(), role: 'New' }); setBoxVal(''); onNotify('Created'); }}><input style={inp} placeholder={`New ${active}`} value={boxVal} onChange={(e) => setBoxVal(e.target.value)} /><button style={btn} type="submit">Add</button></form>));
     }
-    if (active === 'Section Assignment') return <AdminTable title="Section Assignment" col={assign} colA="Student / Applicant" colB="Section" phA="e.g. Juan Dela Cruz" phB="e.g. BSIT-3A" onNotify={onNotify} footer={footer} />;
-    if (active === 'Capacity Control') return <AdminTable title="Capacity Control" col={cap} colA="Section" colB="Enrolled / Capacity" phA="e.g. BSIT-3A" phB="e.g. 38 / 40" onNotify={onNotify} footer={footer} />;
     if (active === 'Status Monitoring') {
       const pending = enroll.list.length;
       const approved = (() => { try { const raw = localStorage.getItem('cec:s_enroll_apps'); const rows = raw ? (JSON.parse(raw) as { role: string }[]) : []; return rows.filter((r) => r.role.toLowerCase().includes('approv')).length; } catch { return 0; } })();
@@ -355,11 +370,216 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
       const bar = (label: string, v: number, max: number, color: string) => (<div style={{ marginTop: 10 }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>{label}</span><strong>{v}</strong></div><div style={{ height: 8, background: '#edf1f5', borderRadius: 8, marginTop: 6 }}><div style={{ width: `${max ? Math.round((v / max) * 100) : 0}%`, height: '100%', background: color, borderRadius: 8 }} /></div></div>);
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Status Monitoring</h1><div style={box}>{bar('Pending applications', pending, total, '#ee9950')}{bar('Approved enrollments', approved, total, '#2bb17f')}{bar('Active accounts', accounts.list.length, total, '#3d82da')}<div style={{ marginTop: 14 }}><button style={btn} onClick={() => onNotify('Statuses refreshed from live queues')}>Refresh statuses</button></div></div>{footer}</section>);
     }
-    if (active === 'Curriculum Setup') return <AdminTable title="Curriculum Setup" col={curr} colA="Program" colB="Structure" phA="e.g. BSCS" phB="e.g. 8 semesters" onNotify={onNotify} footer={footer} />;
-    if (active === 'Calendar') return <AdminTable title="Academic Calendar" col={cal} colA="Event" colB="Date" phA="e.g. Midterm exams" phB="2026-10-20" onNotify={onNotify} footer={footer} />;
+    if (active === 'Study Load Builder') {
+      const DAYS = ['M', 'T', 'W', 'TH', 'F', 'S'];
+      const teacherOptions = faculty.list.length ? faculty.list : accounts.list.filter((a) => a.role === 'teacher');
+      const toggleDay = (d: string) => setSlDays((days) => (days.includes(d) ? days.filter((x) => x !== d) : [...days, d]));
+      // Publish a completed batch so students can plot it in Section Selection.
+      const to12h = (t: string) => {
+        const [hh, mm] = t.split(':').map(Number);
+        if (!Number.isFinite(hh) || !Number.isFinite(mm)) return t;
+        const suffix = hh >= 12 ? 'PM' : 'AM';
+        const h12 = hh % 12 === 0 ? 12 : hh % 12;
+        return `${String(h12).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${suffix}`;
+      };
+      const submitBatch = (batch: number) => {
+        try {
+          const rows = studyloads.list.filter((s) => (s.batch ?? 1) === batch);
+          if (!rows.length) return;
+          const offerings = rows.map((s) => {
+            const [code, ...rest] = (s.subject ?? s.name).split('—');
+            return {
+              edp: s.id,
+              subject: (code ?? s.name).trim(),
+              descriptive: (rest.join('—') || s.name).trim(),
+              schedule: `${(s.days ?? []).join('')} ${to12h(s.start ?? '')}-${to12h(s.end ?? '')}`,
+              room: s.room ?? '',
+              teacher: s.teacher ?? '',
+              type: 'Lec',
+              units: 3,
+              section: s.section ?? '',
+              batch,
+            };
+          });
+          const raw = localStorage.getItem('cec:studyload_offerings');
+          const existing = raw ? (JSON.parse(raw) as { edp: string; batch?: number }[]) : [];
+          const kept = existing.filter((o) => o.batch !== batch);
+          localStorage.setItem('cec:studyload_offerings', JSON.stringify([...kept, ...offerings]));
+          const done = [...new Set([...slSubmitted, batch])];
+          setSlSubmitted(done);
+          localStorage.setItem('cec:sl_submitted', JSON.stringify(done));
+          pushNotification(['student'], { title: `New schedules published: Batch ${batch}`, detail: `${rows.length} classes are ready to plot in Section Selection.`, category: 'Academic', target: 'Section Selection' });
+          onNotify(`Batch ${batch} submitted — students can now plot these schedules`);
+        } catch {
+          onNotify('Could not submit batch — storage unavailable');
+        }
+      };
+      const addStudyLoad = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!slSubject.trim() || !slTeacher.trim() || !slRoom.trim() || !slSection.trim()) {
+          onNotify('Fill in subject, teacher, room, and section');
+          return;
+        }
+        if (!slDays.length) {
+          onNotify('Pick at least one class day');
+          return;
+        }
+        if (!slStart || !slEnd || slStart >= slEnd) {
+          onNotify('Set a valid time range (start before end)');
+          return;
+        }
+        const cap = Math.max(1, Number(slCap) || 0);
+        const sched = `${slDays.join('')} ${slStart}–${slEnd}`;
+        // Normalize every field so cosmetic differences (case, spacing, day
+        // order) can never slip past as a "different" load.
+        const norm = (s: string) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const normDays = (days: string[] = []) => [...days].map((d) => d.trim().toUpperCase()).sort().join('');
+        const capOf = (s: { cap?: string; meta: string }) =>
+          (s.cap ?? '').trim() || (/capacity\s+(\d+)/i.exec(s.meta ?? '')?.[1] ?? '');
+        const signature = (s: { subject?: string; teacher?: string; room?: string; section?: string; days?: string[]; start?: string; end?: string; cap?: string; meta: string; name: string; role: string }) => {
+          // Legacy rows (saved before structured fields) fall back to parsed display text.
+          const subject = norm(s.subject ?? s.name.split('•')[0] ?? '');
+          const section = norm(s.section ?? s.name.split('•')[1] ?? '').toUpperCase();
+          const parts = (s.role ?? '').split('•').map((p) => p.trim());
+          const teacher = norm(s.teacher ?? parts[0] ?? '');
+          const room = norm(s.room ?? parts[1] ?? '');
+          return [subject, teacher, room, section, normDays(s.days), (s.start ?? '').trim(), (s.end ?? '').trim(), capOf(s)].join('|');
+        };
+        const draftSig = [
+          norm(slSubject), norm(slTeacher), norm(slRoom), norm(slSection).toUpperCase(),
+          normDays(slDays), slStart.trim(), slEnd.trim(), String(cap),
+        ].join('|');
+        // 1) Identical inputs to a previous load — blocked, no exceptions.
+        const identical = studyloads.list.find((s) => signature(s) === draftSig);
+        if (identical) {
+          onNotify(`Identical study load already exists — "${identical.name}" (${identical.id}). Nothing was created.`);
+          return;
+        }
+        const daysOverlap = (a: string[] = [], b: string[] = []) => a.some((d) => b.includes(d));
+        const timeOverlap = (aStart: string, aEnd: string, bStart = '', bEnd = '') =>
+          !!bStart && !!bEnd && aStart < bEnd && bStart < aEnd;
+        // 2) Same subject + section at an overlapping time.
+        const duplicate = studyloads.list.find((s) =>
+          norm(s.subject ?? '') === norm(slSubject) &&
+          norm(s.section ?? '') === norm(slSection) &&
+          daysOverlap(s.days, slDays) && timeOverlap(slStart, slEnd, s.start, s.end));
+        if (duplicate) {
+          onNotify(`Duplicate blocked — "${duplicate.name}" already runs at ${duplicate.role.split('•').slice(-1)[0].trim()}`);
+          return;
+        }
+        const roomClash = studyloads.list.find((s) =>
+          norm(s.room ?? '') === norm(slRoom) &&
+          daysOverlap(s.days, slDays) && timeOverlap(slStart, slEnd, s.start, s.end));
+        if (roomClash) {
+          onNotify(`Room clash — ${slRoom.trim()} is already booked by "${roomClash.name}" (${roomClash.role})`);
+          return;
+        }
+        const teacherClash = studyloads.list.find((s) =>
+          norm(s.teacher ?? '') === norm(slTeacher) &&
+          daysOverlap(s.days, slDays) && timeOverlap(slStart, slEnd, s.start, s.end));
+        if (teacherClash) {
+          onNotify(`Schedule clash — ${slTeacher.trim()} already teaches "${teacherClash.name}" (${teacherClash.role})`);
+          return;
+        }
+        // Batch rollover: cap loads per batch, open a new batch when full.
+        const batchOf = (s: { batch?: number }) => s.batch ?? 1;
+        const topBatch = studyloads.list.reduce((m, s) => Math.max(m, batchOf(s)), 0);
+        const activeBatch = topBatch === 0 ? 1 : topBatch;
+        const activeCount = studyloads.list.filter((s) => batchOf(s) === activeBatch).length;
+        const targetBatch = activeCount >= slMax ? activeBatch + 1 : activeBatch;
+        studyloads.create({
+          id: uid('LD'),
+          name: `${slSubject.trim()} • ${slSection.trim().toUpperCase()}`,
+          role: `${slTeacher.trim()} • ${slRoom.trim()} • ${sched}`,
+          meta: `Capacity ${cap} • Enrolled 0`,
+          subject: slSubject.trim(),
+          teacher: slTeacher.trim(),
+          room: slRoom.trim(),
+          days: [...slDays],
+          start: slStart,
+          end: slEnd,
+          section: slSection.trim().toUpperCase(),
+          cap: String(cap),
+          batch: targetBatch,
+        });
+        const roomLabel = slRoom.trim();
+        if (!rooms.list.some((r) => r.name.toLowerCase() === roomLabel.toLowerCase())) {
+          rooms.create({ id: uid('rm'), name: roomLabel, role: `Capacity ${cap}` });
+        }
+        if (!offers.list.some((o) => o.name.toLowerCase() === slSubject.trim().toLowerCase())) {
+          offers.create({ id: uid('of'), name: slSubject.trim(), role: `${slSection.trim().toUpperCase()} • ${sched}` });
+        }
+        setSlSubject(''); setSlTeacher(''); setSlRoom(''); setSlSection(''); setSlCap('40');
+        onNotify(targetBatch > activeBatch
+          ? `Batch ${activeBatch} completed (${slMax}/${slMax}) — new Batch ${targetBatch} opened`
+          : `Study load created in Batch ${targetBatch} (${activeCount + 1}/${slMax})`);
+      };
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Study Load Builder</h1>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>One form builds a complete class: subject + teacher + room + days and time + section + capacity. Loads are grouped into batches of <strong>{slMax}</strong> — a new batch opens automatically when one fills up. Rooms and subjects are remembered for reuse.</p>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
+          <label htmlFor="sl-max" style={{ fontSize: 13, fontWeight: 700, color: '#33415c' }}>Max loads per batch:</label>
+          <input id="sl-max" style={{ ...inp, width: 90, flex: 'none' }} type="number" min={1} max={99} value={slMax} onChange={(e) => setBatchMax(Number(e.target.value))} aria-label="Maximum loads per batch" />
+        </div>
+        <form style={{ display: 'grid', gap: 10, marginTop: 14 }} onSubmit={addStudyLoad}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input style={{ ...inp, flex: '2 1 220px' }} placeholder="Subject e.g. CS 302 — Database Systems" value={slSubject} onChange={(e) => setSlSubject(e.target.value)} aria-label="Subject" list="sl-subjects" />
+            <datalist id="sl-subjects">{offers.list.map((o) => <option key={o.id} value={o.name} />)}</datalist>
+            <input style={{ ...inp, flex: '1 1 160px' }} placeholder="Section e.g. BSIT-3A" value={slSection} onChange={(e) => setSlSection(e.target.value)} aria-label="Section" />
+            <input style={{ ...inp, flex: '0 1 120px', width: 120 }} placeholder="Capacity" value={slCap} onChange={(e) => setSlCap(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" aria-label="Capacity" />
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input style={{ ...inp, flex: '1 1 200px' }} placeholder="Teacher e.g. Rosa Santos" value={slTeacher} onChange={(e) => setSlTeacher(e.target.value)} aria-label="Teacher" list="sl-teachers" />
+            <datalist id="sl-teachers">{teacherOptions.map((t) => <option key={t.id} value={t.name} />)}</datalist>
+            <input style={{ ...inp, flex: '1 1 200px' }} placeholder="Room e.g. Room 301" value={slRoom} onChange={(e) => setSlRoom(e.target.value)} aria-label="Room" list="sl-rooms" />
+            <datalist id="sl-rooms">{rooms.list.map((r) => <option key={r.id} value={r.name} />)}</datalist>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#33415c' }}>Days:</span>
+            <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Class days">
+              {DAYS.map((d) => <button key={d} type="button" onClick={() => toggleDay(d)} aria-pressed={slDays.includes(d)} style={{ border: slDays.includes(d) ? '2px solid #0B3D91' : '1px solid #e2e7ef', background: slDays.includes(d) ? '#e8f1ff' : '#fff', borderRadius: 8, padding: '8px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', color: '#0B3D91' }}>{d}</button>)}
+            </div>
+            <input style={{ ...inp, flex: '0 1 130px', width: 130 }} type="time" value={slStart} onChange={(e) => setSlStart(e.target.value)} aria-label="Start time" />
+            <span style={{ color: '#6b7890' }}>–</span>
+            <input style={{ ...inp, flex: '0 1 130px', width: 130 }} type="time" value={slEnd} onChange={(e) => setSlEnd(e.target.value)} aria-label="End time" />
+            <button style={btn} type="submit">Create study load</button>
+            <button style={ghost} type="button" onClick={() => {
+              setSlSubject('CS 302 — Database Systems');
+              setSlSection('BSIT-3A');
+              setSlCap('40');
+              setSlTeacher(teacherOptions[0]?.name ?? 'Rosa Santos');
+              setSlRoom(rooms.list[0]?.name ?? 'Room 301');
+              setSlDays(['M', 'W', 'F']);
+              setSlStart('08:00');
+              setSlEnd('09:30');
+              onNotify('Sample study load filled in — press Create study load');
+            }}>Fill sample</button>
+          </div>
+        </form>
+        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Subject • Section</th><th style={{ padding: 12 }}>Teacher • Room • Schedule</th><th style={{ padding: 12 }}>Load</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>
+          {[...new Set(studyloads.list.map((s) => s.batch ?? 1))].sort((a, b) => a - b).map((batch) => {
+            const rows = studyloads.list.filter((s) => (s.batch ?? 1) === batch);
+            const full = rows.length >= slMax;
+            return (<Fragment key={batch}>
+              <tr style={{ background: '#eef4ff' }}><td colSpan={4} style={{ padding: '10px 12px', fontSize: 13, fontWeight: 800, color: '#0B3D91' }}>
+                <span>Batch {batch} • {rows.length}/{slMax}</span>
+                {full
+                  ? <span style={{ background: '#16a34a', color: '#fff', borderRadius: 999, padding: '2px 10px', fontSize: 10, marginLeft: 8 }}>COMPLETED</span>
+                  : <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '2px 10px', fontSize: 10, marginLeft: 8 }}>OPEN</span>}
+                {full && !slSubmitted.includes(batch) && (
+                  <button style={{ ...btn, marginLeft: 12, padding: '6px 14px' }} onClick={() => submitBatch(batch)}>Submit batch → student schedules</button>
+                )}
+                {slSubmitted.includes(batch) && (
+                  <span style={{ background: '#0B3D91', color: '#fff', borderRadius: 999, padding: '2px 10px', fontSize: 10, marginLeft: 8 }}>SUBMITTED ✓</span>
+                )}
+              </td></tr>
+              {rows.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{s.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{s.id}</div></td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}>{s.meta}</td><td style={{ padding: 12 }}><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { studyloads.remove(s.id); onNotify('Study load deleted'); }}>Delete</button></td></tr>)}
+            </Fragment>);
+          })}
+          {!studyloads.list.length && <tr><td colSpan={4} style={{ padding: 16, color: '#6b7890' }}>No study loads yet — build the first class above.</td></tr>}
+        </tbody></table></div>{footer}</section>);
+    }
     if (active === 'Load Assignment') return <AdminTable title="Load Assignment" col={loads} colA="Faculty" colB="Units • Sections" phA="e.g. Ms. Reyes" phB="e.g. 9 units" onNotify={onNotify} footer={footer} />;
     if (active === 'Credentials') return <AdminTable title="Faculty Credentials" col={creds} colA="Credential" colB="Validity" phA="e.g. PRC License" phB="Valid until 2028-01-01" onNotify={onNotify} footer={footer} />;
-    if (active === 'Library Catalog') return <AdminTable title="Library Catalog" col={libBooks} colA="Book title" colB="Author • Availability" phA="e.g. Database System Concepts" phB="e.g. Silberschatz • Available" onNotify={onNotify} footer={<p style={{ color: '#6b7890', fontSize: 13 }}>Books listed here appear in the student Library Catalog for the physical library.</p>} />;
     if (active === 'Password Reset') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Password Reset</h1><div style={{ ...box }}><ChangePassword identifier={currentUser?.email || myPhotoId} onNotify={onNotify} /></div><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); if (!resetWho.trim()) return; onNotify(`Reset link sent to accounts matching "${resetWho.trim()}"`); pushNotification(['student', 'teacher'], { title: 'Password reset issued', detail: 'Admin issued a password reset for your account.', category: 'System', target: 'Password Recovery' }); setResetWho(''); }}><input style={inp} placeholder="Name, ID or email" value={resetWho} onChange={(e) => setResetWho(e.target.value)} aria-label="Account to reset" /><button style={btn} type="submit">Send reset</button></form><div style={box}>{accounts.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{a.name}</strong> • {a.id}</span><button style={ghost} onClick={() => onNotify(`Reset link sent to ${a.name}`)}>Reset</button></div>)}</div>{footer}</section>);
     }
