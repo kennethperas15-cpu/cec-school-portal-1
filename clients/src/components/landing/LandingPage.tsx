@@ -46,7 +46,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNoti
   const [adMissing, setAdMissing] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const [announcementsPaused, setAnnouncementsPaused] = useState(false);
-  const { items: announcements, live: announcementsLive } = useLiveAnnouncements('all', { intervalMs: 30000 });
+  const [newsCategory, setNewsCategory] = useState<'All' | 'General' | 'Urgent' | 'Events'>('All');
+  const { items: announcements, live: announcementsLive } = useLiveAnnouncements('all', {
+    intervalMs: 30000,
+    category: newsCategory === 'All' ? undefined : newsCategory,
+  });
   const prefersReducedMotion = useReducedMotion();
   const activeAnnouncementIndex = announcements.length ? announcementIndex % announcements.length : 0;
   const activeAnnouncement = announcements[activeAnnouncementIndex];
@@ -209,6 +213,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNoti
               <span className="landing-announcements-label"><i /> Live announcements</span>
               <span className="landing-announcements-status">{announcementsLive ? 'Latest campus updates' : 'Updates temporarily unavailable'}</span>
             </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }} role="group" aria-label="Filter by category">
+              {(['All', 'General', 'Urgent', 'Events'] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={newsCategory === c}
+                  onClick={() => { setNewsCategory(c); setAnnouncementIndex(0); }}
+                  style={{
+                    border: newsCategory === c ? '2px solid #FFCA28' : '1px solid rgba(255,255,255,.25)',
+                    background: newsCategory === c ? 'rgba(255,202,40,.18)' : 'transparent',
+                    color: '#fff', borderRadius: 999, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
             {announcements.length > 1 && (
               <div className="landing-announcements-controls">
                 <button type="button" aria-label="Previous announcement" onClick={() => setAnnouncementIndex((index) => (index - 1 + announcements.length) % announcements.length)}>←</button>
@@ -229,6 +250,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNoti
                   transition={{ duration: prefersReducedMotion ? 0.1 : 0.35, ease: 'easeOut' }}
                 >
                   <h3>{activeAnnouncement.title}</h3>
+                  <span style={{
+                    display: 'inline-block', borderRadius: 999, padding: '2px 12px', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', marginTop: 6,
+                    background: activeAnnouncement.category === 'Urgent' ? '#fee2e2' : activeAnnouncement.category === 'Events' ? '#fef3c7' : '#e0eaff',
+                    color: activeAnnouncement.category === 'Urgent' ? '#b91c1c' : activeAnnouncement.category === 'Events' ? '#92400e' : '#0B3D91',
+                  }}>
+                    {(activeAnnouncement.category ?? 'General').toUpperCase()}
+                  </span>
                   <p>{activeAnnouncement.content}</p>
                   {(activeAnnouncement.published_at || activeAnnouncement.published_by_name) && (
                     <small>

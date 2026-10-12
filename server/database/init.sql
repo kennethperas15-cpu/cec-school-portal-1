@@ -295,9 +295,28 @@ CREATE TABLE IF NOT EXISTS announcements (
   title VARCHAR(200) NOT NULL,
   content TEXT NOT NULL,
   audience ENUM('all','students','teachers','admins') NOT NULL DEFAULT 'all',
+  category ENUM('General','Urgent','Events') NOT NULL DEFAULT 'General',
   published_by CHAR(36),
   published_at DATETIME,
   FOREIGN KEY (published_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS coe_requests (
+  id CHAR(36) PRIMARY KEY,
+  transaction_no VARCHAR(20) NOT NULL UNIQUE,
+  user_id CHAR(36),
+  full_name VARCHAR(200) NOT NULL,
+  program VARCHAR(150),
+  year_level TINYINT UNSIGNED,
+  purpose VARCHAR(255) NOT NULL DEFAULT 'Enrollment',
+  status ENUM('pending','ready','rejected') NOT NULL DEFAULT 'pending',
+  decided_by CHAR(36),
+  decided_at DATETIME,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_coe_txn (transaction_no),
+  INDEX idx_coe_status (status)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS documents (

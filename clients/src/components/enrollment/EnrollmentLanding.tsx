@@ -1,6 +1,7 @@
 import React, { useEffect, useState, type FormEvent } from 'react';
 import api from '../../services/api';
 import { portalApi, type EnrollmentReceipt } from '../../services/portal';
+import { SchedulePicker, type ScheduleSlot } from './SchedulePicker';
 import { genSchoolId } from '../../services/crud';
 
 interface EnrollmentLandingProps {
@@ -19,28 +20,6 @@ const OTC_NOTICE =
 
 type DayPreference = 'morning' | 'afternoon' | 'evening';
 
-const PREF_LABEL: Record<DayPreference, string> = { morning: 'Morning class', afternoon: 'Afternoon class', evening: 'Evening class' };
-
-/** Bucket a published schedule ("MWF 08:00 AM-09:30 AM") by its start time. */
-const scheduleBucket = (schedule: string): DayPreference | null => {
-  const m = schedule.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m) return null;
-  const hour = (Number(m[1]) % 12) + (m[3].toUpperCase() === 'PM' ? 12 : 0);
-  if (hour < 12) return 'morning';
-  if (hour < 17) return 'afternoon';
-  return 'evening';
-};
-
-type PublishedLoad = { edp: string; subject: string; schedule: string; room: string; section: string; batch?: number };
-
-const readPublishedLoads = (): PublishedLoad[] => {
-  try {
-    const raw = localStorage.getItem('cec:studyload_offerings');
-    const rows = raw ? (JSON.parse(raw) as PublishedLoad[]) : [];
-    return rows.filter((r) => r && r.edp && r.subject && r.schedule);
-  } catch { return []; }
-};
-
 export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchToLogin, onNotify }) => {
   const [applicantType, setApplicantType] = useState<'new' | 'returning'>('new');
   const [fullName, setFullName] = useState('');
@@ -54,6 +33,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
   const [schoolId, setSchoolId] = useState('');
   const [referenceNo, setReferenceNo] = useState('');
   const [dayPref, setDayPref] = useState<DayPreference>('morning');
+  const [chosenSlot, setChosenSlot] = useState<ScheduleSlot | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [receipt, setReceipt] = useState<EnrollmentReceipt | null>(null);
@@ -90,6 +70,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
   const savePreference = () => {
     try {
       localStorage.setItem('cec:enroll_pref', JSON.stringify({ preference: dayPref }));
+      if (chosenSlot) localStorage.setItem('cec:enroll_schedule', JSON.stringify(chosenSlot));
+      else localStorage.removeItem('cec:enroll_schedule');
     } catch { /* ignore */ }
   };
 
@@ -173,6 +155,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
     setAddress('');
     setSchoolId('');
     setReferenceNo('');
+    setChosenSlot(null);
     setError('');
   };
 
@@ -203,6 +186,9 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
             <div className="credential-row"><span className="credential-label">Program / Level</span><div className="credential-value-wrap"><code className="credential-value">{s.program} • Year {s.yearLevel}</code></div></div>
             <div className="credential-row"><span className="credential-label">Academic Year</span><div className="credential-value-wrap"><code className="credential-value">{s.schoolYear ?? '—'} • {s.semester === 2 ? '2nd' : '1st'} Semester</code></div></div>
             <div className="credential-row"><span className="credential-label">Accounting Reference No.</span><div className="credential-value-wrap"><code className="credential-value">{s.paymentReferenceNo}</code></div></div>
+            {chosenSlot && (
+              <div className="credential-row"><span className="credential-label">Plotted Schedule</span><div className="credential-value-wrap"><code className="credential-value">{chosenSlot.subject} • {chosenSlot.schedule}{chosenSlot.room ? ` • ${chosenSlot.room}` : ''}</code></div></div>
+            )}
             <div className="credential-row"><span className="credential-label">Payment Status</span><div className="credential-value-wrap"><code className="credential-value">{receipt.paymentStatus.replace(/_/g, ' ')}</code></div></div>
             <div className="credential-row"><span className="credential-label">Student Status</span><div className="credential-value-wrap"><code className="credential-value">{receipt.studentStatus}</code></div></div>
             <div className="credential-row"><span className="credential-label">Submitted</span><div className="credential-value-wrap"><code className="credential-value">{new Date(receipt.submittedAt).toLocaleString()}</code></div></div>
@@ -375,29 +361,12 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
               </button>
             ))}
           </div>
-          {(() => {
-            const published = readPublishedLoads();
-            if (!published.length) {
-              return <span className="field-hint">No published schedules yet — the registrar publishes class batches soon.</span>;
-            }
-            const matches = published.filter((o) => scheduleBucket(o.schedule) === dayPref);
-            if (!matches.length) {
-              return <span className="field-hint">No {PREF_LABEL[dayPref].toLowerCase()} classes published yet — try another time or check back later.</span>;
-            }
-            return (
-              <div style={{ marginTop: 8, border: '1px solid #e6eaf1', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ background: '#eef4ff', padding: '8px 12px', fontSize: 12, fontWeight: 800, color: '#0B3D91' }}>
-                  {matches.length} {PREF_LABEL[dayPref].toLowerCase()} {matches.length === 1 ? 'class' : 'classes'} available to plot
-                </div>
-                {matches.slice(0, 5).map((m) => (
-                  <div key={m.edp} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderTop: '1px solid #eef1f6', fontSize: 13 }}>
-                    <strong>{m.subject}</strong>
-                    <span style={{ color: '#6b7890' }}>{m.schedule}{m.room ? ` • ${m.room}` : ''}</span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+          <span className="field-hint">Saved with your application and pre-applied when you plot schedules.</span>
+        </div>
+
+        <div className="auth-field">
+          <label>Pick a class schedule <span className="field-hint">(optional — plotting opens fully in Section Selection)</span></label>
+          <SchedulePicker key={dayPref} initialDay={dayPref} selectedEdp={chosenSlot?.edp ?? null} onSelect={setChosenSlot} />
         </div>
 
         <div className="auth-info-box">

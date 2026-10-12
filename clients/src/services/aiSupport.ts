@@ -67,11 +67,19 @@ const FAQS: Faq[] = [
     },
   },
   {
-    keys: ['pay', 'tuition', 'gcash', 'bank', 'gotyme', 'unionbank', 'metrobank', 'bpi', 'balance', 'receipt', 'or number', 'bayad', 'magbayad', 'resibo', 'balanse', 'bayaran', 'bayranan'],
+    keys: ['pay', 'tuition', 'gcash', 'bank', 'gotyme', 'unionbank', 'metrobank', 'bpi', 'balance', 'receipt', 'or number', 'bayad', 'magbayad', 'resibo', 'balanse', 'bayaran', 'bayranan', 'cash', 'please pay', 'edp'],
     answer: {
-      en: 'Payment guide:\n1. Open Financial → Payment Portal.\n2. Check your balance and enter the amount to pay.\n3. Choose GCash, Maya, GoTyme Bank, UnionBank, Metrobank, BPI, or Cashier (Window 3).\n4. Enter the transaction or reference number, then submit.\n5. Keep the popup receipt for your records and verify it later under Financial → Billing History. If the payment is not reflected, contact the cashier with your reference number, amount, date, and proof of payment.',
-      tl: 'Gabay sa pagbabayad:\n1. Buksan ang Financial → Payment Portal.\n2. Tingnan ang balanse at ilagay ang halagang babayaran.\n3. Pumili ng GCash, Maya, GoTyme Bank, UnionBank, Metrobank, BPI, o Cashier (Window 3).\n4. Ilagay ang transaction o reference number, pagkatapos ay isumite.\n5. Itago ang popup receipt at beripikahin ito sa Financial → Billing History. Kung hindi pa rin lumalabas ang bayad, makipag-ugnayan sa cashier dala ang reference number, halaga, petsa, at patunay ng bayad.',
-      ceb: 'Giya sa pagbayad:\n1. Ablihi ang Financial → Payment Portal.\n2. Tan-awa ang balanse ug ibutang ang kantidad nga bayran.\n3. Pilia ang GCash, Maya, GoTyme Bank, UnionBank, Metrobank, BPI, o Cashier (Window 3).\n4. Ibutang ang transaction o reference number, dayon isumite.\n5. Tipigi ang popup receipt ug beripikaha kini sa Financial → Billing History. Kung dili pa makita ang bayad, kontaka ang cashier dala ang reference number, kantidad, petsa, ug pamatuod sa bayad.',
+      en: 'Cash-only payment guide (no online gateways):\n1. Open Financial → Payment Portal.\n2. Enter the amount and press Generate receipt — you get an OR reference number plus a QR code.\n3. Print the receipt (marked PLEASE PAY) and bring it with your cash to the EDP office.\n4. Staff clear it there — your balance updates only after verification. Track it under Financial → Billing History.',
+      tl: 'Gabay sa pagbabayad — CASH LAMANG (walang online):\n1. Buksan ang Financial → Payment Portal.\n2. Ilagay ang halaga at pindutin ang Generate receipt — makakakuha ka ng OR reference number at QR code.\n3. I-print ang resibo (may markang PLEASE PAY) at dalhin kasama ng cash sa EDP office.\n4. I-clear ito ng staff doon — mag-a-update lang ang balanse pagkatapos ng beripikasyon. Subaybayan sa Financial → Billing History.',
+      ceb: 'Giya sa pagbayad — CASH LAMANG (walay online):\n1. Ablihi ang Financial → Payment Portal.\n2. Ibutang ang kantidad ug pinduta ang Generate receipt — makadawat ka ug OR reference number ug QR code.\n3. I-print ang resibo (naay markang PLEASE PAY) ug dalha uban ang cash sa EDP office.\n4. I-clear kini sa staff didto — ma-update lang ang balanse human sa beripikasyon. Bantayi sa Financial → Billing History.',
+    },
+  },
+  {
+    keys: ['coe', 'certificate of enrollment', 'transaction', 'sertipiko sa pagpalista', 'sertipiko ng pagpapatala'],
+    answer: {
+      en: 'Certificate of Enrollment:\n1. Open Support Services → COE Request, choose the purpose, and submit — you get a transaction number (e.g. COE-2026-A1B2C3).\n2. Track it anytime with that number; no need to refill the form.\n3. You are emailed when it is ready for pickup at the Registrar Office.',
+      tl: 'Certificate of Enrollment:\n1. Buksan ang Support Services → COE Request, piliin ang layunin, at isumite — makakakuha ka ng transaction number (hal. COE-2026-A1B2C3).\n2. Subaybayan ito gamit ang numerong iyon; hindi na kailangang punan muli ang form.\n3. I-email sa iyo kapag handa na itong kunin sa Registrar Office.',
+      ceb: 'Certificate of Enrollment:\n1. Ablihi ang Support Services → COE Request, pilia ang katuyuan, ug isumite — makadawat ka ug transaction number (pananglitan COE-2026-A1B2C3).\n2. Bantayi kini gamit ang maong numero; dili na kinahanglang pun-an pag-usab ang form.\n3. I-email kanimo kung andam na kini kuhaon sa Registrar Office.',
     },
   },
   {
@@ -169,9 +177,9 @@ const THANKS: Record<SupportLang, string> = {
 };
 
 const FALLBACK: Record<SupportLang, string> = {
-  en: `I can provide step-by-step help with enrollment, document submission, payments (${['GCash', 'Maya', 'GoTyme', 'UnionBank', 'Metrobank'].join(', ')}), grades, schedules, school IDs, attendance, library services, password recovery, and profile photos. Please include your role (student, teacher, or admin) and the module you are using. For account-specific issues, contact support@cec.edu.ph or (032) 255-1234.`,
-  tl: `Makakapagbigay ako ng step-by-step na tulong sa pagpapatala, pagsusumite ng dokumento, pagbabayad (${['GCash', 'Maya', 'GoTyme', 'UnionBank', 'Metrobank'].join(', ')}), grado, iskedyul, school ID, attendance, serbisyo ng library, password recovery, at profile photo. Pakisama ang role mo (estudyante, guro, o admin) at ang module na ginagamit mo. Para sa mga isyung partikular sa account, makipag-ugnayan sa support@cec.edu.ph o (032) 255-1234.`,
-  ceb: `Makahatag ko ug step-by-step nga tabang sa pagpalista, pagsumite ug dokumento, pagbayad (${['GCash', 'Maya', 'GoTyme', 'UnionBank', 'Metrobank'].join(', ')}), grado, iskedyul, school ID, attendance, serbisyo sa library, password recovery, ug profile photo. Iapil ang imong role (estudyante, magtutudlo, o admin) ug ang module nga imong gigamit. Para sa mga isyu nga espesipiko sa account, kontaka ang support@cec.edu.ph o (032) 255-1234.`,
+  en: `I can provide step-by-step help with enrollment, document submission, cash payments and PLEASE PAY receipts, COE requests, grades, schedules, school IDs, attendance, library catalog, password recovery, and profile photos. Please include your role (student, teacher, or admin) and the module you are using. For account-specific issues, contact support@cec.edu.ph or (032) 255-1234.`,
+  tl: `Makakapagbigay ako ng step-by-step na tulong sa pagpapatala, pagsusumite ng dokumento, pagbabayad ng cash at PLEASE PAY receipts, COE requests, grado, iskedyul, school ID, attendance, library catalog, password recovery, at profile photo. Pakisama ang role mo (estudyante, guro, o admin) at ang module na ginagamit mo. Para sa mga isyung partikular sa account, makipag-ugnayan sa support@cec.edu.ph o (032) 255-1234.`,
+  ceb: `Makahatag ko ug step-by-step nga tabang sa pagpalista, pagsumite ug dokumento, pagbayad ug cash ug PLEASE PAY receipts, COE requests, grado, iskedyul, school ID, attendance, library catalog, password recovery, ug profile photo. Iapil ang imong role (estudyante, magtutudlo, o admin) ug ang module nga imong gigamit. Para sa mga isyu nga espesipiko sa account, kontaka ang support@cec.edu.ph o (032) 255-1234.`,
 };
 
 const isGreeting = (q: string): boolean =>

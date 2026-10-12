@@ -193,6 +193,31 @@ router.post('/change-password', async (req, res, next) => {
   }
 });
 
+router.post('/forgot-password', loginRateLimit(), async (req, res, next) => {
+  try {
+    const { identifier } = req.body as { identifier?: string };
+    if (!identifier?.trim()) {
+      res.status(400).json({ success: false, message: 'School ID or email is required' });
+      return;
+    }
+    const result = await authService.requestPasswordReset(identifier);
+    // Generic reply by design: never reveal whether the account exists.
+    res.json({
+      success: true,
+      data: result,
+      message: result.emailSent
+        ? 'If an account matches, recovery instructions were sent to its email'
+        : 'Recovery request recorded — contact the registrar if no email arrives',
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('required')) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
 router.post('/claim', async (req, res, next) => {
   try {
     const { schoolId, fullName, personalEmail, phone } = req.body as {

@@ -8,9 +8,9 @@ import { fetchAnnouncements, type LiveAnnouncement } from '../services/announcem
  */
 export const useLiveAnnouncements = (
   audience = 'all',
-  options: { intervalMs?: number; onNew?: (item: LiveAnnouncement) => void } = {},
+  options: { intervalMs?: number; category?: string; onNew?: (item: LiveAnnouncement) => void } = {},
 ) => {
-  const { intervalMs = 10000, onNew } = options;
+  const { intervalMs = 10000, category, onNew } = options;
   const [items, setItems] = useState<LiveAnnouncement[]>([]);
   const [live, setLive] = useState(false);
   const seen = useRef<Set<number | string>>(new Set());
@@ -20,7 +20,7 @@ export const useLiveAnnouncements = (
 
   const refresh = useCallback(async () => {
     try {
-      const rows = await fetchAnnouncements(audience);
+      const rows = await fetchAnnouncements(audience, category);
       const fresh = rows.filter((r) => !seen.current.has(r.id));
       rows.forEach((r) => seen.current.add(r.id));
       setItems(rows);
@@ -31,7 +31,7 @@ export const useLiveAnnouncements = (
     } catch {
       setLive(false);
     }
-  }, [audience]);
+  }, [audience, category]);
 
   useEffect(() => {
     let active = true;

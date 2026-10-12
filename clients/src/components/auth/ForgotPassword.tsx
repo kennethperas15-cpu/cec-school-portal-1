@@ -14,27 +14,30 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
 }) => {
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      setError('Please enter your school email or student ID.');
+      setError('Please enter your school ID.');
       return;
     }
-
     setError('');
-    setLoading(true);
+    // Secure confirmation before anything is sent.
+    setConfirming(true);
+  };
 
+  const handleConfirm = async () => {
+    setConfirming(false);
+    setLoading(true);
     try {
-      // Simulate/trigger password recovery API if available
       try {
         await api.post('/auth/forgot-password', { identifier: identifier.trim() });
       } catch {
         // Fallback gracefully for demo/thesis presentation
       }
-
       setSubmitted(true);
       if (onNotify) {
         onNotify('Password reset instructions sent.');
@@ -88,7 +91,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
       <div className="auth-heading">
         <h2 className="auth-title">Reset Your Password</h2>
         <p className="auth-subtitle">
-          Enter your registered school ID or personal email address, and we&apos;ll help you regain access to your CEC account.
+          Enter your 7-digit school ID, confirm the recovery, and we&apos;ll send instructions to the email on file.
         </p>
       </div>
 
@@ -106,7 +109,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="auth-field">
           <label htmlFor="recovery-identifier">
-            School ID or Email Address
+            School ID
           </label>
           <div className="auth-input-wrap">
             <span className="auth-input-icon" aria-hidden="true">
@@ -121,7 +124,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="e.g. CEC-2024-0015 or student@cec.edu.ph"
+              placeholder="e.g. 2414807"
               autoComplete="username"
               autoFocus
             />
@@ -155,6 +158,29 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
           </div>
         )}
       </form>
+
+      {confirming && (
+        <div role="alertdialog" aria-modal="true" aria-label="Confirm account recovery"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(7,27,55,.55)', display: 'grid', placeItems: 'center', padding: 20, zIndex: 80 }}
+          onClick={() => setConfirming(false)}>
+          <section onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 18, width: 'min(420px,100%)', padding: 26, textAlign: 'center', boxShadow: '0 24px 70px rgba(7,27,55,.35)' }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: 19, color: '#0B3D91' }}>Recover this account?</h2>
+            <p style={{ margin: '0 0 6px', fontSize: 14, color: '#475569' }}>
+              Do you wish to proceed with account recovery for <strong>{identifier.trim()}</strong>?
+            </p>
+            <p style={{ margin: '0 0 18px', fontSize: 12, color: '#6b7890' }}>Recovery instructions will be sent to the email on file.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" className="auth-btn auth-btn-secondary" style={{ flex: 1 }} onClick={() => setConfirming(false)}>
+                Cancel
+              </button>
+              <button type="button" className="auth-btn auth-btn-primary" style={{ flex: 1 }} onClick={() => void handleConfirm()}>
+                Continue
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };

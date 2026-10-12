@@ -293,10 +293,29 @@ CREATE TABLE IF NOT EXISTS announcements (
   title VARCHAR(200) NOT NULL,
   content TEXT NOT NULL,
   audience TEXT NOT NULL DEFAULT 'all' CHECK (audience IN ('all','students','teachers','admins')),
+  category TEXT NOT NULL DEFAULT 'General' CHECK (category IN ('General','Urgent','Events')),
   published_by CHAR(36),
   published_at TIMESTAMPTZ,
   FOREIGN KEY (published_by) REFERENCES users(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS coe_requests (
+  id CHAR(36) PRIMARY KEY,
+  transaction_no VARCHAR(20) NOT NULL UNIQUE,
+  user_id CHAR(36),
+  full_name VARCHAR(200) NOT NULL,
+  program VARCHAR(150),
+  year_level SMALLINT,
+  purpose VARCHAR(255) NOT NULL DEFAULT 'Enrollment',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','ready','rejected')),
+  decided_by CHAR(36),
+  decided_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_coe_txn ON coe_requests(transaction_no);
+CREATE INDEX IF NOT EXISTS idx_coe_status ON coe_requests(status);
 
 CREATE TABLE IF NOT EXISTS documents (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -69,11 +69,11 @@ export const portalApi = {
       return !!r.data?.success;
     } catch { return false; }
   },
-  async enrollPending(): Promise<PortalEnrollment[]> {
-    const r = await api.get('/portal/enrollments', { params: { status: 'pending' } });
+  async enrollPending(term?: { schoolYear?: string; semester?: number }): Promise<PortalEnrollment[]> {
+    const r = await api.get('/portal/enrollments', { params: { status: 'pending', schoolYear: term?.schoolYear, semester: term?.semester } });
     return r.data?.data ?? [];
   },
-  async enrollCreate(input: { fullName: string; personalEmail: string; phone: string; program: string; yearLevel: number; requestedRole?: string }) {
+  async enrollCreate(input: { fullName: string; personalEmail: string; phone: string; program: string; yearLevel: number; requestedRole?: string; schoolYear?: string; semester?: number }) {
     const r = await api.post('/portal/enrollments', input);
     return r.data?.data as { id: string; status: string };
   },
@@ -100,5 +100,27 @@ export const portalApi = {
   async itemRemove(id: string) {
     const r = await api.delete(`/portal/items/${id}`);
     return r.data?.data;
+  },
+  async coeSubmit(input: { fullName: string; program?: string; yearLevel?: number; purpose?: string }) {
+    const r = await api.post('/portal/coe', input);
+    return r.data?.data as { transactionNo: string; status: string; submittedAt: string };
+  },
+  async coeTrack(transactionNo: string) {
+    const r = await api.get('/portal/coe/track', { params: { transactionNo } });
+    return r.data?.data as {
+      transaction_no: string; status: string; full_name: string; program: string | null;
+      created_at: string; decided_at: string | null;
+    };
+  },
+  async coeQueue(status = 'pending') {
+    const r = await api.get('/portal/coe', { params: { status } });
+    return r.data?.data as {
+      id: string; transaction_no: string; full_name: string; program: string | null;
+      year_level: number | null; purpose: string; status: string; created_at: string; email: string | null;
+    }[];
+  },
+  async coeDecide(id: string, decision: 'ready' | 'rejected') {
+    const r = await api.post(`/portal/coe/${id}/decide`, { decision });
+    return r.data?.data as { transactionNo: string; status: string; emailSent: boolean };
   },
 };

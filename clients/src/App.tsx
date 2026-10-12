@@ -6,6 +6,7 @@ import type { UserAuthData } from './components/auth/Login';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AISupport } from './components/shared/AISupport';
+import { AnnouncementModal } from './components/landing/AnnouncementModal';
 import { PortalLoginLoading } from './components/shared/PortalLoginLoading';
 import api, { clearTokens, getRefreshToken, isRemembered, setTokens } from './services/api';
 import { ensureSchoolId } from './services/crud';
@@ -166,7 +167,7 @@ export const App = () => {
       ? <TeacherDashboard {...props} />
       : <StudentDashboard {...props} />;
 
-  return <>{dashboard}<AISupport role={role} />{message && <div className="toast" role="status">{message}</div>}</>;
+  return <>{dashboard}<AISupport role={role} /><AnnouncementModal role={role} />{message && <div className="toast" role="status">{message}</div>}</>;
 };
 
 export default App;

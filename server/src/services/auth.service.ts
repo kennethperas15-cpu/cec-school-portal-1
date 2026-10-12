@@ -391,6 +391,133 @@ export const authService = {
     return { schoolEmail, schoolId: staffId, temporaryPassword, emailSent: false };
   },
 
+  // Password recovery: school ID or email in, generic reply out (no
+  // account enumeration). A 24h reset token is stored and emailed when
+  // delivery is configured.
+  async requestPasswordReset(identifier: string) {
+    const id = (identifier ?? '').trim();
+    if (!id) throw new Error('School ID or email is required');
+    const users = await sql<{ id: string; email: string; first_name: string }>(
+      `SELECT u.id, u.email, u.first_name FROM users u
+       LEFT JOIN students s ON s.user_id = u.id
+       LEFT JOIN teachers t ON t.user_id = u.id
+       WHERE u.is_active = TRUE AND (LOWER(u.email) = LOWER(?) OR s.student_number = ? OR t.employee_number = ?) LIMIT 1`,
+      { replacements: [id, id, id], type: QueryTypes.SELECT }
+    );
+    if (users.length) {
+      const token = crypto.randomBytes(32).toString('hex');
+      await sql(
+        `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+         VALUES (?, ?, NOW() + INTERVAL '24 hours')`,
+        { replacements: [users[0].id, hashToken(token)], type: QueryTypes.INSERT }
+      );
+      if (mailer) {
+        try {
+          await mailer.sendMail({
+            from: env.emailFrom,
+            to: users[0].email,
+            subject: 'CEC password recovery',
+            text: `Hi ${users[0].first_name}, use this link within 24 hours to choose a new password: ${env.clientUrl}/?recovery=${token}`,
+            html: `<p>Hi ${users[0].first_name},</p><p>Use this link within 24 hours to choose a new password:</p><p><a href="${env.clientUrl}/?recovery=${token}">Reset my password</a></p>`,
+          });
+        } catch { /* token stays valid; user can retry */ }
+      }
+    }
+    return { emailSent: !!mailer };
+  },
+
+  // Certificate of Enrollment requests: student submits, tracks by
+  // transaction number, registrar marks ready (email when configured).
+  async requestCoe(input: { userId?: string | null; fullName: string; program?: string; yearLevel?: number; purpose?: string }) {
+    const fullName = (input.fullName ?? '').trim();
+    if (fullName.split(/\s+/).filter(Boolean).length < 2) throw new Error('Enter your full name (first and last)');
+    const purpose = (input.purpose ?? 'Enrollment').trim() || 'Enrollment';
+    const year = new Date().getFullYear();
+    let transactionNo = '';
+    for (let attempt = 0; attempt < 10 && !transactionNo; attempt++) {
+      const candidate = `COE-${year}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      const taken = await sql<{ id: string }>(
+        'SELECT id FROM coe_requests WHERE transaction_no = ? LIMIT 1',
+        { replacements: [candidate], type: QueryTypes.SELECT }
+      );
+      if (!taken.length) transactionNo = candidate;
+    }
+    if (!transactionNo) throw new Error('Could not issue a transaction number — please try again');
+    const yearLevel = Number(input.yearLevel);
+    await sql(
+      `INSERT INTO coe_requests (id, transaction_no, user_id, full_name, program, year_level, purpose, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      {
+        replacements: [
+          crypto.randomUUID(), transactionNo, input.userId ?? null, fullName,
+          input.program?.trim() || null,
+          Number.isInteger(yearLevel) && yearLevel >= 1 && yearLevel <= 6 ? yearLevel : null,
+          purpose,
+        ],
+        type: QueryTypes.INSERT,
+      }
+    );
+    return { transactionNo, status: 'pending', submittedAt: new Date().toISOString() };
+  },
+
+  async trackCoe(transactionNo: string) {
+    const txn = (transactionNo ?? '').trim().toUpperCase();
+    if (!txn) throw new Error('Enter your transaction number');
+    const rows = await sql<{
+      transaction_no: string; status: string; full_name: string; program: string | null;
+      created_at: Date; decided_at: Date | null;
+    }>(
+      `SELECT transaction_no, status, full_name, program, created_at, decided_at
+       FROM coe_requests WHERE transaction_no = ? LIMIT 1`,
+      { replacements: [txn], type: QueryTypes.SELECT }
+    );
+    if (!rows.length) throw new Error('No COE request found for that transaction number');
+    return rows[0];
+  },
+
+  async listCoe(status?: string) {
+    const rows = await sql<{
+      id: string; transaction_no: string; full_name: string; program: string | null;
+      year_level: number | null; purpose: string; status: string; created_at: Date; email: string | null;
+    }>(
+      `SELECT c.id, c.transaction_no, c.full_name, c.program, c.year_level, c.purpose, c.status, c.created_at, u.email
+       FROM coe_requests c LEFT JOIN users u ON u.id = c.user_id
+       ${status && ['pending', 'ready', 'rejected'].includes(status) ? 'WHERE c.status = ?' : ''}
+       ORDER BY c.created_at DESC LIMIT 100`,
+      { replacements: status && ['pending', 'ready', 'rejected'].includes(status) ? [status] : [], type: QueryTypes.SELECT }
+    );
+    return rows;
+  },
+
+  async decideCoe(id: string, decision: 'ready' | 'rejected', decidedBy: string) {
+    if (decision !== 'ready' && decision !== 'rejected') throw new Error('Decision must be ready or rejected');
+    const rows = await sql<{ id: string; status: string; transaction_no: string; full_name: string; email: string | null }>(
+      `SELECT c.id, c.status, c.transaction_no, c.full_name, u.email
+       FROM coe_requests c LEFT JOIN users u ON u.id = c.user_id
+       WHERE c.id = ? LIMIT 1`,
+      { replacements: [id], type: QueryTypes.SELECT }
+    );
+    if (!rows.length || rows[0].status !== 'pending') throw new Error('Pending COE request not found');
+    await sql(
+      `UPDATE coe_requests SET status = ?, decided_by = ?, decided_at = NOW() WHERE id = ?`,
+      { replacements: [decision, decidedBy, id], type: QueryTypes.UPDATE }
+    );
+    let emailSent = false;
+    if (decision === 'ready' && mailer && rows[0].email) {
+      try {
+        await mailer.sendMail({
+          from: env.emailFrom,
+          to: rows[0].email,
+          subject: 'Your Certificate of Enrollment is ready',
+          text: `Hi ${rows[0].full_name}, your Certificate of Enrollment (transaction ${rows[0].transaction_no}) is ready for pickup at the Registrar Office.`,
+          html: `<p>Hi ${rows[0].full_name},</p><p>Your Certificate of Enrollment (transaction <strong>${rows[0].transaction_no}</strong>) is ready for pickup at the Registrar Office.</p>`,
+        });
+        emailSent = true;
+      } catch { /* registrar can still release it in person */ }
+    }
+    return { transactionNo: rows[0].transaction_no, status: decision, emailSent };
+  },
+
   async login(identifier: string, password: string) {
     const users = await sql<{
       id: string; email: string; password_hash: string; first_name: string; last_name: string; role: string;

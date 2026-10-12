@@ -32,11 +32,17 @@ router.get('/config/academic', async (_req, res, next) => {
 router.get('/enrollments', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
   try {
     const status = typeof req.query.status === 'string' ? req.query.status : 'pending';
+    const schoolYear = typeof req.query.schoolYear === 'string' && req.query.schoolYear ? req.query.schoolYear : null;
+    const semester = typeof req.query.semester === 'string' && req.query.semester ? Number(req.query.semester) : null;
+    const where = ['status = ?', ...(schoolYear ? ['school_year = ?'] : []), ...(semester ? ['semester = ?'] : [])].join(' AND ');
+    const replacements: (string | number)[] = [status];
+    if (schoolYear) replacements.push(schoolYear);
+    if (semester) replacements.push(semester);
     const rows = await sql(
       `SELECT id, email, first_name, last_name, program, year_level, phone, requested_role, status,
               payment_reference_no, payment_status, student_status, assigned_school_id, school_year, semester, created_at
-       FROM enrollment_applications WHERE status = ? ORDER BY created_at DESC LIMIT 100`,
-      { replacements: [status], type: QueryTypes.SELECT }
+       FROM enrollment_applications WHERE ${where} ORDER BY created_at DESC LIMIT 100`,
+      { replacements, type: QueryTypes.SELECT }
     );
     res.json({ success: true, data: rows });
   } catch (error) { next(error); }
@@ -44,8 +50,9 @@ router.get('/enrollments', authmiddlewareMiddleware, requireRoles('admin'), asyn
 
 router.post('/enrollments', async (req, res, next) => {
   try {
-    const { fullName, personalEmail, phone, program, yearLevel, requestedRole } = req.body as {
+    const { fullName, personalEmail, phone, program, yearLevel, requestedRole, schoolYear, semester } = req.body as {
       fullName?: string; personalEmail?: string; phone?: string; program?: string; yearLevel?: number; requestedRole?: string;
+      schoolYear?: string; semester?: number;
     };
     if (!fullName?.trim() || !personalEmail?.includes('@') || !program || typeof yearLevel !== 'number') {
       res.status(400).json({ success: false, message: 'Full name, valid email, program and year level are required' });
@@ -57,9 +64,9 @@ router.post('/enrollments', async (req, res, next) => {
     const id = crypto.randomUUID();
     await sql(
       `INSERT INTO enrollment_applications
-       (id, google_subject, email, first_name, last_name, program, year_level, phone, requested_role, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      { replacements: [id, `portal:${id}`, personalEmail.trim(), firstName, lastName, program, yearLevel, phone ?? null, requestedRole ?? 'student'], type: QueryTypes.INSERT }
+       (id, google_subject, email, first_name, last_name, program, year_level, phone, requested_role, status, school_year, semester)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+      { replacements: [id, `portal:${id}`, personalEmail.trim(), firstName, lastName, program, yearLevel, phone ?? null, requestedRole ?? 'student', schoolYear?.trim() || null, typeof semester === 'number' ? semester : null], type: QueryTypes.INSERT }
     );
     res.status(201).json({ success: true, data: { id, status: 'pending' } });
   } catch (error) { next(error); }
@@ -132,13 +139,18 @@ router.post('/enrollments/:id/decide', authmiddlewareMiddleware, requireRoles('a
 router.get('/announcements', async (req, res, next) => {
   try {
     const audience = typeof req.query.audience === 'string' ? req.query.audience : 'all';
+    const category = typeof req.query.category === 'string' && ['General', 'Urgent', 'Events'].includes(req.query.category)
+      ? req.query.category
+      : null;
+    const where = `(a.audience = 'all' OR a.audience = ?)${category ? ' AND a.category = ?' : ''}`;
+    const replacements = category ? [audience, category] : [audience];
     const rows = await sql(
-      `SELECT a.id, a.title, a.content, a.audience, a.published_at,
+      `SELECT a.id, a.title, a.content, a.audience, a.category, a.published_at,
               TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS published_by_name
        FROM announcements a LEFT JOIN users u ON u.id = a.published_by
-       WHERE a.published_at IS NOT NULL AND (a.audience = 'all' OR a.audience = ?)
+       WHERE a.published_at IS NOT NULL AND ${where}
        ORDER BY a.published_at DESC LIMIT 50`,
-      { replacements: [audience], type: QueryTypes.SELECT }
+      { replacements, type: QueryTypes.SELECT }
     );
     res.json({ success: true, data: rows });
   } catch (error) { next(error); }
@@ -146,7 +158,7 @@ router.get('/announcements', async (req, res, next) => {
 
 router.post('/announcements', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
   try {
-    const { title, content, audience } = req.body as { title?: string; content?: string; audience?: string };
+    const { title, content, audience, category } = req.body as { title?: string; content?: string; audience?: string; category?: string };
     if (!title?.trim() || !content?.trim()) {
       res.status(400).json({ success: false, message: 'Title and details are required' });
       return;
@@ -155,17 +167,85 @@ router.post('/announcements', authmiddlewareMiddleware, requireRoles('admin'), a
       res.status(400).json({ success: false, message: 'Invalid audience' });
       return;
     }
+    if (category && !['General', 'Urgent', 'Events'].includes(category)) {
+      res.status(400).json({ success: false, message: 'Invalid category' });
+      return;
+    }
     const rows = await sql<{ id: number }>(
-      `INSERT INTO announcements (title, content, audience, published_by, published_at)
-       VALUES (?, ?, ?, ?, NOW()) RETURNING id`,
+      `INSERT INTO announcements (title, content, audience, category, published_by, published_at)
+       VALUES (?, ?, ?, ?, ?, NOW()) RETURNING id`,
       {
-        replacements: [title.trim(), content.trim(), audience ?? 'all', req.user?.id ?? null],
+        replacements: [title.trim(), content.trim(), audience ?? 'all', category ?? 'General', req.user?.id ?? null],
         type: QueryTypes.SELECT,
       }
     );
-    await writeAuditLog(req, { action: 'Announcement published', targetType: 'Announcement', targetId: String(rows[0]?.id ?? ''), newValue: { title: title.trim(), audience: audience ?? 'all' } });
-    res.status(201).json({ success: true, data: { id: rows[0]?.id ?? null, title: title.trim(), audience: audience ?? 'all' } });
+    await writeAuditLog(req, { action: 'Announcement published', targetType: 'Announcement', targetId: String(rows[0]?.id ?? ''), newValue: { title: title.trim(), audience: audience ?? 'all', category: category ?? 'General' } });
+    res.status(201).json({ success: true, data: { id: rows[0]?.id ?? null, title: title.trim(), audience: audience ?? 'all', category: category ?? 'General' } });
   } catch (error) { next(error); }
+});
+
+// ---- Certificate of Enrollment requests ----
+router.post('/coe', authmiddlewareMiddleware, async (req, res, next) => {
+  try {
+    const { fullName, program, yearLevel, purpose } = req.body as {
+      fullName?: string; program?: string; yearLevel?: number; purpose?: string;
+    };
+    const result = await authService.requestCoe({
+      userId: req.user?.id ?? null, fullName: fullName ?? '', program, yearLevel, purpose,
+    });
+    res.status(201).json({ success: true, data: result, message: 'COE request submitted — track it with your transaction number' });
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes('full name') || error.message.includes('Full name') ||
+      error.message.includes('transaction number')
+    )) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.get('/coe/track', async (req, res, next) => {
+  try {
+    const transactionNo = typeof req.query.transactionNo === 'string' ? req.query.transactionNo : '';
+    try {
+      res.json({ success: true, data: await authService.trackCoe(transactionNo) });
+    } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes('No COE request') || error.message.includes('transaction number')
+      )) {
+        res.status(404).json({ success: false, message: error.message });
+        return;
+      }
+      throw error;
+    }
+  } catch (error) { next(error); }
+});
+
+router.get('/coe', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
+  try {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    res.json({ success: true, data: await authService.listCoe(status) });
+  } catch (error) { next(error); }
+});
+
+router.post('/coe/:id/decide', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const { decision } = req.body as { decision?: string };
+    const result = await authService.decideCoe(id, decision as 'ready' | 'rejected', req.user?.id ?? '');
+    await writeAuditLog(req, { action: `COE ${decision}`, targetType: 'CoeRequest', targetId: id, newValue: result });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes('Decision') || error.message.includes('not found')
+    )) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
 });
 
 // ---- Shared portal items (all modules, all roles) ----

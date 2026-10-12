@@ -3,6 +3,7 @@ import { useCollection, uid, genSchoolId } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
 import { pushNotification } from '../../services/notify';
+import { ClassroomBridge } from '../shared/ClassroomBridge';
 import { useLiveAnnouncements } from '../../hooks/useLiveAnnouncements';
 import { setPhoto, readPhotoFile } from '../../services/photos';
 import { PhotoAvatar } from '../shared/PhotoAvatar';
@@ -326,9 +327,10 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     if (active === 'Materials' || active === 'Assignments' || active === 'Forum' || active === 'Class Schedule' || active === 'Consultation Slots') {
       const map: Record<string, ReturnType<typeof useCollection>> = { Materials: materials as unknown as ReturnType<typeof useCollection>, Assignments: assigns as unknown as ReturnType<typeof useCollection>, Announcements: posts as unknown as ReturnType<typeof useCollection>, Forum: forum as unknown as ReturnType<typeof useCollection>, Messaging: messages as unknown as ReturnType<typeof useCollection>, 'Announcement Posting': posts as unknown as ReturnType<typeof useCollection>, 'Class Schedule': sched as unknown as ReturnType<typeof useCollection>, 'Consultation Slots': consults as unknown as ReturnType<typeof useCollection> };
       const col = map[active] ?? materials as unknown as ReturnType<typeof useCollection>;
-      return crudTable({ title: active, columns: ['Title', 'Detail', 'Actions'],
+      const classroomFirst = active === 'Materials' || active === 'Assignments';
+      return (<>{classroomFirst && <ClassroomBridge mode="teacher" onNotify={onNotify} />}{crudTable({ title: active, columns: ['Title', 'Detail', 'Actions'],
         form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!genF1.trim()) return; col.create({ id: uid('x'), title: genF1.trim(), body: '', type: '', due: '', submitted: '', date: '', items: '', when: '', where: '' } as unknown as { id: string }); setGenF1(''); onNotify(`${active} created`); }}><input style={inp} placeholder={`New ${active.toLowerCase()} title`} value={genF1} onChange={(e) => setGenF1(e.target.value)} /><button style={btn} type="submit">Add</button></form>),
-        rows: (col.list as { id: string; title: string }[]).map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.title}</strong></td><td style={{ padding: 12, color: '#6b7890' }}>{Object.values(r).slice(2, 4).join(' • ')}</td><td style={{ padding: 12 }}><RowActions onEdit={() => {         openEditDialog('Edit title', r.title, (v) => { col.update(r.id, { title: v } as Partial<{ id: string }>); onNotify('Updated'); }) }} onDelete={() => { col.remove(r.id); onNotify('Deleted'); }} /></td></tr>) });
+        rows: (col.list as { id: string; title: string }[]).map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.title}</strong></td><td style={{ padding: 12, color: '#6b7890' }}>{Object.values(r).slice(2, 4).join(' • ')}</td><td style={{ padding: 12 }}><RowActions onEdit={() => {         openEditDialog('Edit title', r.title, (v) => { col.update(r.id, { title: v } as Partial<{ id: string }>); onNotify('Updated'); }) }} onDelete={() => { col.remove(r.id); onNotify('Deleted'); }} /></td></tr>) })}</>);
     }
     return (<section style={card}><h1 style={{ margin: 0 }}>{active}</h1><div style={box}>Route <strong>{route}</strong> ready.</div>{footer}</section>);
   };

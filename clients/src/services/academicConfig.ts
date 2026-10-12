@@ -8,6 +8,13 @@ export const DEFAULT_ACADEMIC_CONFIG: AcademicConfig = {
   semester: '1st Semester',
 };
 
+/** Convert '1st Semester' / '2nd Semester' labels to 1 / 2 for API filters. */
+export const semesterNo = (semester: string): number => {
+  const m = semester.match(/(\d+)/);
+  const n = m ? Number(m[1]) : 1;
+  return n === 2 ? 2 : 1;
+};
+
 export const useAcademicConfig = () => {
   const [config, setConfig] = useState<AcademicConfig>(DEFAULT_ACADEMIC_CONFIG);
 

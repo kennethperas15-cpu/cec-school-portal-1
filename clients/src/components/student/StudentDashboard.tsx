@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import { useCollection, uid, genSchoolId } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
@@ -17,9 +18,11 @@ import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
+import { ClassroomBridge } from '../shared/ClassroomBridge';
 import { WorkflowTracker, type WorkflowStep } from '../shared/WorkflowTracker';
 import { readStage, DOC_STAGES, SUBMIT_STAGES, SUBMIT_STEPS, writeStage, autoVerifyDoc } from '../../services/docStages';
-import { useAcademicConfig } from '../../services/academicConfig';
+import { CoeRequest } from './CoeRequest';
+import { semesterNo, useAcademicConfig } from '../../services/academicConfig';
 import type { DashboardSection } from '../shared/RoleDashboardHome';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
@@ -36,7 +39,7 @@ const GROUPS: Group[] = [
   { id: 'fin', label: 'FINANCIAL', icon: '▦', items: [{ label: 'Tuition Assessment', route: 's_fin_assess' }, { label: 'Payment Portal', route: 's_fin_pay' }, { label: 'Billing History', route: 's_fin_billing' }, { label: 'Scholarship Application', route: 's_fin_scholar' }] },
   { id: 'lms', label: 'LMS', icon: '▥', items: [{ label: 'Course Material', route: 's_lms_materials' }, { label: 'Assignments', route: 's_lms_assign' }, { label: 'Quiz / Exam', route: 's_lms_quiz' }, { label: 'Announcements', route: 's_lms_announce' }, { label: 'Discussion Forum', route: 's_lms_forum' }] },
   { id: 'comm', label: 'COMMUNICATION', icon: '✉', items: [{ label: 'Notification Center', route: 's_com_notif' }, { label: 'Announcement Board', route: 's_com_board' }, { label: 'Messaging', route: 's_com_msg' }] },
-  { id: 'support', label: 'SUPPORT SERVICES', icon: '◫', items: [{ label: 'Guidance Appointment', route: 's_sup_guide' }, { label: 'Document Request', route: 's_sup_docs' }, { label: 'Complaint / Feedback', route: 's_sup_feedback' }] },
+  { id: 'support', label: 'SUPPORT SERVICES', icon: '◫', items: [{ label: 'Guidance Appointment', route: 's_sup_guide' }, { label: 'Document Request', route: 's_sup_docs' }, { label: 'COE Request', route: 's_sup_coe' }, { label: 'Complaint / Feedback', route: 's_sup_feedback' }] },
 ];
 const pill: React.CSSProperties = { border: '1px solid #e2e7ef', background: '#fff', borderRadius: 999, padding: '6px 12px', fontSize: 12, color: '#6b7890' };
 const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8ecf3', borderRadius: 16, padding: 32, maxWidth: 1120, margin: '0 auto' };
@@ -640,8 +643,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [schedFilter, setSchedFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening'>(readDayPreference);
   const [payAmt, setPayAmt] = useState('');
   const [scholarName, setScholarName] = useState('');
-  const [payMethod, setPayMethod] = useState('GCash');
-  const [payRef, setPayRef] = useState('');
+  const [cashReceipt, setCashReceipt] = useState<{ ref: string; amount: string; qr: string; at: string } | null>(null);
   const [catalogQuery, setCatalogQuery] = useState('');
   // Connected pipeline: registrar docs + accounting payment → EDP auto-enroll
   useEffect(() => {
@@ -687,6 +689,8 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         program: pg,
         yearLevel: Number(yr.replace(/\D/g, '')) || 1,
         requestedRole: 'student',
+        schoolYear: academicConfig.schoolYear,
+        semester: semesterNo(academicConfig.semester),
       });
       remoteId = r.id;
       if (auto) { try { await portalApi.enrollDecide(r.id, 'approved'); } catch { /* keep pending */ } }
@@ -1025,23 +1029,65 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         <Footer /></section>);
     }
     if (active === 'Payment Portal') {
-      const methodHint: Record<string, string> = { GCash: 'GCash wallet • 0917-XXX-XXXX • reference no.', Maya: 'Maya wallet • reference no.', 'GoTyme Bank': 'GoTyme • account no. 0100-XXXX-XXXX', UnionBank: 'UnionBank • account no. 1093-XXXX-XXXX', Metrobank: 'Metrobank • account no. 305-XXXX-XXXX', BPI: 'BPI • account no. 1234-XXXX-XX', Cashier: 'Pay at CEC cashier • Window 3' };
-      return (<><LivePayTracker steps={paymentSteps} /><section style={card}><h1 style={{ margin: 0 }}>Payment Portal</h1>
-        <div style={{ marginTop: 14 }}><SlideShow slides={FINANCE_SLIDES} label="Cashier and online payment options" /></div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>{['GCash', 'Maya', 'GoTyme Bank', 'UnionBank', 'Metrobank', 'BPI', 'Cashier'].map((m) => <button key={m} type="button" onClick={() => setPayMethod(m)} style={{ border: payMethod === m ? '2px solid #0B3D91' : '1px solid #e2e7ef', background: payMethod === m ? '#e8f1ff' : '#fff', borderRadius: 10, padding: '10px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{m}</button>)}</div>
-        <div style={{ color: '#6b7890', fontSize: 13, marginTop: 10 }}>{methodHint[payMethod]}</div>
-        <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); if (!payAmt.trim()) return; const orId = uid('OR'); const ref = payRef.trim(); const amount = payAmt.trim(); const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; }; history.create({ id: orId, name: `OR — ₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''}`, role: 'Today • Tuition • Paid' }); try { void portalApi.itemCreate({ portal: 'student', module: 'receipt', title: `OR — ₱${amount} via ${payMethod}`, detail: `${ref ? `Ref ${ref} • ` : ''}${profile.name} • ${profile.id} • ${new Date().toLocaleString()}`, status: 'Posted', owner: `${profile.name} (${profile.id})` }).catch(() => undefined); } catch { /* offline */ } const assessed = charges.list.reduce((sum, c) => sum + peso(`${c.name} ${c.role}`), 0);
-        const paid = history.list.reduce((sum, h) => sum + peso(`${h.name} ${h.role}`), 0) + peso(amount);
-        const covered = assessed > 0 && paid >= assessed;
-        charges.setList((rows) => rows.map((r) => ({ ...r, role: covered ? r.role.replace('Outstanding', 'Paid in full').replace('Partially paid', 'Paid in full') : r.role.includes('Paid in full') ? r.role : r.role.replace('Outstanding', 'Partially paid') })));
-        setPayAmt(''); setPayRef(''); pushNotification(['student', 'admin'], { title: covered ? 'Balance fully paid' : 'Payment received', detail: `₱${amount} via ${payMethod}${ref ? ` • Ref ${ref}` : ''} • ${orId}${covered ? ' • FULLY PAID' : ''}`, category: 'Finance', target: 'Billing History' });
-        setPopup({ title: covered ? 'Fully paid — thank you!' : 'Payment successful', message: covered ? 'Your balance is now fully paid.' : 'Your payment was recorded and a receipt notification was sent.', lines: [`Amount: ₱${amount}`, `Method: ${payMethod}`, ref ? `Reference: ${ref}` : 'Reference: —', `Receipt: ${orId}`] });
-        onNotify(covered ? 'Fully paid' : `Payment recorded via ${payMethod}`); }}>
-          <input style={inp} placeholder="Amount e.g. 5000" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} aria-label="Amount" />
-          <input style={inp} placeholder={payMethod === 'Cashier' ? 'OR number (optional)' : 'Reference / account no.'} value={payRef} onChange={(e) => setPayRef(e.target.value)} aria-label="Reference" />
-          <select style={inp} value={payMethod} onChange={(e) => setPayMethod(e.target.value)} aria-label="Payment method"><option>GCash</option><option>Maya</option><option>GoTyme Bank</option><option>UnionBank</option><option>Metrobank</option><option>BPI</option><option>Cashier</option></select>
-          <button style={btn} type="submit">Pay now</button>
-        </form><Footer />        </section></>);
+      // Cash-only: no online gateways. Generate a PLEASE PAY receipt, print it,
+      // and settle cash at the EDP office. The balance clears only when staff verify.
+      const generateReceipt = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const amount = payAmt.trim().replace(/,/g, '');
+        if (!amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
+          onNotify('Enter a valid amount');
+          return;
+        }
+        const ref = `OR-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+        const at = new Date().toLocaleString();
+        let qr = '';
+        try {
+          qr = await QRCode.toDataURL(ref, { width: 160, margin: 1 });
+        } catch { /* printed reference number suffices */ }
+        history.create({ id: uid('OR'), name: `OR — ₱${amount} • Cash (EDP) • Ref ${ref}`, role: 'PLEASE PAY • Unpaid • settle cash at EDP office' });
+        try {
+          void portalApi.itemCreate({ portal: 'student', module: 'receipt', title: `OR — ₱${amount} • Cash (EDP)`, detail: `Ref ${ref} • ${profile.name} • ${profile.id} • ${at}`, status: 'PLEASE PAY', owner: `${profile.name} (${profile.id})` }).catch(() => undefined);
+        } catch { /* offline */ }
+        pushNotification(['student', 'admin'], { title: 'Cash receipt issued — PLEASE PAY', detail: `₱${amount} • Ref ${ref} • present this receipt at the EDP office`, category: 'Finance', target: 'Payment Portal' });
+        setCashReceipt({ ref, amount, qr, at });
+        setPayAmt('');
+        onNotify('Receipt issued — pay cash at the EDP office');
+      };
+      return (<><LivePayTracker steps={paymentSteps} /><section style={card}><h1 style={{ margin: 0 }}>Payment Portal — Cash Only</h1>
+        <div style={{ marginTop: 14 }}><SlideShow slides={FINANCE_SLIDES} label="Cashier office" /></div>
+        <div style={{ ...box, borderLeft: '4px solid #b91c1c' }}>
+          <strong>Cash payments only — no online gateways.</strong>
+          <div style={{ fontSize: 13, color: '#6b7890', marginTop: 6 }}>1. Enter the amount and generate your receipt. 2. Print it and bring it to the <strong>EDP office</strong> with your cash. 3. Staff clear the receipt — your balance updates after verification, not before.</div>
+        </div>
+        <form style={{ display: 'flex', gap: 8, marginTop: 12, maxWidth: 560 }} onSubmit={generateReceipt}>
+          <input style={inp} placeholder="Amount e.g. 5000" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} inputMode="decimal" aria-label="Amount" />
+          <button style={btn} type="submit">Generate receipt</button>
+        </form>
+        {cashReceipt && (
+          <div style={box}>
+            <style>{`@media print { body * { visibility: hidden; } #cec-cash-receipt, #cec-cash-receipt * { visibility: visible; } #cec-cash-receipt { position: absolute; left: 0; top: 0; width: 100%; } }`}</style>
+            <div id="cec-cash-receipt" style={{ position: 'relative', border: '2px solid #0B3D91', borderRadius: 12, padding: 20, maxWidth: 460, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 18, right: -34, transform: 'rotate(35deg)', background: '#b91c1c', color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: '.12em', padding: '6px 40px' }}>PLEASE PAY</div>
+              <div style={{ fontWeight: 800, color: '#0B3D91' }}>Cebu Eastern College — Payment Receipt</div>
+              <div style={{ fontSize: 13, color: '#6b7890', marginTop: 2 }}>Cash settlement at the EDP office • {cashReceipt.at}</div>
+              <div style={{ display: 'flex', gap: 16, marginTop: 14, alignItems: 'center' }}>
+                {cashReceipt.qr && <img src={cashReceipt.qr} alt={`Receipt ${cashReceipt.ref} QR code`} width={120} height={120} style={{ width: 120, height: 120 }} />}
+                <div>
+                  <div style={{ fontSize: 12, color: '#6b7890' }}>Reference number</div>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{cashReceipt.ref}</div>
+                  <div style={{ fontSize: 12, color: '#6b7890', marginTop: 6 }}>Amount due</div>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>₱{cashReceipt.amount}</div>
+                  <div style={{ fontSize: 12, color: '#6b7890', marginTop: 6 }}>{profile.name} • {profile.id}</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+              <button style={btn} type="button" onClick={() => window.print()}>Print receipt</button>
+              <button style={ghost} type="button" onClick={() => { setCashReceipt(null); onNotify('Receipt closed — find it in Billing History'); }}>Done</button>
+            </div>
+          </div>
+        )}
+        <Footer /></section></>);
     }
     if (active === 'Billing History') return <CrudSection title="Billing History" col={history} onNotify={onNotify} hint="Tuition" />;
     if (active === 'Scholarship Application') {
@@ -1055,12 +1101,12 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         </form>
         <div style={box}>{scholar.list.map((s) => <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><div><strong>{s.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{s.role}</div></div><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { scholar.remove(s.id); onNotify('Application withdrawn'); }}>Withdraw</button></div>)}{!scholar.list.length && <div style={{ color: '#6b7890', fontSize: 13 }}>No applications — decisions from the finance office appear here automatically.</div>}</div><Footer /></section>);
     }
-    if (active === 'Course Material') return <TwoFieldForm title="Course Material" col={materials} onNotify={onNotify} ph1="Material title" ph2="Type • Subject" />;
+    if (active === 'Course Material') return (<><ClassroomBridge mode="student" onNotify={onNotify} /><TwoFieldForm title="Course Material" col={materials} onNotify={onNotify} ph1="Material title" ph2="Type • Subject" /></>);
     if (active === 'Assignments') {
-      return (<section style={card}><h1 style={{ margin: 0 }}>Assignments</h1><div style={box}>{assigns.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { assigns.update(a.id, { role: 'Submitted • For review' }); onNotify('Assignment submitted (Update)'); }}>Submit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { assigns.remove(a.id); onNotify('Assignment deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
+      return (<><ClassroomBridge mode="student" onNotify={onNotify} /><section style={card}><h1 style={{ margin: 0 }}>Assignments</h1><div style={box}>{assigns.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { assigns.update(a.id, { role: 'Submitted • For review' }); onNotify('Assignment submitted (Update)'); }}>Submit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { assigns.remove(a.id); onNotify('Assignment deleted'); }}>Delete</button></div></div>)}</div><Footer /></section></>);
     }
     if (active === 'Quiz / Exam') {
-      return (<section style={card}><h1 style={{ margin: 0 }}>Quiz / Exam</h1><div style={box}>{quizzes.list.map((qz) => <div key={qz.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{qz.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{qz.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { const score = 7 + Math.floor(Math.random() * 4); quizzes.update(qz.id, { role: `Score ${score}/10 • Taken` }); onNotify(`Quiz submitted: ${score}/10`); }}>Take quiz</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { quizzes.remove(qz.id); onNotify('Quiz deleted'); }}>Delete</button></div></div>)}</div><Footer /></section>);
+      return (<><ClassroomBridge mode="student" onNotify={onNotify} /><section style={card}><h1 style={{ margin: 0 }}>Quiz / Exam</h1><div style={box}>{quizzes.list.map((qz) => <div key={qz.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{qz.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{qz.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { const score = 7 + Math.floor(Math.random() * 4); quizzes.update(qz.id, { role: `Score ${score}/10 • Taken` }); onNotify(`Quiz submitted: ${score}/10`); }}>Take quiz</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { quizzes.remove(qz.id); onNotify('Quiz deleted'); }}>Delete</button></div></div>)}</div><Footer /></section></>);
     }
     if (active === 'Library Catalog') {
     }
@@ -1074,6 +1120,12 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     if (active === 'Messaging' || active === 'Discussion Forum') return <TwoFieldForm title={active} col={messages} onNotify={onNotify} ph1="Message" ph2="To / Topic" />;
     if (active === 'Guidance Appointment') return <TwoFieldForm title="Guidance Appointment" col={guide} onNotify={onNotify} ph1="e.g. Advising — Oct 22 10AM" ph2="Status" />;
     if (active === 'Document Request') return <TwoFieldForm title="Document Request" col={docreq} onNotify={onNotify} ph1="Document type" ph2="Status" />;
+    if (active === 'COE Request') {
+      const studentName = currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : profile.name;
+      return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Certificate of Enrollment</h1>
+        <p style={{ color: '#6b7890', fontSize: 13 }}>Request once, track by transaction number. You are emailed when it is ready for pickup at the Registrar Office.</p>
+        <div style={box}><CoeRequest studentName={studentName || 'Student'} program={profile.course} onNotify={onNotify} /></div><Footer /></section>);
+    }
     if (active === 'Complaint / Feedback') return <TwoFieldForm title="Complaint / Feedback" col={feedback} onNotify={onNotify} ph1="Subject" ph2="Details / Status" />;
     if (active === 'Registration / Enrollment') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Registration / Enrollment</h1><div style={{ marginTop: 14 }}><SlideShow slides={REGISTRAR_SLIDES} label="Registrar office slideshow" /></div><p style={{ color: '#6b7890', fontSize: 13 }}>New applications are sent to Admin → Enrollment Approval (same queue as Online Enrollment).</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><button style={btn} type="submit">Submit application</button></form><div style={box}>{enrollApps.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.id} • {a.role}</div></div><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { enrollApps.remove(a.id); onNotify('Application withdrawn'); }}>Withdraw</button></div>)}</div><Footer /></section>);

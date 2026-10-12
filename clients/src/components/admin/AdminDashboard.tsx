@@ -15,7 +15,7 @@ import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
-import { useAcademicConfig } from '../../services/academicConfig';
+import { semesterNo, useAcademicConfig } from '../../services/academicConfig';
 import type { DashboardSection } from '../shared/RoleDashboardHome';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
@@ -51,6 +51,53 @@ const AdminTable = ({ title, col, colA, colB, phA, phB, onNotify, footer }: { ti
       <button style={btn} type="submit">Add</button>
     </form>
     <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>{colA}</th><th style={{ padding: 12 }}>{colB}</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>{col.list.map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{r.id}</div></td><td style={{ padding: 12 }}>{r.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog(`Edit ${colB}`, r.role, (v) => { col.update(r.id, { role: v }); onNotify('Updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>)}{!col.list.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>No records yet.</td></tr>}</tbody></table></div>{footer}</section>);
+};
+
+// Registrar COE queue: pending transaction numbers, one-click ready/reject.
+const CoeQueue = ({ onNotify }: { onNotify: (t: string) => void }) => {
+  const [rows, setRows] = useState<{ id: string; transaction_no: string; full_name: string; program: string | null; purpose: string; status: string; created_at: string }[]>([]);
+  const [filter, setFilter] = useState('pending');
+  const load = async () => {
+    try {
+      setRows(await portalApi.coeQueue(filter));
+    } catch { /* offline — queue unavailable */ }
+  };
+  useEffect(() => { void load(); }, [filter]);
+  const decide = async (id: string, decision: 'ready' | 'rejected', txn: string) => {
+    try {
+      const result = await portalApi.coeDecide(id, decision);
+      pushNotification(['student'], { title: `COE ${txn} ${decision}`, detail: decision === 'ready' ? 'Ready for pickup at the Registrar Office.' : 'Returned — see the registrar.', category: 'Academic', target: 'COE Request' });
+      onNotify(`COE ${txn} marked ${decision}${result.emailSent ? ' — student emailed' : ''}`);
+      void load();
+    } catch {
+      onNotify('Could not update — check the connection');
+    }
+  };
+  return (
+    <div style={{ ...box }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <strong>Certificate of Enrollment requests</strong>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="COE status filter" style={{ ...inp, width: 'auto', padding: '8px 10px' }}>
+            <option value="pending">Pending</option>
+            <option value="ready">Ready</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button style={ghost} onClick={() => void load()}>Refresh</button>
+        </div>
+      </div>
+      <div style={{ marginTop: 10 }}>{rows.map((r) => <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}>
+        <div><strong>{r.transaction_no}</strong> • {r.full_name}{r.program ? ` • ${r.program}` : ''}<div style={{ fontSize: 12, color: '#6b7890' }}>{r.purpose} • {new Date(r.created_at).toLocaleDateString()}</div></div>
+        {r.status === 'pending' ? (
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => void decide(r.id, 'ready', r.transaction_no)}>Mark ready</button>
+            <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => void decide(r.id, 'rejected', r.transaction_no)}>Reject</button>
+          </div>
+        ) : (<span style={{ fontSize: 12, fontWeight: 800, color: r.status === 'ready' ? '#15803d' : '#b91c1c' }}>{r.status.toUpperCase()}</span>)}
+      </div>)}
+      {!rows.length && <div style={{ fontSize: 13, color: '#6b7890' }}>No {filter} COE requests.</div>}</div>
+    </div>
+  );
 };
 
 export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
@@ -117,6 +164,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   };
   const [boxDetail, setBoxDetail] = useState('');
   const [broadcastAudience, setBroadcastAudience] = useState<'all' | 'students' | 'teachers'>('all');
+  const [broadcastCategory, setBroadcastCategory] = useState<'General' | 'Urgent' | 'Events'>('General');
   const [facId, setFacId] = useState('');
   const [remoteReceipts, setRemoteReceipts] = useState<{ id: string; title: string; detail?: string | null; status?: string | null }[]>([]);
   useEffect(() => {
@@ -144,16 +192,16 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   };
   const [mysqlOn, setMysqlOn] = useState(false);
 
-  // Pull shared MySQL queue once (merges pending applications from all students)
+  // Pull shared queue once, filtered to the current term (merges pending applications)
   useEffect(() => {
     let live = true;
-    portalApi.enrollPending().then((rows) => {
+    portalApi.enrollPending({ schoolYear: academicConfig.schoolYear, semester: semesterNo(academicConfig.semester) }).then((rows) => {
       if (!live) return;
       setMysqlOn(true);
       enroll.setList((current) => {
         const ids = new Set(current.map((r) => r.id));
         const missing = rows.filter((r) => !ids.has(r.id)).map((r) => ({
-          id: r.id, name: `${r.first_name} ${r.last_name}`.trim(), meta: `${r.program} • Year ${r.year_level} • MySQL pending${r.payment_reference_no ? ` • Ref ${r.payment_reference_no}` : ''}${r.assigned_school_id ? ` • ID ${r.assigned_school_id}` : ''}`,
+          id: r.id, name: `${r.first_name} ${r.last_name}`.trim(), meta: `${r.program} • Year ${r.year_level}${r.school_year ? ` • ${r.school_year} ${r.semester === 2 ? '2nd' : '1st'} Sem` : ''} • Current term pending${r.payment_reference_no ? ` • Ref ${r.payment_reference_no}` : ''}${r.assigned_school_id ? ` • ID ${r.assigned_school_id}` : ''}`,
         }));
         return missing.length ? [...missing, ...current] : current;
       });
@@ -318,6 +366,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
         rows.forEach((r) => { docNames[r.id] = `${r.name} — ${r.role}`; });
       } catch { /* ignore */ }
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Document Verification — Registrar</h1>        <p style={{ color: '#6b7890', fontSize: 13 }}>Confirm submissions here. Student trackers update automatically — students cannot advance stages themselves.</p>
+        <CoeQueue onNotify={onNotify} />
         <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Document</th><th style={{ padding: 12 }}>Stage</th><th style={{ padding: 12 }}>Registrar action</th></tr></thead><tbody>{docs.map((d) => { const atMin = d.stage === 0; const atMax = d.stage >= stageCount(d) - 1; const decide = (dir: 1 | -1) => { try { const next = Math.max(0, Math.min(stageCount(d) - 1, d.stage + dir)); writeStage(d.id, next); const verb = dir === 1 ? 'confirmed' : 'moved back'; pushNotification(['student'], { title: `Document ${d.id}: ${stageName({ ...d, stage: next })}`, detail: dir === 1 ? 'Registrar confirmed your submission — tracker updated automatically.' : `Registrar moved it back to ${stageName({ ...d, stage: next })}.`, category: 'Enrollment', target: 'Document Submission' }); if (dir === 1) setPopup({ title: 'Stage confirmed', message: `${d.id} is now at ${stageName({ ...d, stage: next })}. Student notified.`, lines: [d.id] }); bumpDocs(); onNotify(`${d.id} ${verb} → ${stageName({ ...d, stage: next })}`); } catch { onNotify('Could not save — storage unavailable'); } }; return <tr key={d.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{d.id}</strong><br /><small style={{ color: '#6b7890' }}>{docNames[d.id] ?? 'Awaiting upload'}</small></td><td style={{ padding: 12 }}>{stageName(d)} ({d.stage + 1}/{stageCount(d)})</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={{ ...ghost, ...(atMin ? { opacity: .45, cursor: 'not-allowed' } : null) }} disabled={atMin} onClick={() => decide(-1)}>Return</button><button style={{ ...btn, ...(atMax ? { background: '#94a3b8', cursor: 'not-allowed' } : null) }} disabled={atMax} onClick={() => decide(1)}>Confirm ✓</button></div></td></tr>; })}{!docs.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>No documents submitted yet — student uploads appear here automatically.</td></tr>}</tbody></table></div>{footer}</section>);
     }
     if (active === 'RBAC Management') {
@@ -346,13 +395,18 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     if (active === 'Broadcast Messaging' || active === 'System Announcements') {
       return table(active, ['Title', 'Detail', 'Actions'],
         broadcasts.list.map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.name}</strong></td><td style={{ padding: 12 }}>{r.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog('Edit broadcast', r.name, (v) => { broadcasts.update(r.id, { name: v }); onNotify('Updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { broadcasts.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim() || !boxDetail.trim()) { onNotify('Enter an announcement title and details'); return; } const title = boxVal.trim(); const detail = boxDetail.trim(); const audienceLabel = broadcastAudience === 'all' ? 'All roles' : broadcastAudience === 'students' ? 'Students' : 'Teachers'; broadcasts.create({ id: uid('bc'), name: title, role: `${audienceLabel} • Just now` }); setBoxVal(''); setBoxDetail(''); pushNotification(broadcastAudience === 'all' ? 'all' : [broadcastAudience === 'students' ? 'student' : 'teacher'], { title: `System announcement: ${title}`, detail: `${detail} — check your Announcement Board.`, category: 'Communication', target: 'Announcement Board' }); void publishAnnouncement({ title, content: detail, audience: broadcastAudience }).catch(() => undefined); setPopup({ title: 'Broadcast sent', message: 'Everyone receives it live on their Announcement Board.', lines: [title] }); onNotify(`Broadcast sent to ${audienceLabel.toLowerCase()}`); }}>
+        (<form style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim() || !boxDetail.trim()) { onNotify('Enter an announcement title and details'); return; } const title = boxVal.trim(); const detail = boxDetail.trim(); const audienceLabel = broadcastAudience === 'all' ? 'All roles' : broadcastAudience === 'students' ? 'Students' : 'Teachers'; broadcasts.create({ id: uid('bc'), name: title, role: `${audienceLabel} • ${broadcastCategory} • Just now` }); setBoxVal(''); setBoxDetail(''); pushNotification(broadcastAudience === 'all' ? 'all' : [broadcastAudience === 'students' ? 'student' : 'teacher'], { title: `System announcement: ${title}`, detail: `${detail} — check your Announcement Board.`, category: 'Communication', target: 'Announcement Board' }); void publishAnnouncement({ title, content: detail, audience: broadcastAudience, category: broadcastCategory }).catch(() => undefined); setPopup({ title: 'Broadcast sent', message: 'Everyone receives it live on their Announcement Board.', lines: [title] }); onNotify(`Broadcast sent to ${audienceLabel.toLowerCase()}`); }}>
           <input style={{ ...inp, flex: '1 1 200px' }} placeholder="Announcement title" value={boxVal} onChange={(e) => setBoxVal(e.target.value)} aria-label="Announcement title" />
           <input style={{ ...inp, flex: '2 1 280px' }} placeholder="Details — what, when, where" value={boxDetail} onChange={(e) => setBoxDetail(e.target.value)} aria-label="Announcement details" />
           <select style={{ ...inp, flex: '0 1 150px', width: 'auto' }} value={broadcastAudience} onChange={(e) => setBroadcastAudience(e.target.value as 'all' | 'students' | 'teachers')} aria-label="Audience">
             <option value="all">Everyone</option>
             <option value="students">Students</option>
             <option value="teachers">Teachers</option>
+          </select>
+          <select style={{ ...inp, flex: '0 1 130px', width: 'auto' }} value={broadcastCategory} onChange={(e) => setBroadcastCategory(e.target.value as 'General' | 'Urgent' | 'Events')} aria-label="Category">
+            <option>General</option>
+            <option>Urgent</option>
+            <option>Events</option>
           </select>
           <button style={btn} type="submit">Broadcast</button></form>));
     }
