@@ -1,1 +1,0 @@
-export { CampusLife } from "./CampusLife";

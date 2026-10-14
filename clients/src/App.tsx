@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { AdminDashboard } from './components/admin/AdminDashboard';
-import { AuthContainer } from './components/auth/AuthContainer';
-import { LandingPage } from './components/landing/LandingPage';
+import { CecWebsite } from './components/website/CecWebsite';
 import type { UserAuthData } from './components/auth/Login';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AISupport } from './components/shared/AISupport';
-import { AnnouncementModal } from './components/landing/AnnouncementModal';
+import { AnnouncementModal } from './components/shared/AnnouncementModal';
 import { PortalLoginLoading } from './components/shared/PortalLoginLoading';
 import api, { clearTokens, getRefreshToken, isRemembered, setTokens } from './services/api';
 import { ensureSchoolId } from './services/crud';
@@ -156,7 +155,12 @@ export const App = () => {
         />
       );
     }
-    return <LandingPage onLoginSuccess={(u) => setPendingUser(adoptSchoolIdentity(u))} onNotify={notify} onSwitchToRegister={() => {}} onSwitchToEnroll={() => {}} />;
+    return (
+      <CecWebsite
+        onLoginSuccess={(u) => setPendingUser(adoptSchoolIdentity(u))}
+        onNotify={notify}
+      />
+    );
   }
 
   const props = { currentUser, onNotify: notify, onLogout: logout };
