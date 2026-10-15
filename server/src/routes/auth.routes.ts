@@ -195,18 +195,19 @@ router.post('/change-password', async (req, res, next) => {
 
 router.post('/forgot-password', loginRateLimit(), async (req, res, next) => {
   try {
-    const { identifier } = req.body as { identifier?: string };
+    const { identifier, email } = req.body as { identifier?: string; email?: string };
     if (!identifier?.trim()) {
       res.status(400).json({ success: false, message: 'School ID or email is required' });
       return;
     }
-    const result = await authService.requestPasswordReset(identifier);
-    // Generic reply by design: never reveal whether the account exists.
+    const result = await authService.requestPasswordReset(identifier, email);
+    // Generic reply by design: never reveal whether the account exists
+    // or whether the Gmail matched the record.
     res.json({
       success: true,
       data: result,
       message: result.emailSent
-        ? 'If an account matches, recovery instructions were sent to its email'
+        ? 'If the details match our records, recovery instructions were sent to that Gmail address'
         : 'Recovery request recorded — contact the registrar if no email arrives',
     });
   } catch (error) {

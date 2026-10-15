@@ -1,0 +1,70 @@
+/* AuthModal — red-pill design, scoped authm-* classes (Tailwind-visual-equivalent). */
+.authm-veil { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 16px; overflow-y: auto; animation: authmFadeIn .25s ease-out; }
+@keyframes authmFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.authm-panel { position: relative; display: flex; flex-direction: row; width: 100%; max-width: 1024px; border-radius: 16px; background: #fff; box-shadow: 0 30px 80px rgba(0,0,0,.4); overflow: hidden; min-height: 600px; animation: authmPopIn .3s cubic-bezier(.32,.72,.35,1); }
+@keyframes authmPopIn { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+.authm-ad { position: relative; display: none; width: 50%; flex-direction: column; justify-content: space-between; padding: 24px; color: #fff; background: #0f172a; overflow: hidden; }
+@media (min-width: 768px) { .authm-ad { display: flex; } }
+.authm-ad-film { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.authm-ad-veil { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,.3) 50%, rgba(0,0,0,.2)); }
+.authm-ad > * { position: relative; z-index: 1; }
+.authm-ad .relative { position: relative; z-index: 1; }
+.authm-ad-badge { display: inline-block; padding: 4px 12px; background: rgba(255,202,40,.92); color: #0B254E; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.authm-ad h3 { font-size: 24px; font-weight: 900; letter-spacing: -.01em; margin: 0 0 8px; color: #fff; }
+.authm-ad p { font-size: 14px; color: #e2e8f0; margin: 0; }
+.authm-form { position: relative; width: 100%; padding: 32px; display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto; }
+@media (min-width: 768px) { .authm-form { width: 50%; } }
+.authm-close { position: absolute; right: 16px; top: 16px; border-radius: 999px; padding: 8px; color: #94a3b8; background: transparent; border: 0; cursor: pointer; transition: background-color .2s, color .2s; }
+.authm-close:hover { background: #f1f5f9; color: #475569; }
+.authm-tabs { display: flex; gap: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 24px; }
+.authm-tab { padding: 8px 16px; font-size: 12px; font-weight: 700; border-radius: 8px; border: 0; cursor: pointer; transition: background-color .2s, color .2s; background: #f1f5f9; color: #475569; }
+.authm-tab:hover { background: #e2e8f0; }
+.authm-tab-active { background: #0B3D91; color: #fff; box-shadow: 0 4px 10px rgba(11,61,145,.3); }
+.authm-title { font-size: 24px; font-weight: 800; letter-spacing: -.01em; color: #0f172a; margin: 0; }
+.authm-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+.authm-field { margin-top: 16px; }
+.authm-label { display: block; font-size: 12px; font-weight: 700; color: #334155; text-transform: uppercase; margin-bottom: 4px; }
+.authm-input-wrap { position: relative; }
+.authm-icon { position: absolute; left: 12px; top: 10px; height: 16px; width: 16px; color: #94a3b8; }
+.authm-input, .authm-select { width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px 8px 36px; font-size: 14px; color: #0f172a; background: #fff; box-sizing: border-box; }
+.authm-input::placeholder { color: #94a3b8; }
+.authm-input:focus, .authm-select:focus { border-color: #0B3D91; outline: none; box-shadow: 0 0 0 1px #0B3D91; }
+.authm-input:disabled { background: #f1f5f9; color: #475569; font-weight: 700; }
+.authm-row-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.authm-link { font-size: 12px; color: #0B3D91; font-weight: 600; background: none; border: 0; cursor: pointer; padding: 0; }
+.authm-link:hover { text-decoration: underline; }
+.authm-checkrow { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.authm-checkrow input { accent-color: #0B3D91; }
+.authm-checkrow label { font-size: 12px; color: #475569; }
+.authm-primary { width: 100%; border-radius: 8px; background: #0B3D91; padding: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #fff; box-shadow: 0 4px 10px rgba(11,61,145,.3); border: 0; cursor: pointer; transition: background-color .2s; margin-top: 16px; }
+.authm-primary:hover { background: #123f7d; }
+.authm-primary:disabled { opacity: .6; cursor: default; }
+.authm-notice { border-radius: 12px; background: rgba(239,246,255,.8); padding: 14px; border: 1px solid #dbeafe; font-size: 12px; color: #1e3a8a; line-height: 1.6; margin-top: 16px; }
+.authm-notice strong { color: #172554; }
+.authm-error { border-radius: 8px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: 12px; padding: 10px 12px; margin-top: 12px; }
+.authm-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.authm-pill { padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; color: #334155; cursor: pointer; }
+.authm-pill-active { background: #0f172a; color: #fff; border-color: #0f172a; }
+.authm-box { border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; padding: 16px; margin-top: 12px; }
+.authm-box-title { display: block; font-size: 12px; font-weight: 700; color: #0B3D91; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+.authm-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.authm-mini-label { display: block; font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px; }
+.authm-mini-input, .authm-mini-select { width: 100%; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 12px; box-sizing: border-box; }
+.authm-success { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px; margin-top: 12px; font-size: 13px; color: #14532d; }
+/* Enroll tab matched to the login look */
+.authm-enroll .auth-heading { margin-bottom: 6px; }
+.authm-enroll .auth-title { font-size: 24px; font-weight: 800; letter-spacing: -.01em; color: #0f172a; }
+.authm-enroll .auth-subtitle { font-size: 12px; color: #64748b; }
+.authm-enroll .auth-field label { font-size: 12px; font-weight: 700; color: #334155; text-transform: uppercase; }
+.authm-enroll .auth-input-wrap input, .authm-enroll .auth-input-wrap select { border-radius: 8px; border-color: #cbd5e1; padding: 8px 12px 8px 12px; font-size: 14px; }
+.authm-enroll .auth-input-wrap input:focus, .authm-enroll .auth-input-wrap select:focus { border-color: #0B3D91; box-shadow: 0 0 0 1px #0B3D91; }
+.authm-enroll .auth-input-wrap input::placeholder { color: #94a3b8; }
+.authm-enroll .role-pill { border-radius: 8px; font-size: 12px; font-weight: 700; }
+.authm-enroll fieldset.auth-field legend { font-size: 12px; font-weight: 800; color: #0B3D91; text-transform: uppercase; letter-spacing: .06em; }
+.authm-enroll .auth-btn { border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.authm-enroll .field-hint { font-size: 12px; color: #64748b; }
+.authm-enroll .auth-info-box { border-radius: 12px; font-size: 13px; }
+.authm-enroll .auth-alert-error { border-radius: 8px; font-size: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  .authm-veil, .authm-panel { animation: none !important; }
+}

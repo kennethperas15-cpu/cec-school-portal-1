@@ -3,7 +3,7 @@ import { useCollection, uid, genSchoolId } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
 import { pushNotification } from '../../services/notify';
-import { ClassroomBridge } from '../shared/ClassroomBridge';
+import { ClassroomBridge, SubjectClassroomCards } from '../shared/ClassroomBridge';
 import { useLiveAnnouncements } from '../../hooks/useLiveAnnouncements';
 import { setPhoto, readPhotoFile } from '../../services/photos';
 import { PhotoAvatar } from '../shared/PhotoAvatar';
@@ -13,6 +13,8 @@ import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
+import { DashboardShell } from '../shared/DashboardShell';
+import { CommWidget } from '../shared/CommWidget';
 import { useAcademicConfig } from '../../services/academicConfig';
 import type { DashboardSection } from '../shared/RoleDashboardHome';
 
@@ -230,6 +232,7 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
               : { title: 'No urgent work is recorded', detail: 'Check your schedule or open a roster to prepare for your next class.', actionLabel: 'View schedule', target: 'Class Schedule', tone: 'clear' as const };
       const presentToday = todayAttendance.filter((item) => item.status === 'Present').length;
       return (
+        <>
         <RoleDashboardHome
           role="teacher"
           name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Faculty'}
@@ -243,6 +246,8 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
             { label: 'Attendance today', value: todayAttendance.length ? `${Math.round((presentToday / todayAttendance.length) * 100)}%` : '—', detail: todayAttendance.length ? `${presentToday} present of ${todayAttendance.length} records dated ${todayKey}` : `No attendance records dated ${todayKey}` },
           ]}
         />
+        <CommWidget role="teacher" audience="teachers" boardTarget="Announcements" onNavigate={navigate} />
+        </>
       );
     }
     if (active === 'Profile Management') return (<section style={card}><h1 style={{ margin: 0 }}>Teacher Profile Management</h1>
@@ -328,7 +333,11 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       const map: Record<string, ReturnType<typeof useCollection>> = { Materials: materials as unknown as ReturnType<typeof useCollection>, Assignments: assigns as unknown as ReturnType<typeof useCollection>, Announcements: posts as unknown as ReturnType<typeof useCollection>, Forum: forum as unknown as ReturnType<typeof useCollection>, Messaging: messages as unknown as ReturnType<typeof useCollection>, 'Announcement Posting': posts as unknown as ReturnType<typeof useCollection>, 'Class Schedule': sched as unknown as ReturnType<typeof useCollection>, 'Consultation Slots': consults as unknown as ReturnType<typeof useCollection> };
       const col = map[active] ?? materials as unknown as ReturnType<typeof useCollection>;
       const classroomFirst = active === 'Materials' || active === 'Assignments';
+      const handledSubjects = active === 'Assignments'
+        ? sched.list.map((s) => ({ id: s.id, title: s.title, detail: `${s.when} • ${s.where}` }))
+        : [];
       return (<>{classroomFirst && <ClassroomBridge mode="teacher" onNotify={onNotify} />}{crudTable({ title: active, columns: ['Title', 'Detail', 'Actions'],
+        note: active === 'Assignments' && handledSubjects.length ? <SubjectClassroomCards subjects={handledSubjects} /> : undefined,
         form: (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!genF1.trim()) return; col.create({ id: uid('x'), title: genF1.trim(), body: '', type: '', due: '', submitted: '', date: '', items: '', when: '', where: '' } as unknown as { id: string }); setGenF1(''); onNotify(`${active} created`); }}><input style={inp} placeholder={`New ${active.toLowerCase()} title`} value={genF1} onChange={(e) => setGenF1(e.target.value)} /><button style={btn} type="submit">Add</button></form>),
         rows: (col.list as { id: string; title: string }[]).map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.title}</strong></td><td style={{ padding: 12, color: '#6b7890' }}>{Object.values(r).slice(2, 4).join(' • ')}</td><td style={{ padding: 12 }}><RowActions onEdit={() => {         openEditDialog('Edit title', r.title, (v) => { col.update(r.id, { title: v } as Partial<{ id: string }>); onNotify('Updated'); }) }} onDelete={() => { col.remove(r.id); onNotify('Deleted'); }} /></td></tr>) })}</>);
     }
@@ -336,17 +345,25 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   };
 
   return (
-    <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
-      <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><button onClick={() => setCollapsed((c) => !c)} aria-label="Toggle sidebar" style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', fontSize: 16 }}>☰</button><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>TEACHER PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div></div>
-        <span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>TEACHER</span><span style={{ color: '#8a94a6', fontSize: 13 }}>{active === 'Dashboard' ? 'Overview' : route}</span>
-        <div className="dashboard-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} /><NotificationCenter role="teacher" onNavigate={navigate} /><button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button><span key={photoTick}><PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Teacher'} size={36} /></span><button type="button" className="dashboard-logout" onClick={onLogout} aria-label="Log out" title="Log out"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button></div>
-      </header>
-      <div style={{ display: 'flex' }}>
-        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{GROUPS.map((g) => { const open = expanded === g.id; return (<div className={`dashboard-nav-group ${open ? 'is-open' : ''}`} key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => setExpanded(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button key={it.label} onClick={() => setActive(it.label)} style={{ textAlign: 'left', border: 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer' }}>{it.label}</button>)}</div>}</div>); })}<div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><span key={photoTick}><PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Prof. Santos'} size={34} /></span><div><div style={{ fontWeight: 700, fontSize: 13 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Prof. Santos'}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{myPhotoId}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>teacher</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div></aside>)}
-        <main className="dashboard-main" style={{ flex: 1, padding: 24, minWidth: 0 }}>{render()}</main>
-      </div>
-      {popup && <AlertPopup title={popup.title} message={popup.message} lines={popup.lines} onClose={() => setPopup(null)} />}
-    </div>
+    <DashboardShell
+      role="teacher"
+      groups={GROUPS}
+      active={active}
+      expanded={expanded}
+      onExpand={setExpanded}
+      onNavigate={navigate}
+      onLogout={onLogout}
+      userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Prof. Santos'}
+      userIdLine={myPhotoId}
+      photoUserId={myPhotoId}
+      photoVersion={photoTick}
+      moduleItems={moduleItems}
+      searchRecords={searchRecords}
+      routeCrumb={active === 'Dashboard' ? 'Overview' : route}
+      popup={popup}
+      onClosePopup={() => setPopup(null)}
+    >
+      {render()}
+    </DashboardShell>
   );
 };

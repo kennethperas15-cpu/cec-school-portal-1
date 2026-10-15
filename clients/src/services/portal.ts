@@ -32,6 +32,9 @@ export type EnrollmentSubmission = {
   schoolId?: string;
   paymentReferenceNo: string;
   educationLevel?: string;
+  classification?: string;
+  lrn?: string;
+  details?: Record<string, unknown>;
 };
 
 export type EnrollmentReceipt = {
@@ -122,5 +125,21 @@ export const portalApi = {
   async coeDecide(id: string, decision: 'ready' | 'rejected') {
     const r = await api.post(`/portal/coe/${id}/decide`, { decision });
     return r.data?.data as { transactionNo: string; status: string; emailSent: boolean };
+  },
+  async conversations(): Promise<{
+    id: string; created_at: string; peer_name: string | null; last_body: string | null; last_at: string | null;
+  }[]> {
+    const r = await api.get('/portal/conversations');
+    return r.data?.data ?? [];
+  },
+  async conversationCreate(identifier: string) {
+    const r = await api.post('/portal/conversations', { identifier });
+    return r.data?.data as { id: string; peerName: string };
+  },
+  async conversationMessages(id: string): Promise<{
+    id: number; sender_id: string; sender_name: string; body: string; created_at: string;
+  }[]> {
+    const r = await api.get(`/portal/conversations/${id}/messages`);
+    return r.data?.data ?? [];
   },
 };

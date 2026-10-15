@@ -1,12 +1,8 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useInView, animate } from 'framer-motion';
 import type { UserAuthData } from '../auth/Login';
-import { Login } from '../auth/Login';
+import { AuthModal } from './AuthModal';
 import './website.css';
-
-const Register = React.lazy(() => import('../auth/Register').then(({ Register: component }) => ({ default: component })));
-const ForgotPassword = React.lazy(() => import('../auth/ForgotPassword').then(({ ForgotPassword: component }) => ({ default: component })));
-const EnrollmentLanding = React.lazy(() => import('../enrollment/EnrollmentLanding').then(({ EnrollmentLanding: component }) => ({ default: component })));
 
 interface CecWebsiteProps {
   onLoginSuccess: (user: UserAuthData) => void;
@@ -78,8 +74,9 @@ export const CecWebsite: React.FC<CecWebsiteProps> = ({ onLoginSuccess, onNotify
   const [heroMissing, setHeroMissing] = useState(false);
   const [pastHero, setPastHero] = useState(false);
   // Auth popover: null = closed; otherwise the form shown beside the ad.
-  const [popTab, setPopTab] = useState<'login' | 'register' | 'forgot' | 'enroll' | null>(null);
-  const [adMissing, setAdMissing] = useState(false);
+  // Tabs are Sign In / Recovery / Enroll Now — staff accounts are
+  // provisioned by an administrator, never self-registered here.
+  const [popTab, setPopTab] = useState<'signin' | 'recovery' | 'enroll' | null>(null);
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
   const heroBgY = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
@@ -132,57 +129,18 @@ export const CecWebsite: React.FC<CecWebsiteProps> = ({ onLoginSuccess, onNotify
             {[['Home', '#top'], ['About', '#heritage'], ['Programs', '#programs'], ['Announcements', '#events'], ['Contact', '#contact']].map(([label, href]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>
             ))}
-            <button type="button" className="cecweb-drawer-login" onClick={go(() => setPopTab('login'))}>👤 Login</button>
+            <button type="button" className="cecweb-drawer-login" onClick={go(() => setPopTab('signin'))}>👤 Login</button>
             <button type="button" className="cecweb-drawer-enroll" onClick={go(() => setPopTab('enroll'))}>Enroll Now</button>
       </nav>
 
       {popTab && (
-        <div className="cecweb-auth-veil" onClick={() => setPopTab(null)}>
-          <div
-            className="cecweb-auth-pop"
-            role="dialog"
-            aria-modal="true"
-            aria-label={popTab === 'enroll' ? 'Enroll' : 'Sign in'}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button type="button" className="cecweb-auth-close" aria-label="Close" onClick={() => setPopTab(null)}>×</button>
-            <div className="cecweb-auth-ad" aria-hidden={!adMissing}>
-              {!adMissing ? (
-                <video key="auth-ad" autoPlay muted loop playsInline onError={() => setAdMissing(true)}>
-                  <source src={`${BASE}cec-school-ad.mp4`} type="video/mp4" />
-                </video>
-              ) : (
-                <div className="cecweb-auth-ad-fallback">
-                  <img src={`${BASE}cec-logo.png`} alt="" />
-                  <strong>Cebu Eastern College</strong>
-                  <span>Virtue • Knowledge • Service</span>
-                </div>
-              )}
-              <span className="cecweb-auth-ad-tag">Campus Ad</span>
-            </div>
-            <div className="cecweb-auth-form">
-              <Suspense fallback={<div className="auth-loading">Loading…</div>}>
-                {popTab === 'login' && (
-                  <Login
-                    onSuccess={(u) => { setPopTab(null); onLoginSuccess(u); }}
-                    onSwitchToRegister={() => setPopTab('register')}
-                    onSwitchToForgotPassword={() => setPopTab('forgot')}
-                    onNotify={onNotify}
-                  />
-                )}
-                {popTab === 'register' && (
-                  <Register onSwitchToLogin={() => setPopTab('login')} onNotify={onNotify} />
-                )}
-                {popTab === 'forgot' && (
-                  <ForgotPassword onSwitchToLogin={() => setPopTab('login')} onNotify={onNotify} />
-                )}
-                {popTab === 'enroll' && (
-                  <EnrollmentLanding onSwitchToLogin={() => setPopTab('login')} onNotify={onNotify} />
-                )}
-              </Suspense>
-            </div>
-          </div>
-        </div>
+        <AuthModal
+          key={popTab}
+          initialTab={popTab}
+          onLoginSuccess={(u) => { setPopTab(null); onLoginSuccess(u); }}
+          onNotify={onNotify}
+          onClose={() => setPopTab(null)}
+        />
       )}
 
       <section className="cecweb-hero" id="top" ref={heroRef}>

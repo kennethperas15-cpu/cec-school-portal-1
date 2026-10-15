@@ -3,6 +3,7 @@ import cors from 'cors';
 import { env } from './config/env.js';
 import routes from './routes/index.js';
 import { errormiddlewareMiddleware } from './middleware/error.middleware.js';
+import { startSocketServer } from './socket.js';
 const app = express();
 const allowedOrigins = env.clientUrl.split(',').map((origin) => origin.trim()).filter(Boolean);
 app.use(cors({ origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins }));
@@ -10,5 +11,8 @@ app.use(express.json());
 app.use('/api', routes);
 app.use(errormiddlewareMiddleware);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-if (process.env.NODE_ENV !== 'test') app.listen(env.port, () => console.log(`Server listening on ${env.port}`));
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(env.port, () => console.log(`Server listening on ${env.port}`));
+  startSocketServer(env.socketPort);
+}
 export default app;

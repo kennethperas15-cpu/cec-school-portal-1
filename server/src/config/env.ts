@@ -7,6 +7,7 @@ if (nodeEnv === 'production' && jwtSecret === 'development-secret') {
 }
 export const env = {
   port: Number(process.env.PORT ?? 4000),
+  socketPort: Number(process.env.SOCKET_PORT ?? 4001),
   databaseUrl: process.env.DATABASE_URL ?? 'postgres://postgres:change-me@localhost:5432/postgres',
   jwtSecret,
   accessTokenTtl: process.env.ACCESS_TOKEN_TTL ?? '15m',

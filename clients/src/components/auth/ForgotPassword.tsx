@@ -13,6 +13,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
   onNotify,
 }) => {
   const [identifier, setIdentifier] = useState('');
+  const [gmail, setGmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -22,6 +23,10 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
     e.preventDefault();
     if (!identifier.trim()) {
       setError('Please enter your school ID.');
+      return;
+    }
+    if (!gmail.includes('@')) {
+      setError('Please enter your Gmail address.');
       return;
     }
     setError('');
@@ -34,7 +39,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
     setLoading(true);
     try {
       try {
-        await api.post('/auth/forgot-password', { identifier: identifier.trim() });
+        await api.post('/auth/forgot-password', { identifier: identifier.trim(), email: gmail.trim() });
       } catch {
         // Fallback gracefully for demo/thesis presentation
       }
@@ -59,9 +64,9 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
               <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </div>
-          <h2 className="auth-title">Check Your Email</h2>
+          <h2 className="auth-title">Check Your Gmail</h2>
           <p className="auth-subtitle">
-            If an account is associated with <strong>{identifier}</strong>, we have sent instructions and a temporary reset link.
+            If the school ID and Gmail match an account, recovery instructions were emailed directly to that address.
           </p>
           <div className="auth-info-box">
             <span>ℹ️</span>
@@ -91,7 +96,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
       <div className="auth-heading">
         <h2 className="auth-title">Reset Your Password</h2>
         <p className="auth-subtitle">
-          Enter your 7-digit school ID, confirm the recovery, and we&apos;ll send instructions to the email on file.
+          Enter your 7-digit school ID plus your Gmail address, confirm the recovery, and instructions are emailed directly to that address.
         </p>
       </div>
 
@@ -129,6 +134,29 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
               autoFocus
             />
           </div>
+        </div>
+        <div className="auth-field">
+          <label htmlFor="recovery-gmail">
+            Gmail Address
+          </label>
+          <div className="auth-input-wrap">
+            <span className="auth-input-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            </span>
+            <input
+              id="recovery-gmail"
+              type="email"
+              required
+              value={gmail}
+              onChange={(e) => setGmail(e.target.value)}
+              placeholder="your.email@gmail.com"
+              autoComplete="email"
+            />
+          </div>
+          <span className="field-hint">Recovery instructions are emailed directly to this address when it matches our records.</span>
         </div>
 
         <button
@@ -169,7 +197,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({
             <p style={{ margin: '0 0 6px', fontSize: 14, color: '#475569' }}>
               Do you wish to proceed with account recovery for <strong>{identifier.trim()}</strong>?
             </p>
-            <p style={{ margin: '0 0 18px', fontSize: 12, color: '#6b7890' }}>Recovery instructions will be sent to the email on file.</p>
+            <p style={{ margin: '0 0 18px', fontSize: 12, color: '#6b7890' }}>Instructions will be emailed directly to <strong>{gmail.trim()}</strong> if it matches our records.</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" className="auth-btn auth-btn-secondary" style={{ flex: 1 }} onClick={() => setConfirming(false)}>
                 Cancel

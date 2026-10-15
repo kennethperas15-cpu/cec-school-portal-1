@@ -190,10 +190,19 @@ export const authService = {
     fullName?: string; personalEmail?: string; phone?: string; address?: string;
     program?: string; yearLevel?: number; schoolYear?: string; semester?: number;
     schoolId?: string; paymentReferenceNo: string; educationLevel?: string;
+    classification?: string; lrn?: string; details?: Record<string, unknown>;
   }) {
     const referenceNo = (input.paymentReferenceNo ?? '').trim();
     if (referenceNo.length < 4) {
       throw new Error('Enter the Official Receipt / Accounting Reference Number from the Accounting Office');
+    }
+    const classification = (input.classification ?? 'no-lrn').trim();
+    if (!['no-lrn', 'with-lrn', 'returning'].includes(classification)) {
+      throw new Error('Select a student classification');
+    }
+    const lrn = (input.lrn ?? '').trim();
+    if (classification === 'with-lrn' && !/^\d{12}$/.test(lrn)) {
+      throw new Error('Enter the 12-digit Learner Reference Number (LRN)');
     }
     const yearLevel = Number(input.yearLevel);
     if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 6) {
@@ -240,17 +249,20 @@ export const authService = {
     }
 
     const applicationId = crypto.randomUUID();
+    const detailsJson = input.details && typeof input.details === 'object'
+      ? JSON.stringify({ classification, ...(lrn ? { lrn } : {}), ...input.details })
+      : JSON.stringify({ classification, ...(lrn ? { lrn } : {}) });
     await sql(
       `INSERT INTO enrollment_applications
        (id, google_subject, email, first_name, last_name, program, year_level, phone,
         requested_role, status, payment_reference_no, payment_status, student_status,
-        assigned_school_id, school_year, semester, user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student', 'pending', ?, 'PENDING_VERIFICATION', 'PROVISIONAL', ?, ?, ?, ?)`,
+        assigned_school_id, school_year, semester, user_id, enrollee_details)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student', 'pending', ?, 'PENDING_VERIFICATION', 'PROVISIONAL', ?, ?, ?, ?, ?::jsonb)`,
       {
         replacements: [
           applicationId, `otc:${applicationId}`, personalEmail, firstName, lastName,
           input.program.trim(), yearLevel, phone, referenceNo, schoolId,
-          (input.schoolYear ?? '').trim() || null, semester, existingUserId,
+          (input.schoolYear ?? '').trim() || null, semester, existingUserId, detailsJson,
         ],
         type: QueryTypes.INSERT,
       }
@@ -391,10 +403,11 @@ export const authService = {
     return { schoolEmail, schoolId: staffId, temporaryPassword, emailSent: false };
   },
 
-  // Password recovery: school ID or email in, generic reply out (no
-  // account enumeration). A 24h reset token is stored and emailed when
-  // delivery is configured.
-  async requestPasswordReset(identifier: string) {
+  // Password recovery: school ID + Gmail in, generic reply out (no
+  // account enumeration). The Gmail must match the email on record —
+  // otherwise nothing is sent. A 24h reset token is stored and emailed to
+  // that personal address when delivery is configured.
+  async requestPasswordReset(identifier: string, email?: string) {
     const id = (identifier ?? '').trim();
     if (!id) throw new Error('School ID or email is required');
     const users = await sql<{ id: string; email: string; first_name: string }>(
@@ -404,7 +417,9 @@ export const authService = {
        WHERE u.is_active = TRUE AND (LOWER(u.email) = LOWER(?) OR s.student_number = ? OR t.employee_number = ?) LIMIT 1`,
       { replacements: [id, id, id], type: QueryTypes.SELECT }
     );
-    if (users.length) {
+    const supplied = (email ?? '').trim().toLowerCase();
+    const matched = users.length > 0 && (!supplied || users[0].email.toLowerCase() === supplied);
+    if (matched) {
       const token = crypto.randomBytes(32).toString('hex');
       await sql(
         `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)

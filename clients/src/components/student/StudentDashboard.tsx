@@ -18,7 +18,9 @@ import { RoleDashboardHome } from '../shared/RoleDashboardHome';
 import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
 import { NotificationCenter } from '../shared/NotificationCenter';
 import { openEditDialog } from '../shared/EditDialog';
-import { ClassroomBridge } from '../shared/ClassroomBridge';
+import { DashboardShell } from '../shared/DashboardShell';
+import { CommWidget } from '../shared/CommWidget';
+import { ClassroomBridge, SubjectClassroomCards } from '../shared/ClassroomBridge';
 import { WorkflowTracker, type WorkflowStep } from '../shared/WorkflowTracker';
 import { readStage, DOC_STAGES, SUBMIT_STAGES, SUBMIT_STEPS, writeStage, autoVerifyDoc } from '../../services/docStages';
 import { CoeRequest } from './CoeRequest';
@@ -819,6 +821,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           ? { title: `Next up: ${openAssignments[0].name}`, detail: openAssignments[0].role || 'Review and submit this assignment.', actionLabel: 'Open assignment', target: 'Assignments' }
           : { title: nextClass ? `Next class: ${nextClass.offering.subject}` : 'You are all caught up', detail: nextClass ? `${nextClass.dayLabel} • ${nextClass.offering.schedule} • ${nextClass.offering.room}` : 'No enrollment, document, payment, or assignment tasks are currently recorded.', actionLabel: nextClass ? 'View schedule' : 'View academic records', target: nextClass ? 'Class Schedule' : 'Grades / Report Card', tone: 'clear' as const };
       return (
+        <>
         <RoleDashboardHome
           role="student"
           name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'}
@@ -832,6 +835,8 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
             { label: 'Outstanding balance', value: assessed <= 0 ? '—' : remaining <= 0 ? 'Fully paid' : `₱${remaining.toLocaleString()}`, detail: assessed <= 0 ? 'No assessment recorded for this student' : `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()} in student billing records` },
           ]}
         />
+        <CommWidget role="student" audience="students" boardTarget="Announcement Board" onNavigate={navigate} />
+        </>
       );
     }
     if (active === 'Profile Management') {
@@ -1103,7 +1108,9 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     }
     if (active === 'Course Material') return (<><ClassroomBridge mode="student" onNotify={onNotify} /><TwoFieldForm title="Course Material" col={materials} onNotify={onNotify} ph1="Material title" ph2="Type • Subject" /></>);
     if (active === 'Assignments') {
-      return (<><ClassroomBridge mode="student" onNotify={onNotify} /><section style={card}><h1 style={{ margin: 0 }}>Assignments</h1><div style={box}>{assigns.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { assigns.update(a.id, { role: 'Submitted • For review' }); onNotify('Assignment submitted (Update)'); }}>Submit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { assigns.remove(a.id); onNotify('Assignment deleted'); }}>Delete</button></div></div>)}</div><Footer /></section></>);
+      return (<><ClassroomBridge mode="student" onNotify={onNotify} /><section style={card}><h1 style={{ margin: 0 }}>Assignments</h1><div style={box}>
+        <SubjectClassroomCards subjects={subjects.list.map((s) => ({ id: s.id, title: s.name, detail: s.role }))} />
+        {assigns.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{a.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{a.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { assigns.update(a.id, { role: 'Submitted • For review' }); onNotify('Assignment submitted (Update)'); }}>Submit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { assigns.remove(a.id); onNotify('Assignment deleted'); }}>Delete</button></div></div>)}</div><Footer /></section></>);
     }
     if (active === 'Quiz / Exam') {
       return (<><ClassroomBridge mode="student" onNotify={onNotify} /><section style={card}><h1 style={{ margin: 0 }}>Quiz / Exam</h1><div style={box}>{quizzes.list.map((qz) => <div key={qz.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{qz.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{qz.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => { const score = 7 + Math.floor(Math.random() * 4); quizzes.update(qz.id, { role: `Score ${score}/10 • Taken` }); onNotify(`Quiz submitted: ${score}/10`); }}>Take quiz</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { quizzes.remove(qz.id); onNotify('Quiz deleted'); }}>Delete</button></div></div>)}</div><Footer /></section></>);
@@ -1134,17 +1141,24 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   };
 
   return (
-    <div className={`role-dashboard${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
-      <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}><button onClick={() => setCollapsed((c) => !c)} style={{ border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', fontSize: 16 }} aria-label="Toggle sidebar">☰</button><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: '#fff', padding: 2 }} /><div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>STUDENT PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div></div>
-        <span style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>STUDENT</span>
-        <div className="dashboard-actions" style={{ marginLeft: 'auto' }}><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={navigate} /><NotificationCenter role="student" onNavigate={navigate} /><button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button><button type="button" className="dashboard-logout" onClick={onLogout} aria-label="Log out" title="Log out"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button></div>
-      </header>
-      <div style={{ display: 'flex' }}>
-        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{GROUPS.map((g) => { const open = expanded === g.id; return (<div className={`dashboard-nav-group ${open ? 'is-open' : ''}`} key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => setExpanded(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button key={it.label} onClick={() => setActive(it.label)} style={{ textAlign: 'left', border: active === it.label ? '2px solid #111' : 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 400 }}>{it.label}</button>)}</div>}</div>); })}<div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><span key={photoTick}><PhotoAvatar userId={currentUser?.id ?? profile.id} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : profile.name} size={34} /></span><div><div style={{ fontWeight: 700, fontSize: 13 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Demo Student'}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{currentUser?.id ?? profile.id}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>student</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div></aside>)}
-        <main className="dashboard-main" style={{ flex: 1, padding: 24, minWidth: 0 }}>{render()}</main>
-      </div>
-      {popup && <AlertPopup title={popup.title} message={popup.message} lines={popup.lines} onClose={() => setPopup(null)} />}
-    </div>
+    <DashboardShell
+      role="student"
+      groups={GROUPS}
+      active={active}
+      expanded={expanded}
+      onExpand={setExpanded}
+      onNavigate={navigate}
+      onLogout={onLogout}
+      userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : profile.name}
+      userIdLine={currentUser?.id ?? profile.id}
+      photoUserId={currentUser?.id ?? profile.id}
+      photoVersion={photoTick}
+      moduleItems={moduleItems}
+      searchRecords={searchRecords}
+      popup={popup}
+      onClosePopup={() => setPopup(null)}
+    >
+      {render()}
+    </DashboardShell>
   );
 };

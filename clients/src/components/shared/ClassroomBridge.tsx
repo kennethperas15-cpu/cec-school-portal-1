@@ -9,6 +9,35 @@ export const readClassroomUrl = (): string => {
   } catch { return DEFAULT_URL; }
 };
 
+export const openClassroom = (): void => {
+  try {
+    window.open(readClassroomUrl().replace(/\/$/, ''), '_blank', 'noopener');
+  } catch { /* ignore */ }
+};
+
+/** Subject cards with an explicit Classroom CTA (student enrolled / teacher handled). */
+export const SubjectClassroomCards: React.FC<{ subjects: { id: string; title: string; detail: string }[] }> = ({ subjects }) => {
+  if (!subjects.length) return null;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10, marginBottom: 14 }}>
+      {subjects.map((s) => (
+        <div key={s.id} style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: 14, background: '#fff' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#8a94a6', letterSpacing: '.06em' }}>{s.id}</div>
+          <strong style={{ display: 'block', fontSize: 14, margin: '4px 0' }}>{s.title}</strong>
+          <div style={{ fontSize: 12, color: '#6b7890', marginBottom: 10 }}>{s.detail}</div>
+          <button
+            type="button"
+            onClick={openClassroom}
+            style={{ background: '#0B3D91', color: '#fff', border: 0, borderRadius: 8, padding: '9px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer', width: '100%' }}
+          >
+            Open in Google Classroom →
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 interface ClassroomBridgeProps {
   mode: 'student' | 'teacher';
   onNotify?: (message: string) => void;

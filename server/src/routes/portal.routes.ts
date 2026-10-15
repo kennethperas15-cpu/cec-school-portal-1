@@ -80,10 +80,12 @@ router.post('/enrollment/submit', async (req, res, next) => {
     const {
       applicantType, fullName, personalEmail, phone, address, program, yearLevel,
       schoolYear, semester, schoolId, paymentReferenceNo, educationLevel,
+      classification, lrn, details,
     } = req.body as {
       applicantType?: string; fullName?: string; personalEmail?: string; phone?: string; address?: string;
       program?: string; yearLevel?: number; schoolYear?: string; semester?: number;
       schoolId?: string; paymentReferenceNo?: string; educationLevel?: string;
+      classification?: string; lrn?: string; details?: Record<string, unknown>;
     };
     if (applicantType !== 'new' && applicantType !== 'returning') {
       res.status(400).json({ success: false, message: 'Choose New Student or Returning Student' });
@@ -92,6 +94,7 @@ router.post('/enrollment/submit', async (req, res, next) => {
     const result = await authService.submitPublicEnrollment({
       applicantType, fullName, personalEmail, phone, address, program, yearLevel,
       schoolYear, semester, schoolId, paymentReferenceNo: paymentReferenceNo ?? '', educationLevel,
+      classification, lrn, details,
     });
     res.status(201).json({ success: true, data: result, message: 'Enrollment submitted — pending accounting verification' });
   } catch (error) {
@@ -102,7 +105,8 @@ router.post('/enrollment/submit', async (req, res, next) => {
       error.message.includes('program') || error.message.includes('Program') ||
       error.message.includes('year') || error.message.includes('Year') ||
       error.message.includes('semester') || error.message.includes('Semester') ||
-      error.message.includes('7-digit') || error.message.includes('No school record')
+      error.message.includes('7-digit') || error.message.includes('No school record') ||
+      error.message.includes('classification') || error.message.includes('Learner Reference')
     )) {
       res.status(400).json({ success: false, message: error.message });
       return;
@@ -246,6 +250,96 @@ router.post('/coe/:id/decide', authmiddlewareMiddleware, requireRoles('admin'), 
     }
     next(error);
   }
+});
+
+// ---- Real-time conversations (Socket.io persists here too) ----
+router.get('/conversations', authmiddlewareMiddleware, async (req, res, next) => {
+  try {
+    const userId = req.user?.id ?? '';
+    const rows = await sql<{
+      id: string; created_at: Date; peer_name: string | null; last_body: string | null; last_at: Date | null;
+    }>(
+      `SELECT c.id, c.created_at,
+              (SELECT TRIM(CONCAT(u.first_name, ' ', u.last_name))
+               FROM conversation_participants p JOIN users u ON u.id = p.user_id
+               WHERE p.conversation_id = c.id AND p.user_id <> ? LIMIT 1) AS peer_name,
+              (SELECT m.body FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_body,
+              (SELECT m.created_at FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_at
+       FROM conversations c JOIN conversation_participants mine
+         ON mine.conversation_id = c.id AND mine.user_id = ?
+       ORDER BY last_at DESC NULLS LAST, c.created_at DESC LIMIT 50`,
+      { replacements: [userId, userId], type: QueryTypes.SELECT }
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) { next(error); }
+});
+
+router.post('/conversations', authmiddlewareMiddleware, async (req, res, next) => {
+  try {
+    const userId = req.user?.id ?? '';
+    const { identifier } = req.body as { identifier?: string };
+    if (!identifier?.trim()) {
+      res.status(400).json({ success: false, message: 'School ID or email is required' });
+      return;
+    }
+    const id = identifier.trim();
+    const peers = await sql<{ id: string; first_name: string; last_name: string }>(
+      `SELECT u.id, u.first_name, u.last_name FROM users u
+       LEFT JOIN students s ON s.user_id = u.id
+       LEFT JOIN teachers t ON t.user_id = u.id
+       WHERE u.is_active = TRUE AND u.id <> ?
+         AND (LOWER(u.email) = LOWER(?) OR s.student_number = ? OR t.employee_number = ?) LIMIT 1`,
+      { replacements: [userId, id, id, id], type: QueryTypes.SELECT }
+    );
+    if (!peers.length) {
+      res.status(404).json({ success: false, message: 'No school account found for that ID or email' });
+      return;
+    }
+    const existing = await sql<{ id: string }>(
+      `SELECT c.id FROM conversations c
+       JOIN conversation_participants a ON a.conversation_id = c.id AND a.user_id = ?
+       JOIN conversation_participants b ON b.conversation_id = c.id AND b.user_id = ?
+       LIMIT 1`,
+      { replacements: [userId, peers[0].id], type: QueryTypes.SELECT }
+    );
+    if (existing.length) {
+      res.json({ success: true, data: { id: existing[0].id, peerName: `${peers[0].first_name} ${peers[0].last_name}`.trim() } });
+      return;
+    }
+    const conversationId = crypto.randomUUID();
+    await sequelize.transaction(async (transaction) => {
+      await sql('INSERT INTO conversations (id) VALUES (?)', { replacements: [conversationId], transaction });
+      await sql(
+        'INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?), (?, ?)',
+        { replacements: [conversationId, userId, conversationId, peers[0].id], transaction }
+      );
+    });
+    res.status(201).json({ success: true, data: { id: conversationId, peerName: `${peers[0].first_name} ${peers[0].last_name}`.trim() } });
+  } catch (error) { next(error); }
+});
+
+router.get('/conversations/:id/messages', authmiddlewareMiddleware, async (req, res, next) => {
+  try {
+    const userId = req.user?.id ?? '';
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const member = await sql<{ conversation_id: string }>(
+      'SELECT conversation_id FROM conversation_participants WHERE conversation_id = ? AND user_id = ? LIMIT 1',
+      { replacements: [id, userId], type: QueryTypes.SELECT }
+    );
+    if (!member.length) {
+      res.status(403).json({ success: false, message: 'Not a participant of this conversation' });
+      return;
+    }
+    const rows = await sql<{
+      id: number; sender_id: string; sender_name: string; body: string; created_at: Date;
+    }>(
+      `SELECT m.id, m.sender_id, TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS sender_name, m.body, m.created_at
+       FROM messages m JOIN users u ON u.id = m.sender_id
+       WHERE m.conversation_id = ? ORDER BY m.created_at ASC LIMIT 200`,
+      { replacements: [id], type: QueryTypes.SELECT }
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) { next(error); }
 });
 
 // ---- Shared portal items (all modules, all roles) ----

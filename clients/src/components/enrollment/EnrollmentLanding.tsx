@@ -18,25 +18,116 @@ const PROGRAMS = [
 const OTC_NOTICE =
   'Payment must be settled physically at the Accounting Office before submitting this form. Enter your Official Receipt / Accounting Reference Number below.';
 
-type DayPreference = 'morning' | 'afternoon' | 'evening';
-
 export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchToLogin, onNotify }) => {
   const [applicantType, setApplicantType] = useState<'new' | 'returning'>('new');
-  const [fullName, setFullName] = useState('');
-  const [personalEmail, setPersonalEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
+  // A. School year & classification (DepEd BEEF §1)
+  const [classification, setClassification] = useState<'no-lrn' | 'with-lrn' | 'returning'>('no-lrn');
+  const [lrn, setLrn] = useState('');
+  // B. Learner information (DepEd BEEF §2)
+  const [psaNo, setPsaNo] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [extName, setExtName] = useState('');
+  const [dob, setDob] = useState('');
+  const [sex, setSex] = useState('');
+  const [motherTongue, setMotherTongue] = useState('');
+  // C. Address (DepEd BEEF §3)
+  const [houseStreet, setHouseStreet] = useState('');
+  const [barangay, setBarangay] = useState('');
+  const [cityProvince, setCityProvince] = useState('');
+  const [zip, setZip] = useState('');
+  // D. Parent / guardian (DepEd BEEF §4)
+  const [fatherName, setFatherName] = useState('');
+  const [motherMaiden, setMotherMaiden] = useState('');
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianCell, setGuardianCell] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  // E. Returning / transferee details (DepEd BEEF §5)
+  const [lastGrade, setLastGrade] = useState('');
+  const [lastSY, setLastSY] = useState('');
+  const [lastSchool, setLastSchool] = useState('');
+  const [lastSchoolId, setLastSchoolId] = useState('');
+  const [lastSchoolAddress, setLastSchoolAddress] = useState('');
   const [program, setProgram] = useState('BSIT');
   const [yearLevel, setYearLevel] = useState('1');
   const [schoolYear, setSchoolYear] = useState('2026–2027');
   const [semester, setSemester] = useState('1');
   const [schoolId, setSchoolId] = useState('');
   const [referenceNo, setReferenceNo] = useState('');
-  const [dayPref, setDayPref] = useState<DayPreference>('morning');
   const [chosenSlot, setChosenSlot] = useState<ScheduleSlot | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [receipt, setReceipt] = useState<EnrollmentReceipt | null>(null);
+  const [step, setStep] = useState(1);
+  const [hoverSubmit, setHoverSubmit] = useState(false);
+
+  const STEPS = ['Learner & Classification', 'Address & Guardian', 'Background & Submit'] as const;
+
+  const validStep1 = (): string => {
+    if (!/^[A-Za-z ]{2,}/.test(program.trim())) return 'Select a program / grade level.';
+    const yl = Number(yearLevel);
+    if (!Number.isInteger(yl) || yl < 1 || yl > 6) return 'Select a valid year / grade level.';
+    if (applicantType === 'returning' && !/^2\d{6}$/.test(schoolId.trim())) {
+      return 'Enter your assigned 7-digit student school ID (starts with 2).';
+    }
+    if (classification === 'with-lrn' && !/^\d{12}$/.test(lrn.trim())) {
+      return 'Enter the 12-digit Learner Reference Number (LRN).';
+    }
+    if (applicantType === 'new') {
+      if (!lastName.trim() || !firstName.trim()) return 'Enter the learner\u2019s last and first names.';
+      if (!dob) return 'Enter the date of birth.';
+      if (!sex) return 'Select sex.';
+      if (!motherTongue.trim()) return 'Enter the mother tongue.';
+    }
+    return '';
+  };
+
+  const validStep2 = (): string => {
+    if (applicantType !== 'new') return '';
+    if (!barangay.trim() || !cityProvince.trim()) return 'Enter barangay and city/province.';
+    if (!guardianName.trim() || !guardianCell.trim()) return 'Enter the guardian name and cellphone number.';
+    if (!contactEmail.includes('@')) return 'Enter a valid contact email — credentials are delivered there.';
+    return '';
+  };
+
+  const goNext = () => {
+    const err = step === 1 ? validStep1() : validStep2();
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError('');
+    setStep((s) => (s === 1 && applicantType !== 'new' ? 3 : Math.min(s + 1, 3)));
+  };
+
+  const goBack = () => {
+    setError('');
+    setStep((s) => (s === 3 && applicantType !== 'new' ? 1 : Math.max(s - 1, 1)));
+  };
+
+  const wizNav = (showBack: boolean, showNext: boolean) => (
+    <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+      {showBack && (
+        <button
+          type="button"
+          onClick={goBack}
+          style={{ flex: 1, borderRadius: 999, border: '1px solid #cbd5e1', background: '#fff', padding: '13px', fontSize: 13, fontWeight: 800, color: '#0B3D91', cursor: 'pointer' }}
+        >
+          ← Back
+        </button>
+      )}
+      {showNext && (
+        <button
+          type="button"
+          onClick={goNext}
+          style={{ flex: 2, borderRadius: 999, border: 0, background: '#0a3996', padding: '13px', fontSize: 13, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 10px 24px rgba(10,57,150,.35)' }}
+        >
+          Next →
+        </button>
+      )}
+    </div>
+  );
 
   useEffect(() => {
     let live = true;
@@ -51,6 +142,15 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
     return () => { live = false; };
   }, []);
 
+  const learnerName = [firstName, middleName, lastName, extName].map((s) => s.trim()).filter(Boolean).join(' ');
+  const learnerAge = (() => {
+    if (!dob) return '';
+    const ms = Date.now() - new Date(`${dob}T00:00:00`).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return '';
+    return String(Math.floor(ms / 31557600000));
+  })();
+  const isTransferee = classification === 'returning' || applicantType === 'returning';
+
   const validate = (): string => {
     if (!/^[A-Za-z ]{2,}/.test(program.trim())) return 'Select a program / grade level.';
     const yl = Number(yearLevel);
@@ -58,10 +158,20 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
     if (applicantType === 'returning' && !/^2\d{6}$/.test(schoolId.trim())) {
       return 'Enter your assigned 7-digit student school ID (starts with 2).';
     }
+    if (classification === 'with-lrn' && !/^\d{12}$/.test(lrn.trim())) {
+      return 'Enter the 12-digit Learner Reference Number (LRN).';
+    }
     if (applicantType === 'new') {
-      if (fullName.trim().split(/\s+/).filter(Boolean).length < 2) return 'Enter your full name (first and last).';
-      if (!personalEmail.includes('@')) return 'Enter a valid email address.';
-      if (!phone.trim()) return 'Enter a contact number.';
+      if (!lastName.trim() || !firstName.trim()) return 'Enter the learner\u2019s last and first names.';
+      if (!dob) return 'Enter the date of birth.';
+      if (!sex) return 'Select sex.';
+      if (!motherTongue.trim()) return 'Enter the mother tongue.';
+      if (!barangay.trim() || !cityProvince.trim()) return 'Enter barangay and city/province.';
+      if (!guardianName.trim() || !guardianCell.trim()) return 'Enter the guardian name and cellphone number.';
+      if (!contactEmail.includes('@')) return 'Enter a valid contact email — credentials are delivered there.';
+    }
+    if (isTransferee && (!lastGrade.trim() || !lastSY.trim() || !lastSchool.trim())) {
+      return 'Enter last grade level, school year, and school name.';
     }
     if (referenceNo.trim().length < 4) return 'Enter the Official Receipt / Accounting Reference Number from the Accounting Office.';
     return '';
@@ -69,15 +179,39 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
 
   const savePreference = () => {
     try {
-      localStorage.setItem('cec:enroll_pref', JSON.stringify({ preference: dayPref }));
       if (chosenSlot) localStorage.setItem('cec:enroll_schedule', JSON.stringify(chosenSlot));
       else localStorage.removeItem('cec:enroll_schedule');
     } catch { /* ignore */ }
   };
 
+  const enrolleeDetails = () => ({
+    psaNo: psaNo.trim() || undefined,
+    lastName: lastName.trim() || undefined,
+    firstName: firstName.trim() || undefined,
+    middleName: middleName.trim() || undefined,
+    extName: extName.trim() || undefined,
+    dob: dob || undefined,
+    age: learnerAge || undefined,
+    sex: sex || undefined,
+    motherTongue: motherTongue.trim() || undefined,
+    houseStreet: houseStreet.trim() || undefined,
+    barangay: barangay.trim() || undefined,
+    cityProvince: cityProvince.trim() || undefined,
+    zip: zip.trim() || undefined,
+    fatherName: fatherName.trim() || undefined,
+    motherMaiden: motherMaiden.trim() || undefined,
+    guardianName: guardianName.trim() || undefined,
+    guardianCell: guardianCell.trim() || undefined,
+    lastGrade: lastGrade.trim() || undefined,
+    lastSY: lastSY.trim() || undefined,
+    lastSchool: lastSchool.trim() || undefined,
+    lastSchoolId: lastSchoolId.trim() || undefined,
+    lastSchoolAddress: lastSchoolAddress.trim() || undefined,
+  });
+
   const mirrorOffline = (assignedId: string) => {
     try {
-      const name = applicantType === 'new' ? fullName.trim() : `Returning • ${assignedId}`;
+      const name = applicantType === 'new' ? learnerName : `Returning • ${assignedId}`;
       const rawApps = localStorage.getItem('cec:s_enroll_apps');
       const apps = rawApps ? (JSON.parse(rawApps) as { id: string; name: string; role: string }[]) : [];
       apps.push({ id: assignedId, name: `${program} • Year ${yearLevel} • ${semester === '2' ? '2nd' : '1st'} Sem`, role: 'Pending Accounting Verification' });
@@ -101,16 +235,19 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
     try {
       const data = await portalApi.enrollmentSubmit({
         applicantType,
-        fullName: fullName.trim() || undefined,
-        personalEmail: personalEmail.trim() || undefined,
-        phone: phone.trim() || undefined,
-        address: address.trim() || undefined,
+        fullName: learnerName || undefined,
+        personalEmail: contactEmail.trim() || undefined,
+        phone: guardianCell.trim() || undefined,
+        address: [houseStreet.trim(), barangay.trim(), cityProvince.trim(), zip.trim()].filter(Boolean).join(', ') || undefined,
         program: program.trim(),
         yearLevel: Number(yearLevel),
         schoolYear: schoolYear.trim() || undefined,
         semester: Number(semester),
         schoolId: applicantType === 'returning' ? schoolId.trim() : undefined,
         paymentReferenceNo: referenceNo.trim(),
+        classification,
+        lrn: lrn.trim() || undefined,
+        details: enrolleeDetails(),
       });
       setReceipt(data);
       savePreference();
@@ -130,7 +267,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
           studentStatus: 'PROVISIONAL',
           submittedAt: new Date().toISOString(),
           summary: {
-            fullName: applicantType === 'new' ? fullName.trim() : `Returning • ${assignedId}`,
+            fullName: applicantType === 'new' ? learnerName : `Returning • ${assignedId}`,
             program: program.trim(),
             yearLevel: Number(yearLevel),
             schoolYear: schoolYear.trim() || null,
@@ -149,10 +286,13 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
 
   const resetForm = () => {
     setReceipt(null);
-    setFullName('');
-    setPersonalEmail('');
-    setPhone('');
-    setAddress('');
+    setClassification('no-lrn');
+    setLrn('');
+    setPsaNo(''); setLastName(''); setFirstName(''); setMiddleName(''); setExtName('');
+    setDob(''); setSex(''); setMotherTongue('');
+    setHouseStreet(''); setBarangay(''); setCityProvince(''); setZip('');
+    setFatherName(''); setMotherMaiden(''); setGuardianName(''); setGuardianCell(''); setContactEmail('');
+    setLastGrade(''); setLastSY(''); setLastSchool(''); setLastSchoolId(''); setLastSchoolAddress('');
     setSchoolId('');
     setReferenceNo('');
     setChosenSlot(null);
@@ -231,17 +371,41 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
       )}
 
       <form className="auth-form" onSubmit={handleSubmit}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }} role="list" aria-label="Enrollment steps">
+          {STEPS.map((label, i) => {
+            const n = i + 1;
+            const skipped = applicantType !== 'new' && n === 2;
+            const done = n < step && !skipped;
+            const current = step === n;
+            return (
+              <div key={label} role="listitem" aria-current={current ? 'step' : undefined} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                  fontSize: 13, fontWeight: 800, flexShrink: 0, color: '#fff',
+                  background: done ? '#16a34a' : current ? '#0a3996' : '#cbd5e1',
+                  boxShadow: current ? '0 6px 16px rgba(10,57,150,.4)' : 'none',
+                }}>
+                  {done ? '✓' : n}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: current ? 800 : 600, color: current ? '#0a3996' : '#64748B', lineHeight: 1.25 }}>{label}</span>
+                {n < STEPS.length && <span style={{ flex: 1, height: 2, borderRadius: 2, background: done || step > n ? '#0a3996' : '#e2e8f0', margin: '0 4px' }} />}
+              </div>
+            );
+          })}
+        </div>
+        {step === 1 && (
+        <>
         <div className="auth-field">
           <label>I am a <span className="required-star">*</span></label>
           <div className="role-pills" role="tablist" aria-label="Applicant type">
             <button type="button" role="tab" aria-selected={applicantType === 'new'}
               className={`role-pill ${applicantType === 'new' ? 'active' : ''}`}
-              onClick={() => setApplicantType('new')}>
+              onClick={() => { setApplicantType('new'); setClassification('no-lrn'); }}>
               New Student
             </button>
             <button type="button" role="tab" aria-selected={applicantType === 'returning'}
               className={`role-pill ${applicantType === 'returning' ? 'active' : ''}`}
-              onClick={() => setApplicantType('returning')}>
+              onClick={() => { setApplicantType('returning'); setClassification('returning'); }}>
               Returning Student
             </button>
           </div>
@@ -250,6 +414,65 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
               ? 'First enrollment at CEC? A school ID will be assigned after you submit.'
               : 'Already have a school ID? Enter it below with your new reference number.'}
           </span>
+        </div>
+
+        <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
+          <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>School Year &amp; Classification</legend>
+          <div className="auth-form-row">
+            <div className="auth-field">
+              <label htmlFor="enr-ay">School Year <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <input id="enr-ay" type="text" required value={schoolYear}
+                  onChange={(e) => setSchoolYear(e.target.value)} placeholder="e.g. 2026–2027" />
+              </div>
+            </div>
+            <div className="auth-field">
+              <label htmlFor="enr-sem">Semester <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <select id="enr-sem" value={semester} onChange={(e) => setSemester(e.target.value)}>
+                  <option value="1">1st Semester</option>
+                  <option value="2">2nd Semester</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="role-pills" role="tablist" aria-label="Student classification" style={{ marginTop: 10 }}>
+            {([['no-lrn', 'No LRN'], ['with-lrn', 'With LRN']] as const).map(([v, label]) => (
+              <button key={v} type="button" role="tab" aria-selected={classification === v}
+                className={`role-pill ${classification === v ? 'active' : ''}`}
+                onClick={() => setClassification(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {classification === 'with-lrn' && (
+            <div className="auth-field" style={{ marginTop: 10 }}>
+              <label htmlFor="enr-lrn">Learner Reference Number (12 digits) <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <input id="enr-lrn" type="text" inputMode="numeric" required value={lrn}
+                  onChange={(e) => setLrn(e.target.value.replace(/\D/g, '').slice(0, 12))} placeholder="e.g. 123456789012" autoComplete="off" />
+              </div>
+            </div>
+          )}
+        </fieldset>
+
+        <div className="auth-form-row">
+          <div className="auth-field">
+            <label htmlFor="enr-program">Program / Grade Level <span className="required-star">*</span></label>
+            <div className="auth-input-wrap">
+              <select id="enr-program" value={program} onChange={(e) => setProgram(e.target.value)}>
+                {PROGRAMS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="auth-field">
+            <label htmlFor="enr-year">Year / Grade Level <span className="required-star">*</span></label>
+            <div className="auth-input-wrap">
+              <select id="enr-year" value={yearLevel} onChange={(e) => setYearLevel(e.target.value)}>
+                {['1', '2', '3', '4', '5', '6'].map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
 
         {applicantType === 'returning' && (
@@ -271,102 +494,233 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         )}
 
         {applicantType === 'new' && (
-          <>
-            <div className="auth-field">
-              <label htmlFor="enr-fullname">Full Name <span className="required-star">*</span></label>
-              <div className="auth-input-wrap">
-                <input id="enr-fullname" type="text" required value={fullName}
-                  onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Juan A. Dela Cruz" autoComplete="name" />
+          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
+            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Learner Information</legend>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-last">Last Name <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-last" type="text" required value={lastName}
+                    onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Dela Cruz" autoComplete="family-name" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-first">First Name <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-first" type="text" required value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. Juan" autoComplete="given-name" />
+                </div>
               </div>
             </div>
             <div className="auth-form-row">
               <div className="auth-field">
-                <label htmlFor="enr-email">Email Address <span className="required-star">*</span></label>
+                <label htmlFor="enr-middle">Middle Name</label>
                 <div className="auth-input-wrap">
-                  <input id="enr-email" type="email" required value={personalEmail}
-                    onChange={(e) => setPersonalEmail(e.target.value)} placeholder="your.email@gmail.com" autoComplete="email" />
+                  <input id="enr-middle" type="text" value={middleName}
+                    onChange={(e) => setMiddleName(e.target.value)} placeholder="e.g. Aquino" autoComplete="additional-name" />
                 </div>
               </div>
               <div className="auth-field">
-                <label htmlFor="enr-phone">Contact Number <span className="required-star">*</span></label>
+                <label htmlFor="enr-ext">Extension (Jr/Sr/III)</label>
                 <div className="auth-input-wrap">
-                  <input id="enr-phone" type="tel" inputMode="numeric" required value={phone}
-                    onChange={(e) => setPhone(e.target.value)} placeholder="09XXXXXXXXX" autoComplete="tel" />
+                  <input id="enr-ext" type="text" value={extName}
+                    onChange={(e) => setExtName(e.target.value)} placeholder="e.g. Jr" autoComplete="honorific-suffix" />
+                </div>
+              </div>
+            </div>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-psa">PSA Birth Certificate No.</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-psa" type="text" value={psaNo}
+                    onChange={(e) => setPsaNo(e.target.value)} placeholder="e.g. 2010-123456" autoComplete="off" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-dob">Date of Birth <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-dob" type="date" required value={dob}
+                    onChange={(e) => setDob(e.target.value)} aria-label="Date of birth" />
+                </div>
+              </div>
+            </div>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-sex">Sex <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <select id="enr-sex" required value={sex} onChange={(e) => setSex(e.target.value)}>
+                    <option value="">Select…</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-age">Age</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-age" type="text" readOnly value={learnerAge} placeholder="Auto from birth date" aria-label="Age" />
                 </div>
               </div>
             </div>
             <div className="auth-field">
-              <label htmlFor="enr-address">Home Address</label>
+              <label htmlFor="enr-mt">Mother Tongue <span className="required-star">*</span></label>
               <div className="auth-input-wrap">
-                <input id="enr-address" type="text" value={address}
-                  onChange={(e) => setAddress(e.target.value)} placeholder="e.g. Colon St., Cebu City" autoComplete="street-address" />
+                <input id="enr-mt" type="text" required value={motherTongue}
+                  onChange={(e) => setMotherTongue(e.target.value)} placeholder="e.g. Cebuano" autoComplete="off" />
               </div>
             </div>
-          </>
+          </fieldset>
+        )}
+        {wizNav(false, true)}
+        </>
         )}
 
-        <div className="auth-form-row">
-          <div className="auth-field">
-            <label htmlFor="enr-program">Program / Grade Level <span className="required-star">*</span></label>
-            <div className="auth-input-wrap">
-              <select id="enr-program" value={program} onChange={(e) => setProgram(e.target.value)}>
-                {PROGRAMS.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
+        {step === 2 && applicantType === 'new' && (
+        <div>
+        {applicantType === 'new' && (
+          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
+            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Address</legend>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-house">House No. / Street</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-house" type="text" value={houseStreet}
+                    onChange={(e) => setHouseStreet(e.target.value)} placeholder="e.g. 123 Colon St." autoComplete="street-address" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-brgy">Barangay <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-brgy" type="text" required value={barangay}
+                    onChange={(e) => setBarangay(e.target.value)} placeholder="e.g. Sambag I" autoComplete="off" />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="auth-field">
-            <label htmlFor="enr-year">Year / Grade Level <span className="required-star">*</span></label>
-            <div className="auth-input-wrap">
-              <select id="enr-year" value={yearLevel} onChange={(e) => setYearLevel(e.target.value)}>
-                {['1', '2', '3', '4', '5', '6'].map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-city">City / Province <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-city" type="text" required value={cityProvince}
+                    onChange={(e) => setCityProvince(e.target.value)} placeholder="e.g. Cebu City, Cebu" autoComplete="address-level2" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-zip">Zip Code</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-zip" type="text" inputMode="numeric" value={zip}
+                    onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="e.g. 6000" autoComplete="postal-code" />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </fieldset>
+        )}
 
-        <div className="auth-form-row">
-          <div className="auth-field">
-            <label htmlFor="enr-ay">Academic Year <span className="required-star">*</span></label>
-            <div className="auth-input-wrap">
-              <input id="enr-ay" type="text" required value={schoolYear}
-                onChange={(e) => setSchoolYear(e.target.value)} placeholder="e.g. 2026–2027" />
+        {applicantType === 'new' && (
+          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
+            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Parent / Guardian</legend>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-father">Father&apos;s Name</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-father" type="text" value={fatherName}
+                    onChange={(e) => setFatherName(e.target.value)} placeholder="e.g. Jose Dela Cruz" autoComplete="off" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-mother">Mother&apos;s Maiden Name</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-mother" type="text" value={motherMaiden}
+                    onChange={(e) => setMotherMaiden(e.target.value)} placeholder="e.g. Maria Aquino" autoComplete="off" />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="auth-field">
-            <label htmlFor="enr-sem">Semester <span className="required-star">*</span></label>
-            <div className="auth-input-wrap">
-              <select id="enr-sem" value={semester} onChange={(e) => setSemester(e.target.value)}>
-                <option value="1">1st Semester</option>
-                <option value="2">2nd Semester</option>
-              </select>
+            <div className="auth-field">
+              <label htmlFor="enr-guardian">Guardian Name <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <input id="enr-guardian" type="text" required value={guardianName}
+                  onChange={(e) => setGuardianName(e.target.value)} placeholder="e.g. Ana Dela Cruz" autoComplete="off" />
+              </div>
             </div>
-          </div>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-gcell">Guardian Cellphone No. <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-gcell" type="tel" inputMode="numeric" required value={guardianCell}
+                    onChange={(e) => setGuardianCell(e.target.value)} placeholder="09XXXXXXXXX" autoComplete="tel" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-cemail">Contact Email <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-cemail" type="email" required value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)} placeholder="your.email@gmail.com" autoComplete="email" />
+                </div>
+              </div>
+            </div>
+            <span className="field-hint">Account credentials are delivered to this email address.</span>
+          </fieldset>
+        )}
+        {wizNav(true, true)}
         </div>
+        )}
+
+        {step === 3 && (
+        <div>
+        {isTransferee && (
+          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
+            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Last School Attended</legend>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-lgrade">Last Grade Level <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-lgrade" type="text" required value={lastGrade}
+                    onChange={(e) => setLastGrade(e.target.value)} placeholder="e.g. Grade 10" autoComplete="off" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-lsy">Last School Year <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <input id="enr-lsy" type="text" required value={lastSY}
+                    onChange={(e) => setLastSY(e.target.value)} placeholder="e.g. 2025–2026" autoComplete="off" />
+                </div>
+              </div>
+            </div>
+            <div className="auth-field">
+              <label htmlFor="enr-lschool">School Name <span className="required-star">*</span></label>
+              <div className="auth-input-wrap">
+                <input id="enr-lschool" type="text" required value={lastSchool}
+                  onChange={(e) => setLastSchool(e.target.value)} placeholder="e.g. Cebu City National High School" autoComplete="off" />
+              </div>
+            </div>
+            <div className="auth-form-row">
+              <div className="auth-field">
+                <label htmlFor="enr-lsid">School ID</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-lsid" type="text" value={lastSchoolId}
+                    onChange={(e) => setLastSchoolId(e.target.value)} placeholder="DepEd school ID" autoComplete="off" />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="enr-laddr">School Address</label>
+                <div className="auth-input-wrap">
+                  <input id="enr-laddr" type="text" value={lastSchoolAddress}
+                    onChange={(e) => setLastSchoolAddress(e.target.value)} placeholder="e.g. Osmeña Blvd., Cebu City" autoComplete="off" />
+                </div>
+              </div>
+            </div>
+          </fieldset>
+        )}
 
         <div className="auth-info-box">
           <div>
-            <strong>Preferred class time</strong>
-            <p>Pick when you want your classes. Matching registrar-published schedules are listed below and will be highlighted when you plot your schedule.</p>
+            <strong>Enrolling for {schoolYear} • {semester === '2' ? '2nd' : '1st'} Semester</strong>
+            <p>Set by the school calendar above. All offerings and queues filter to this term.</p>
           </div>
-        </div>
-
-        <div className="auth-field">
-          <label>Class time preference <span className="required-star">*</span></label>
-          <div className="role-pills" role="tablist" aria-label="Class time preference">
-            {(['morning', 'afternoon', 'evening'] as const).map((p) => (
-              <button key={p} type="button" role="tab" aria-selected={dayPref === p}
-                className={`role-pill ${dayPref === p ? 'active' : ''}`}
-                onClick={() => setDayPref(p)}>
-                {p === 'morning' ? '☀️ Morning' : p === 'afternoon' ? '🌤️ Afternoon' : '🌙 Evening'}
-              </button>
-            ))}
-          </div>
-          <span className="field-hint">Saved with your application and pre-applied when you plot schedules.</span>
         </div>
 
         <div className="auth-field">
           <label>Pick a class schedule <span className="field-hint">(optional — plotting opens fully in Section Selection)</span></label>
-          <SchedulePicker key={dayPref} initialDay={dayPref} selectedEdp={chosenSlot?.edp ?? null} onSelect={setChosenSlot} />
+          <SchedulePicker initialDay="morning" selectedEdp={chosenSlot?.edp ?? null} onSelect={setChosenSlot} />
         </div>
 
         <div className="auth-info-box">
@@ -385,13 +739,31 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
           <span className="field-hint">Found on the receipt issued at the Accounting Office. Online payments (GCash, Maya, cards) are not accepted in this form.</span>
         </div>
 
-        <button type="submit" className="auth-btn auth-btn-primary" disabled={busy}>
-          {busy ? (
-            <span className="auth-btn-loading"><span className="auth-spinner" />Submitting Enrollment...</span>
-          ) : (
-            'Submit Enrollment'
-          )}
-        </button>
+        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+          <button
+            type="button"
+            onClick={goBack}
+            style={{ flex: 1, borderRadius: 999, border: '1px solid #cbd5e1', background: '#fff', padding: '15px', fontSize: 13, fontWeight: 800, color: '#0B3D91', cursor: 'pointer' }}
+          >
+            ← Back
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            onMouseEnter={() => setHoverSubmit(true)}
+            onMouseLeave={() => setHoverSubmit(false)}
+            style={{
+              flex: 2, borderRadius: 999, border: 0, background: hoverSubmit ? '#072d78' : '#0a3996',
+              padding: '15px', fontSize: 14, fontWeight: 800, letterSpacing: '.06em', color: '#fff',
+              cursor: busy ? 'default' : 'pointer', boxShadow: '0 14px 30px rgba(10,57,150,.3)',
+              transition: 'background-color .2s ease', opacity: busy ? .7 : 1,
+            }}
+          >
+            {busy ? 'SUBMITTING ENROLLMENT…' : 'SUBMIT ENROLLMENT'}
+          </button>
+        </div>
+        </div>
+        )}
 
         {onSwitchToLogin && (
           <div className="auth-form-footer">

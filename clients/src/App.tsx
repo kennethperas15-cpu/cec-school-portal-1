@@ -5,9 +5,11 @@ import type { UserAuthData } from './components/auth/Login';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { AISupport } from './components/shared/AISupport';
+import { ChatDrawer } from './components/shared/ChatDrawer';
 import { AnnouncementModal } from './components/shared/AnnouncementModal';
 import { PortalLoginLoading } from './components/shared/PortalLoginLoading';
 import api, { clearTokens, getRefreshToken, isRemembered, setTokens } from './services/api';
+import { resetSocket } from './services/socket';
 import { ensureSchoolId } from './services/crud';
 import './styles.css';
 import './login.css';
@@ -127,6 +129,7 @@ export const App = () => {
   const logout = () => {
     clearTokens();
     persistSessionUser(null);
+    resetSocket();
     sessionStorage.removeItem('cec_refresh_token');
     setCurrentUser(null);
     setPendingUser(null);
@@ -171,7 +174,7 @@ export const App = () => {
       ? <TeacherDashboard {...props} />
       : <StudentDashboard {...props} />;
 
-  return <>{dashboard}<AISupport role={role} /><AnnouncementModal role={role} />{message && <div className="toast" role="status">{message}</div>}</>;
+  return <>{dashboard}<AISupport role={role} /><ChatDrawer userId={currentUser.id ?? ''} onNotify={notify} /><AnnouncementModal role={role} />{message && <div className="toast" role="status">{message}</div>}</>;
 };
 
 export default App;
