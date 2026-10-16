@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-surface font-sans text-brand-ink;
+  }
+  ::selection {
+    @apply bg-brand/15;
+  }
+  /* Slim, unobtrusive scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-300;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-white shadow-card;
+  }
+  .card-title {
+    @apply font-serif text-lg font-semibold tracking-tight text-slate-900;
+  }
+  .card-sub {
+    @apply mt-0.5 text-xs text-slate-500;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs font-semibold text-slate-600;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-[#1B365D] text-white shadow-soft hover:bg-[#16304f] active:scale-[.98];
+  }
+  .btn-soft {
+    @apply btn border border-line bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50;
+  }
+  .btn-ghost {
+    @apply btn px-3 py-2 text-slate-600 hover:bg-slate-100;
+  }
+  .field-label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .field {
+    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm outline-none
+      transition placeholder:text-slate-400 focus:border-brand-soft focus:ring-4 focus:ring-brand/10;
+  }
+  .dashed-empty {
+    @apply flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200
+      bg-slate-50/60 px-6 py-10 text-center;
+  }
+  .icon-chip {
+    @apply flex h-10 w-10 items-center justify-center rounded-xl;
+  }
+}

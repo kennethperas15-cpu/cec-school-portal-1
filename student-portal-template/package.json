@@ -1,0 +1,30 @@
+{
+  "name": "student-portal-template",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A modern, polished Student Portal Dashboard template (React + Vite + Tailwind + Recharts + Lucide).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "smoke": "vite build --ssr src/ssr-smoke.tsx --outDir dist-ssr --logLevel error && node dist-ssr/ssr-smoke.js"
+  },
+  "dependencies": {
+    "lucide-react": "^0.400.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.13.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

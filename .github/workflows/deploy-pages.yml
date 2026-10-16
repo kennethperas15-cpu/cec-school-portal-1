@@ -26,7 +26,9 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: clients/package-lock.json
+          cache-dependency-path: |
+            clients/package-lock.json
+            student-portal-template/package-lock.json
 
       - name: Install client dependencies
         working-directory: clients
@@ -36,13 +38,30 @@ jobs:
         working-directory: clients
         run: npm run build
 
+      - name: Install template dependencies
+        working-directory: student-portal-template
+        run: npm ci
+
+      - name: Build template
+        working-directory: student-portal-template
+        run: npm run build
+
+      # Portal at "/" and the standalone template at "/template/".
+      - name: Assemble Pages site
+        run: |
+          mkdir -p pages
+          cp -r clients/dist/. pages/
+          mkdir -p pages/template
+          cp -r student-portal-template/dist/. pages/template/
+          touch pages/.nojekyll
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: clients/dist
+          path: pages
 
   deploy:
     environment:
