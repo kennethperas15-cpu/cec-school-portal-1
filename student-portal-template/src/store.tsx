@@ -51,6 +51,8 @@ type Store = AppState & {
   restoring: boolean;
   signIn: (identifier: string, password: string) => Promise<boolean>;
   signOut: () => void;
+  /** Abandon a stalled silent refresh and go straight to the sign-in screen. */
+  cancelRestore: () => void;
   clearAuthError: () => void;
 
   /* --- live academic context --- */
@@ -156,7 +158,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
     void (async () => {
       const refreshed = await cecRefresh(expired.refreshToken);
-      if (cancelled) return;
+      // Abandon the result if the component unmounted or the user bailed out.
+      if (cancelled || stale.current !== expired) return;
       if (refreshed.ok) {
         saveSession(refreshed.data);
         setSession(refreshed.data);
@@ -168,6 +171,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  const cancelRestore = useCallback(() => {
+    stale.current = null;
+    clearSession();
+    setRestoring(false);
   }, []);
 
   useEffect(() => {
@@ -248,6 +257,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         setAuthError('');
         notify('Signed out of the CEC portal', 'info');
       },
+
+      cancelRestore,
 
       clearAuthError: () => setAuthError(''),
 
@@ -332,6 +343,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     bulletins,
     bulletinsLoading,
     refreshBulletins,
+    cancelRestore,
   ]);
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;

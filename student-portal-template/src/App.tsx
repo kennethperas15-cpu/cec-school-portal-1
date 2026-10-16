@@ -50,10 +50,22 @@ const BANNER_TARGET: Record<BannerAction, string> = {
 const norm = (value: string) => value.toLowerCase().replace(/\s+/g, '');
 
 /** Shown while an expired session is refreshed against the API. */
-const Restoring = () => (
-  <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#0E2340] text-blue-100">
+const Restoring = ({ onCancel }: { onCancel: () => void }) => (
+  <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0E2340] px-6 text-center text-blue-100">
     <Loader2 className="h-6 w-6 animate-spin" />
-    <p className="text-sm font-medium">Restoring your CEC portal session…</p>
+    <div>
+      <p className="text-sm font-semibold">Restoring your CEC portal session…</p>
+      <p className="mt-1 text-xs text-blue-200/70">
+        The portal service can take a moment to wake up. You are not stuck here.
+      </p>
+    </div>
+    <button
+      type="button"
+      onClick={onCancel}
+      className="rounded-xl border border-white/25 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+    >
+      Sign in again instead
+    </button>
   </div>
 );
 
@@ -148,7 +160,7 @@ export const App = () => {
     }
   };
 
-  if (store.restoring) return <Restoring />;
+  if (store.restoring) return <Restoring onCancel={store.cancelRestore} />;
   if (!signedIn) return <Login />;
 
   const dashboard = (
