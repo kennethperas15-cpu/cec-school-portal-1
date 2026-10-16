@@ -8,20 +8,60 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { AttendanceRecord, Course, GradeEntry, Profile, ScheduleSlot } from './types';
-import { createSampleState, EMPTY_APP_STATE, type AppState } from './data/sample';
+import type {
+  AttendanceRecord,
+  Bulletin,
+  Course,
+  GradeEntry,
+  Profile,
+  ScheduleSlot,
+  Task,
+} from './types';
+import { EMPTY_APP_STATE, type AppState } from './data/state';
+import {
+  cecAcademicPeriod,
+  cecAnnouncements,
+  cecLogin,
+  cecLogout,
+  cecRefresh,
+  type AcademicPeriod,
+  type CecSession,
+  type CecUser,
+} from './lib/api';
+import { clearSession, isAccessTokenExpired, loadSession, saveSession } from './lib/session';
+import { relativeTime } from './lib/metrics';
 
-const STORAGE_KEY = 'student-portal-template:v3';
+const STORAGE_KEY = 'student-portal-template:v4';
 
 export const uid = (prefix = 'id'): string =>
   `${prefix}_${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-3)}`;
 
-type Toast = { id: string; message: string; tone: 'success' | 'info' };
+type Toast = { id: string; message: string; tone: 'success' | 'info' | 'error' };
+type Tone = Toast['tone'];
 
 type Store = AppState & {
   toast: Toast | null;
-  notify: (message: string, tone?: 'success' | 'info') => void;
-  isSample: boolean;
+  notify: (message: string, tone?: Tone) => void;
+
+  /* --- live session (real CEC accounts) --- */
+  session: CecSession | null;
+  user: CecUser | null;
+  authError: string;
+  signingIn: boolean;
+  restoring: boolean;
+  signIn: (identifier: string, password: string) => Promise<boolean>;
+  signOut: () => void;
+  clearAuthError: () => void;
+
+  /* --- live academic context --- */
+  period: AcademicPeriod | null;
+  periodLabel: string;
+  shortYear: string;
+  bulletins: Bulletin[];
+  bulletinsLoading: boolean;
+  refreshBulletins: () => Promise<void>;
+
+  /* --- local academic records --- */
   setProfile: (patch: Partial<Profile>) => void;
   addCourse: (course: Omit<Course, 'id'>) => void;
   removeCourse: (id: string) => void;
@@ -31,17 +71,25 @@ type Store = AppState & {
   removeGrade: (id: string) => void;
   logAttendance: (record: Omit<AttendanceRecord, 'id'>) => void;
   removeAttendance: (id: string) => void;
+  addTask: (task: Omit<Task, 'id'>) => void;
+  removeTask: (id: string) => void;
   toggleTask: (id: string) => void;
-  loadSample: () => void;
   resetAll: () => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
 
+/** The signed-in CEC account is the source of truth for name and email. */
+const applyUser = (profile: Profile, user: CecUser): Profile => ({
+  ...profile,
+  name: `${user.firstName} ${user.lastName}`.replace(/\s+/g, ' ').trim(),
+  email: user.email,
+});
+
 const load = (): AppState => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createSampleState();
+    if (!raw) return EMPTY_APP_STATE;
     const parsed = JSON.parse(raw) as Partial<AppState>;
     return {
       profile: { ...EMPTY_APP_STATE.profile, ...(parsed.profile ?? {}) },
@@ -53,24 +101,37 @@ const load = (): AppState => {
       tasks: parsed.tasks ?? [],
     };
   } catch {
-    return createSampleState();
+    return EMPTY_APP_STATE;
   }
 };
 
-const isEmpty = (state: AppState): boolean => state.courses.length === 0 && state.grades.length === 0;
-
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
-  // Synchronous init: seed from the sample dataset (or stored data) on first paint.
+  /* Storage and session are read synchronously so the first paint is correct. */
   const [state, setState] = useState<AppState>(load);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [touched, setTouched] = useState(false);
   const timer = useRef<number | null>(null);
+
+  const stale = useRef<CecSession | null>(null);
+  const [session, setSession] = useState<CecSession | null>(() => {
+    const stored = loadSession();
+    if (!stored) return null;
+    if (!isAccessTokenExpired(stored.accessToken)) return stored;
+    stale.current = stored; // expired: needs a refresh round-trip before it can be used
+    return null;
+  });
+  const [restoring, setRestoring] = useState(() => stale.current !== null);
+  const [authError, setAuthError] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
+
+  const [period, setPeriod] = useState<AcademicPeriod | null>(null);
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
+  const [bulletinsLoading, setBulletinsLoading] = useState(true);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
-      /* storage unavailable — the template still works in-memory */
+      /* storage unavailable — the dashboard still works in-memory */
     }
   }, [state]);
 
@@ -81,42 +142,151 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     [],
   );
 
-  const notify = useCallback((message: string, tone: 'success' | 'info' = 'success') => {
+  const notify = useCallback((message: string, tone: Tone = 'success') => {
     setToast({ id: uid('t'), message, tone });
     if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setToast(null), 2600);
+    timer.current = window.setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const store = useMemo<Store>(
-    () => ({
+  /* ------------------------- session bootstrap ------------------------- */
+
+  useEffect(() => {
+    const expired = stale.current;
+    if (!expired) return;
+    let cancelled = false;
+    void (async () => {
+      const refreshed = await cecRefresh(expired.refreshToken);
+      if (cancelled) return;
+      if (refreshed.ok) {
+        saveSession(refreshed.data);
+        setSession(refreshed.data);
+      } else {
+        clearSession();
+      }
+      setRestoring(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    setState((s) => ({ ...s, profile: applyUser(s.profile, session.user) }));
+  }, [session]);
+
+  /* ----------------------- live academic context ----------------------- */
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await cecAcademicPeriod();
+      if (!cancelled && result.ok) setPeriod(result.data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const refreshBulletins = useCallback(async () => {
+    setBulletinsLoading(true);
+    const result = await cecAnnouncements('students');
+    setBulletinsLoading(false);
+    if (!result.ok) return;
+    setBulletins(
+      result.data.map((row) => ({
+        id: row.id,
+        category: row.category || 'General',
+        title: row.title,
+        body: row.content,
+        relative: relativeTime(row.published_at),
+        author: row.published_by_name || undefined,
+      })),
+    );
+  }, []);
+
+  useEffect(() => {
+    void refreshBulletins();
+  }, [refreshBulletins]);
+
+  /* ------------------------------- actions ----------------------------- */
+
+  const store = useMemo<Store>(() => {
+    const periodLabel = period ? `AY ${period.schoolYear} • ${period.semester}` : '';
+    const shortYear = period ? `AY ${period.schoolYear}` : '';
+
+    return {
       ...state,
       toast,
       notify,
-      isSample: !touched && !isEmpty(state),
+
+      session,
+      user: session?.user ?? null,
+      authError,
+      signingIn,
+      restoring,
+
+      signIn: async (identifier, password) => {
+        setAuthError('');
+        setSigningIn(true);
+        const result = await cecLogin(identifier.trim(), password);
+        setSigningIn(false);
+        if (!result.ok) {
+          setAuthError(result.message);
+          return false;
+        }
+        saveSession(result.data);
+        setSession(result.data);
+        notify(`Signed in as ${result.data.user.firstName} ${result.data.user.lastName}`);
+        return true;
+      },
+
+      signOut: () => {
+        if (session) void cecLogout(session.refreshToken); // best-effort server-side revoke
+        clearSession();
+        setSession(null);
+        setAuthError('');
+        notify('Signed out of the CEC portal', 'info');
+      },
+
+      clearAuthError: () => setAuthError(''),
+
+      period,
+      periodLabel,
+      shortYear,
+      bulletins,
+      bulletinsLoading,
+      refreshBulletins,
+
       setProfile: (patch) => setState((s) => ({ ...s, profile: { ...s.profile, ...patch } })),
+
       addCourse: (course) => {
+        let added = false;
         setState((s) => {
-          if (s.courses.some((c) => c.code.trim().toLowerCase() === course.code.trim().toLowerCase())) {
-            return s;
-          }
+          if (s.courses.some((c) => c.code.trim().toLowerCase() === course.code.trim().toLowerCase())) return s;
+          added = true;
           return { ...s, courses: [...s.courses, { ...course, id: uid('c') }] };
         });
-        setTouched(true);
-        notify(`Enrolled in ${course.code || 'course'}`);
+        notify(added ? `Enrolled in ${course.code || 'course'}` : `${course.code} is already in your load`, added ? 'success' : 'info');
       },
+
       removeCourse: (id) =>
-        setState((s) => ({
-          ...s,
-          courses: s.courses.filter((c) => c.id !== id),
-          schedule: s.schedule.filter((slot) => slot.courseId !== id),
-          grades: s.grades.filter((g) => g.course !== s.courses.find((c) => c.id === id)?.code),
-        })),
+        setState((s) => {
+          const target = s.courses.find((c) => c.id === id);
+          return {
+            ...s,
+            courses: s.courses.filter((c) => c.id !== id),
+            schedule: s.schedule.filter((slot) => slot.courseId !== id),
+            grades: target ? s.grades.filter((g) => g.course !== target.code) : s.grades,
+          };
+        }),
+
       addSchedule: (slot) => {
         setState((s) => ({ ...s, schedule: [...s.schedule, { ...slot, id: uid('s') }] }));
-        setTouched(true);
         notify('Class added to your timetable');
       },
       removeSchedule: (id) => setState((s) => ({ ...s, schedule: s.schedule.filter((x) => x.id !== id) })),
+
       addGrade: (grade) => {
         setState((s) => {
           const without = s.grades.filter(
@@ -124,32 +294,45 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           );
           return { ...s, grades: [...without, { ...grade, id: uid('g') }] };
         });
-        setTouched(true);
         notify('Grade recorded');
       },
       removeGrade: (id) => setState((s) => ({ ...s, grades: s.grades.filter((g) => g.id !== id) })),
-      logAttendance: (record) =>
-        setState((s) => ({ ...s, attendance: [...s.attendance, { ...record, id: uid('a') }] })),
-      removeAttendance: (id) =>
-        setState((s) => ({ ...s, attendance: s.attendance.filter((a) => a.id !== id) })),
+
+      logAttendance: (record) => {
+        setState((s) => ({ ...s, attendance: [...s.attendance, { ...record, id: uid('a') }] }));
+        notify(`Marked ${record.status.toLowerCase()} for ${record.course}`);
+      },
+      removeAttendance: (id) => setState((s) => ({ ...s, attendance: s.attendance.filter((a) => a.id !== id) })),
+
+      addTask: (task) => {
+        setState((s) => ({ ...s, tasks: [...s.tasks, { ...task, id: uid('k') }] }));
+        notify(`Task added: ${task.title}`);
+      },
+      removeTask: (id) => setState((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== id) })),
       toggleTask: (id) =>
         setState((s) => ({
           ...s,
           tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
         })),
-      loadSample: () => {
-        setTouched(false);
-        setState(createSampleState());
-        notify('Sample dataset loaded', 'info');
-      },
+
       resetAll: () => {
-        setTouched(false);
-        setState(EMPTY_APP_STATE);
-        notify('All template data cleared', 'info');
+        setState((s) => ({ ...EMPTY_APP_STATE, profile: { ...EMPTY_APP_STATE.profile, ...(session ? applyUser(s.profile, session.user) : {}) } }));
+        notify('All local academic records cleared', 'info');
       },
-    }),
-    [state, toast, notify, touched],
-  );
+    };
+  }, [
+    state,
+    toast,
+    notify,
+    session,
+    authError,
+    signingIn,
+    restoring,
+    period,
+    bulletins,
+    bulletinsLoading,
+    refreshBulletins,
+  ]);
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 };

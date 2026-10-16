@@ -32,6 +32,8 @@ type SidebarProps = {
   onNavigate: (item: NavItem) => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  /** Live academic year label from the CEC portal API, e.g. "AY 2026-2027". */
+  yearLabel: string;
 };
 
 const NavButton = ({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) => {
@@ -53,7 +55,7 @@ const NavButton = ({ item, active, onClick }: { item: NavItem; active: boolean; 
   );
 };
 
-export const Sidebar = ({ active, onNavigate, mobileOpen, onCloseMobile }: SidebarProps) => (
+export const Sidebar = ({ active, onNavigate, mobileOpen, onCloseMobile, yearLabel }: SidebarProps) => (
   <>
     {mobileOpen && (
       <div className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden" onClick={onCloseMobile} aria-hidden="true" />
@@ -85,7 +87,7 @@ export const Sidebar = ({ active, onNavigate, mobileOpen, onCloseMobile }: Sideb
       <div className="px-5">
         <span className="inline-flex items-center gap-2 rounded-lg bg-[#EEF2F7] px-3 py-1.5 text-[11px] font-semibold text-slate-700">
           <span className="h-2 w-2 rounded-full bg-[#1B365D]" />
-          Active Student • AY 2025–2026
+          Active Student{yearLabel ? ` • ${yearLabel}` : ''}
         </span>
       </div>
 

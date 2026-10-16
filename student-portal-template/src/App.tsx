@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
-import { CheckCircle2, Info, RotateCcw, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, RotateCcw } from 'lucide-react';
 import { Sidebar, type NavKey } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
+import { Login } from './components/Login';
 import { WelcomeBanner, type BannerAction } from './components/WelcomeBanner';
 import { StatCards, type StatAction } from './components/StatCards';
 import { TodaySchedule } from './components/TodaySchedule';
@@ -10,6 +11,11 @@ import { CourseLoad } from './components/CourseLoad';
 import { AttendanceAudit } from './components/AttendanceAudit';
 import { Bulletins } from './components/Bulletins';
 import { TermMilestones } from './components/TermMilestones';
+import { ScheduleView } from './components/views/ScheduleView';
+import { CoursesView } from './components/views/CoursesView';
+import { GradesView } from './components/views/GradesView';
+import { AttendanceView } from './components/views/AttendanceView';
+import { SettingsView } from './components/views/SettingsView';
 import { Modal } from './components/ui/Modal';
 import {
   AttendanceForm,
@@ -20,7 +26,7 @@ import {
   TasksModal,
 } from './components/DataForms';
 import { useStore } from './store';
-import { DEFAULT_AY, SAMPLE_BULLETINS, SAMPLE_MILESTONES } from './data/sample';
+import { CEC_WEBSITE_URL } from './lib/api';
 import {
   attendanceSummary,
   benchmarkData,
@@ -34,22 +40,41 @@ import {
 
 type ModalKey = BannerAction | 'profile' | 'tasks' | 'notifications';
 
-const BANNER_TARGET: Record<BannerAction, { nav: NavKey; anchor: string }> = {
-  schedule: { nav: 'schedule', anchor: 'schedule' },
-  grade: { nav: 'grades', anchor: 'benchmark' },
-  attendance: { nav: 'attendance', anchor: 'attendance' },
-  course: { nav: 'courses', anchor: 'courses' },
+const BANNER_TARGET: Record<BannerAction, string> = {
+  schedule: 'schedule',
+  grade: 'benchmark',
+  attendance: 'attendance',
+  course: 'courses',
 };
 
 const norm = (value: string) => value.toLowerCase().replace(/\s+/g, '');
+
+/** Shown while an expired session is refreshed against the API. */
+const Restoring = () => (
+  <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#0E2340] text-blue-100">
+    <Loader2 className="h-6 w-6 animate-spin" />
+    <p className="text-sm font-medium">Restoring your CEC portal session…</p>
+  </div>
+);
 
 export const App = () => {
   const store = useStore();
   const [modal, setModal] = useState<ModalKey | null>(null);
   const [active, setActive] = useState<NavKey>('dashboard');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [ay, setAy] = useState(DEFAULT_AY);
   const [query, setQuery] = useState('');
+
+  const signedIn = !!store.session;
+
+  /* Switching accounts must never leak the previous session's view state. */
+  useEffect(() => {
+    if (!signedIn) {
+      setActive('dashboard');
+      setQuery('');
+      setMobileOpen(false);
+      setModal(null);
+    }
+  }, [signedIn]);
 
   const close = () => setModal(null);
 
@@ -75,7 +100,10 @@ export const App = () => {
     [store.schedule, q],
   );
   const visibleCourses = useMemo(
-    () => store.courses.filter((course) => match(course.code, course.title, course.instructor, course.section, course.kind)),
+    () =>
+      store.courses.filter((course) =>
+        match(course.code, course.title, course.instructor, course.section, course.kind),
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [store.courses, q],
   );
@@ -96,30 +124,96 @@ export const App = () => {
 
   const handleNavigate = (item: { key: NavKey; anchor?: string }) => {
     setMobileOpen(false);
+
     if (item.key === 'logout') {
-      store.notify('Sign-out is stubbed in this template.', 'info');
-      setActive('dashboard');
+      store.signOut();
       return;
     }
-    if (item.key === 'settings') {
-      setActive('settings');
-      setModal('profile');
-      return;
-    }
+
+    if (item.key !== 'dashboard') setQuery('');
     setActive(item.key);
-    scrollTo(item.anchor ?? 'top');
+
+    if (item.key === 'dashboard') scrollTo(item.anchor ?? 'top');
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBannerAction = (action: BannerAction) => {
-    const target = BANNER_TARGET[action];
-    setActive(target.nav);
-    scrollTo(target.anchor);
+    setActive('dashboard');
+    scrollTo(BANNER_TARGET[action]);
   };
 
   const handleClear = () => {
-    if (window.confirm('Clear all courses, grades, schedule and attendance? This cannot be undone.')) {
+    if (window.confirm('Clear every course, grade, class and attendance entry stored in this browser?')) {
       store.resetAll();
     }
+  };
+
+  if (store.restoring) return <Restoring />;
+  if (!signedIn) return <Login />;
+
+  const dashboard = (
+    <>
+      <WelcomeBanner
+        profile={store.profile}
+        ay={store.periodLabel}
+        lecturesToday={allToday.length}
+        standing={store.insights.standing}
+        onOpenProfile={() => setModal('profile')}
+        onAction={handleBannerAction}
+      />
+
+      <StatCards
+        courseCount={store.courses.length}
+        units={units}
+        gpa={gpa}
+        gpaDelta={store.insights.gpaDelta}
+        rankLabel={store.insights.rankLabel}
+        attendance={attendance}
+        classesTodayCount={allToday.length}
+        nextClassLabel={nextClassHint(allToday)}
+        taskCount={tasks.length}
+        taskSummary={taskSummary}
+        onAction={(action: StatAction) => setModal(action)}
+      />
+
+      <div className="animate-fade-in grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          <TodaySchedule slots={visibleToday} onAdd={() => setModal('schedule')} onRemove={store.removeSchedule} />
+          <PerformanceBenchmark
+            data={visibleBenchmark}
+            standing={store.insights.standing}
+            composite={composite}
+            onAdd={() => setModal('grade')}
+          />
+          <Bulletins
+            bulletins={store.bulletins}
+            loading={store.bulletinsLoading}
+            onOpenAll={() => setModal('notifications')}
+            onRefresh={() => void store.refreshBulletins()}
+          />
+          <CourseLoad
+            courses={visibleCourses}
+            grades={store.grades}
+            onAdd={() => setModal('course')}
+            onRemove={store.removeCourse}
+          />
+        </div>
+
+        <div className="space-y-5">
+          <AttendanceAudit summary={attendance} onAdd={() => setModal('attendance')} />
+          <TermMilestones milestones={[]} />
+        </div>
+      </div>
+    </>
+  );
+
+  const views: Record<string, ReactNode> = {
+    dashboard,
+    schedule: <ScheduleView onAdd={() => setModal('schedule')} />,
+    courses: <CoursesView onAdd={() => setModal('course')} />,
+    grades: <GradesView onAdd={() => setModal('grade')} />,
+    attendance: <AttendanceView onAdd={() => setModal('attendance')} />,
+    settings: <SettingsView onEditProfile={() => setModal('profile')} />,
   };
 
   return (
@@ -129,84 +223,40 @@ export const App = () => {
         onNavigate={handleNavigate}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        yearLabel={store.shortYear}
       />
 
       <div className="lg:pl-60">
         <Topbar
           profile={store.profile}
-          ay={ay}
-          onAyChange={setAy}
+          periodLabel={store.periodLabel}
+          schoolId={store.user?.schoolId}
           query={query}
           onQueryChange={setQuery}
-          notificationCount={SAMPLE_BULLETINS.length}
+          notificationCount={store.bulletins.length}
           onOpenMobile={() => setMobileOpen(true)}
           onOpenProfile={() => setModal('profile')}
           onOpenNotifications={() => setModal('notifications')}
         />
 
         <main id="top" className="mx-auto max-w-[1440px] space-y-5 p-4 sm:p-6">
-          <WelcomeBanner
-            profile={store.profile}
-            ay={ay}
-            lecturesToday={allToday.length}
-            onOpenProfile={() => setModal('profile')}
-            onAction={handleBannerAction}
-          />
-
-          <StatCards
-            courseCount={store.courses.length}
-            units={units}
-            gpa={gpa}
-            gpaDelta={store.insights.gpaDelta}
-            rankLabel={store.insights.rankLabel}
-            attendance={attendance}
-            classesTodayCount={allToday.length}
-            nextClassLabel={nextClassHint(allToday)}
-            taskCount={tasks.length}
-            taskSummary={taskSummary}
-            onAction={(action: StatAction) => setModal(action)}
-          />
-
-          <div className="animate-fade-in grid grid-cols-1 gap-5 lg:grid-cols-3">
-            <div className="space-y-5 lg:col-span-2">
-              <TodaySchedule slots={visibleToday} onAdd={() => setModal('schedule')} onRemove={store.removeSchedule} />
-              <PerformanceBenchmark
-                data={visibleBenchmark}
-                standing={store.insights.standing}
-                composite={composite}
-                onAdd={() => setModal('grade')}
-              />
-              <Bulletins bulletins={SAMPLE_BULLETINS} onOpenAll={() => setModal('notifications')} />
-              <CourseLoad
-                courses={visibleCourses}
-                grades={store.grades}
-                onAdd={() => setModal('course')}
-                onRemove={store.removeCourse}
-              />
-            </div>
-
-            <div className="space-y-5">
-              <AttendanceAudit summary={attendance} onAdd={() => setModal('attendance')} />
-              <TermMilestones milestones={SAMPLE_MILESTONES} />
-            </div>
-          </div>
+          {views[active] ?? dashboard}
 
           <footer className="flex flex-col items-center justify-between gap-3 border-t border-line pt-5 text-xs text-slate-400 sm:flex-row">
-            <p>Cebu Eastern College · Student Portal — template dashboard. Data is stored locally in your browser.</p>
+            <p>Cebu Eastern College · Student Portal — academic records are stored in this browser only.</p>
             <div className="flex items-center gap-1">
-              <button
-                type="button"
+              <a
+                href={CEC_WEBSITE_URL}
                 className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-semibold text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                onClick={store.loadSample}
               >
-                <Sparkles className="h-3.5 w-3.5" /> Load sample data
-              </button>
+                <ExternalLink className="h-3.5 w-3.5" /> CEC website
+              </a>
               <button
                 type="button"
                 className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-semibold text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                 onClick={handleClear}
               >
-                <RotateCcw className="h-3.5 w-3.5" /> Reset template data
+                <RotateCcw className="h-3.5 w-3.5" /> Clear local records
               </button>
             </div>
           </footer>
@@ -224,31 +274,55 @@ export const App = () => {
         open={modal === 'notifications'}
         onClose={close}
         title="Notifications"
-        subtitle={`${SAMPLE_BULLETINS.length} recent university notices`}
+        subtitle={
+          store.bulletinsLoading
+            ? 'Loading notices from the CEC portal…'
+            : `${store.bulletins.length} published notice${store.bulletins.length === 1 ? '' : 's'}`
+        }
       >
-        <ul className="space-y-2">
-          {SAMPLE_BULLETINS.map((bulletin) => (
-            <li key={bulletin.id} className="rounded-xl bg-[#F4F7FB] p-3.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="chip bg-white text-slate-600">{bulletin.category}</span>
-                <span className="text-[11px] font-medium text-slate-400">{bulletin.relative}</span>
-              </div>
-              <p className="mt-2 text-sm font-semibold text-slate-800">{bulletin.title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500">{bulletin.body}</p>
-            </li>
-          ))}
-        </ul>
+        {store.bulletins.length === 0 ? (
+          <div className="dashed-empty">
+            <span className="icon-chip bg-[#EFF6FF] text-[#2563EB]">
+              <Info className="h-5 w-5" />
+            </span>
+            <p className="text-sm text-slate-500">
+              {store.bulletinsLoading ? 'Loading notices…' : 'No announcements have been published yet.'}
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {store.bulletins.map((bulletin) => (
+              <li key={bulletin.id} className="rounded-xl bg-[#F4F7FB] p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="chip bg-white text-slate-600">{bulletin.category}</span>
+                  <span className="text-[11px] font-medium text-slate-400">{bulletin.relative}</span>
+                </div>
+                <p className="mt-2 text-sm font-semibold text-slate-800">{bulletin.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{bulletin.body}</p>
+                {bulletin.author && (
+                  <p className="mt-2 text-[11px] font-medium text-slate-400">Posted by {bulletin.author}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </Modal>
 
       {store.toast && (
         <div className="fixed bottom-5 right-5 z-[60] animate-toast-in">
           <div
             className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
-              store.toast.tone === 'success' ? 'bg-[#1B365D]' : 'bg-slate-700'
+              store.toast.tone === 'success'
+                ? 'bg-[#1B365D]'
+                : store.toast.tone === 'error'
+                  ? 'bg-rose-600'
+                  : 'bg-slate-700'
             }`}
           >
             {store.toast.tone === 'success' ? (
               <CheckCircle2 className="h-4 w-4 text-[#6EE7B7]" />
+            ) : store.toast.tone === 'error' ? (
+              <AlertTriangle className="h-4 w-4 text-rose-100" />
             ) : (
               <Info className="h-4 w-4 text-sky-300" />
             )}

@@ -7,6 +7,8 @@ type WelcomeBannerProps = {
   profile: Profile;
   ay: string;
   lecturesToday: number;
+  /** Official standing from the registrar, empty until grades are posted. */
+  standing: string;
   onOpenProfile: () => void;
   onAction: (action: BannerAction) => void;
 };
@@ -18,12 +20,12 @@ const ACTIONS: { key: BannerAction; label: string; icon: typeof CalendarDays }[]
   { key: 'course', label: 'Enrolled Courses', icon: BookOpen },
 ];
 
-export const WelcomeBanner = ({ profile, ay, lecturesToday, onOpenProfile, onAction }: WelcomeBannerProps) => {
+export const WelcomeBanner = ({ profile, ay, lecturesToday, standing, onOpenProfile, onAction }: WelcomeBannerProps) => {
   const identity = [profile.program, profile.year, profile.section && `Section ${profile.section}`]
     .filter(Boolean)
     .join(' • ');
   const firstName = (profile.name || 'Student').split(/\s+/)[0];
-  const yearLabel = ay.split('•')[0]?.trim() || 'AY 2025–2026';
+  const yearLabel = ay.split('•')[0]?.trim() || 'Academic period';
 
   return (
     <section className="animate-fade-in relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B365D] to-[#1E3A8A] p-6 text-white shadow-navy sm:p-7">
@@ -49,10 +51,25 @@ export const WelcomeBanner = ({ profile, ay, lecturesToday, onOpenProfile, onAct
             Welcome back, {firstName}!
           </h1>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-blue-100">
-            Here is your real-time academic overview for today. You have{' '}
-            <span className="font-semibold text-white">{lecturesToday} lectures scheduled</span> and your current
-            semester trajectory remains on the{' '}
-            <span className="font-semibold text-white">High Distinction honor band</span>.
+            {lecturesToday > 0 ? (
+              <>
+                You have <span className="font-semibold text-white">{lecturesToday} lectures</span> scheduled today.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-white">No lectures are scheduled today</span> — enjoy the quiet.
+              </>
+            )}{' '}
+            {standing ? (
+              <>
+                Your official standing is{' '}
+                <span className="font-semibold text-white">{standing}</span>.
+              </>
+            ) : profile.program ? (
+              <>Grades and standing appear here once your instructors post them.</>
+            ) : (
+              <>Finish your academic profile to unlock grades, attendance and standing.</>
+            )}
           </p>
         </div>
 

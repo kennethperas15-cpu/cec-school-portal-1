@@ -17,6 +17,20 @@ export const formatLongDate = (d = new Date()): string =>
 
 export const todayISO = (): string => new Date().toISOString().slice(0, 10);
 
+/** "2 hours ago" style label for a timestamp coming back from the API. */
+export const relativeTime = (iso: string): string => {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return '';
+  const minutes = Math.round((Date.now() - then) / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+  return new Date(then).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
 export const toMinutes = (time: string): number => {
   const [h, m] = time.split(':').map(Number);
   return (h || 0) * 60 + (m || 0);

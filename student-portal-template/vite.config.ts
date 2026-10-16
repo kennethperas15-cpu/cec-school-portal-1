@@ -32,7 +32,17 @@ export default defineConfig(({ command, isSsrBuild }) => ({
       },
     },
   ],
-  server: { port: 5180, host: '0.0.0.0' },
+  server: {
+    port: 5180,
+    host: '0.0.0.0',
+    proxy: {
+      // Dev only: reach the live CEC API same-origin so CORS never applies on localhost.
+      '/api': {
+        target: 'https://cec-portal-api-5i1q.onrender.com',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     // Vendor chunking only applies to the browser build; SSR externalises deps.
     rollupOptions: isSsrBuild

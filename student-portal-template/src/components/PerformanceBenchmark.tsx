@@ -33,7 +33,7 @@ const BenchTooltip = ({ active, payload }: any) => {
       <p className="text-xs font-bold text-slate-800">{point.course}</p>
       <p className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500">
         <span className="h-2 w-2 rounded-sm bg-[#1E3A8A]" />
-        Alex&apos;s Score
+        Your Score
         <span className="ml-auto font-semibold text-slate-800">{point.you}%</span>
       </p>
       <p className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
@@ -90,7 +90,7 @@ export const PerformanceBenchmark = ({ data, standing, composite, onAdd }: Perfo
               wrapperStyle={{ fontSize: 12, color: '#64748B' }}
             />
             <Bar dataKey="median" name="Class Median" fill="#BFDBFE" radius={[4, 4, 0, 0]} maxBarSize={22} />
-            <Bar dataKey="you" name="Alex's Score" fill="#1E3A8A" radius={[4, 4, 0, 0]} maxBarSize={22}>
+            <Bar dataKey="you" name="Your Score" fill="#1E3A8A" radius={[4, 4, 0, 0]} maxBarSize={22}>
               <LabelList
                 dataKey="you"
                 position="top"

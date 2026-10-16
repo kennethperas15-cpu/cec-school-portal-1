@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { CalendarCheck, Plus } from 'lucide-react';
+import { CalendarCheck, Plus, Trash2 } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { useStore } from '../store';
 import { attendanceSummary, todayISO } from '../lib/metrics';
-import type { AttendanceStatus, Day } from '../types';
-import { COURSE_COLORS, COURSE_KINDS, DAYS, PROGRAM_OPTIONS, TERM_OPTIONS, YEAR_OPTIONS } from '../types';
+import type { AttendanceStatus, Day, TaskType } from '../types';
+import {
+  COURSE_COLORS,
+  COURSE_KINDS,
+  DAYS,
+  PROGRAM_OPTIONS,
+  TASK_TYPES,
+  TERM_OPTIONS,
+  YEAR_OPTIONS,
+} from '../types';
 
 type FormProps = { open: boolean; onClose: () => void };
 
@@ -580,11 +588,11 @@ export const ProfileForm = ({ open, onClose }: FormProps) => {
     >
       <form id="profile-form" className="space-y-4" onSubmit={submit}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Full name">
-            <input className="field" placeholder="Alex Morgan" value={draft.name} onChange={(e) => set('name', e.target.value)} />
+          <Field label="Full name" hint="Managed by your CEC school account">
+            <input className="field bg-slate-50 text-slate-500" value={draft.name} readOnly disabled />
           </Field>
-          <Field label="Student email">
-            <input type="email" className="field" placeholder="alex.morgan@university.edu" value={draft.email} onChange={(e) => set('email', e.target.value)} />
+          <Field label="Student email" hint="School address issued by the registrar">
+            <input className="field bg-slate-50 text-slate-500" value={draft.email} readOnly disabled />
           </Field>
         </div>
         <Field label="Program">
@@ -629,55 +637,150 @@ export const ProfileForm = ({ open, onClose }: FormProps) => {
 /* ------------------------------------------------------------------ */
 
 export const TasksModal = ({ open, onClose }: FormProps) => {
-  const { tasks, toggleTask } = useStore();
+  const { tasks, courses, addTask, removeTask, toggleTask } = useStore();
+  const [title, setTitle] = useState('');
+  const [courseId, setCourseId] = useState('');
+  const [freeCourse, setFreeCourse] = useState('');
+  const [type, setType] = useState<TaskType>(TASK_TYPES[0]);
+  const [due, setDue] = useState('');
+  const [error, setError] = useState('');
+
   const openCount = tasks.filter((t) => !t.done).length;
+  const linked = courses.find((c) => c.id === courseId);
+
+  useEffect(() => {
+    if (!open) return;
+    setTitle('');
+    setCourseId('');
+    setFreeCourse('');
+    setType(TASK_TYPES[0]);
+    setDue('');
+    setError('');
+  }, [open]);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return setError('Give the task a title.');
+    const parsedDue = due ? new Date(`${due}T00:00:00`) : null;
+    addTask({
+      title: title.trim(),
+      course: linked?.code || freeCourse.trim() || 'General',
+      type,
+      due: parsedDue && !Number.isNaN(parsedDue.getTime())
+        ? parsedDue.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
+        : 'No due date',
+      done: false,
+    });
+    setTitle('');
+    setDue('');
+    setFreeCourse('');
+    setError('');
+  };
 
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="Pending Tasks"
-      subtitle={openCount ? `${openCount} item${openCount === 1 ? '' : 's'} need attention` : undefined}
+      subtitle={openCount ? `${openCount} item${openCount === 1 ? '' : 's'} need attention` : 'Nothing outstanding'}
     >
-      {tasks.length === 0 ? (
-        <div className="dashed-empty">
-          <span className="icon-chip bg-emerald-50 text-emerald-600">
-            <CalendarCheck className="h-5 w-5" />
-          </span>
-          <p className="text-sm text-slate-500">No active assignments — you are all caught up.</p>
+      <form className="space-y-4" onSubmit={submit}>
+        <Field label="Task">
+          <input
+            className="field"
+            placeholder="Linked List Lab Report"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Course">
+            {courses.length > 0 ? (
+              <select className="field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+                <option value="">— Select —</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.code}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="field"
+                placeholder="CS 301"
+                value={freeCourse}
+                onChange={(e) => setFreeCourse(e.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Type">
+            <select className="field" value={type} onChange={(e) => setType(e.target.value as TaskType)}>
+              {TASK_TYPES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Due date">
+            <input type="date" className="field" value={due} onChange={(e) => setDue(e.target.value)} />
+          </Field>
         </div>
-      ) : (
-        <ul className="space-y-2">
-          {tasks.map((task) => (
-            <li key={task.id} className="flex items-center gap-3 rounded-2xl border border-line p-3.5">
-              <button
-                type="button"
-                onClick={() => toggleTask(task.id)}
-                aria-label={task.done ? 'Mark as pending' : 'Mark as done'}
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
-                  task.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-transparent hover:border-slate-400'
-                }`}
-              >
-                ✓
-              </button>
-              <div className="min-w-0 flex-1">
-                <p className={`truncate text-sm font-semibold ${task.done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-                  {task.title}
-                </p>
-                <p className="truncate text-xs text-slate-500">
-                  {task.course} • Due {task.due}
-                </p>
-              </div>
-              <span className="chip shrink-0 bg-slate-100 text-slate-600">{task.type}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {tasks.length > 0 && (
-        <p className="mt-4 flex items-center gap-1.5 text-[11px] text-slate-400">
-          <Plus className="h-3 w-3" /> Tasks are part of the sample dataset and update live.
-        </p>
-      )}
+
+        <ErrorNote message={error} />
+
+        <button type="submit" className="btn-primary w-full">
+          <Plus className="h-4 w-4" /> Add task
+        </button>
+      </form>
+
+      <div className="mt-5 border-t border-line pt-4">
+        {tasks.length === 0 ? (
+          <div className="dashed-empty">
+            <span className="icon-chip bg-emerald-50 text-emerald-600">
+              <CalendarCheck className="h-5 w-5" />
+            </span>
+            <p className="text-sm text-slate-500">No active assignments — you are all caught up.</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {tasks.map((task) => (
+              <li key={task.id} className="group flex items-center gap-3 rounded-2xl border border-line p-3.5">
+                <button
+                  type="button"
+                  onClick={() => toggleTask(task.id)}
+                  aria-label={task.done ? `Mark ${task.title} as pending` : `Mark ${task.title} as done`}
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+                    task.done
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-slate-300 text-transparent hover:border-slate-400'
+                  }`}
+                >
+                  ✓
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-sm font-semibold ${task.done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                    {task.title}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {task.course} • Due {task.due}
+                  </p>
+                </div>
+                <span className="chip shrink-0 bg-slate-100 text-slate-600">{task.type}</span>
+                <button
+                  type="button"
+                  onClick={() => removeTask(task.id)}
+                  className="shrink-0 text-slate-300 transition hover:text-rose-500"
+                  aria-label={`Delete ${task.title}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Modal>
   );
 };

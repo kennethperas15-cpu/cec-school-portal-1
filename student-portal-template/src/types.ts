@@ -76,6 +76,8 @@ export type AttendanceRecord = {
 
 export type TaskType = 'Lab' | 'Quiz' | 'Project' | 'Exam' | 'Reading';
 
+export const TASK_TYPES: TaskType[] = ['Lab', 'Quiz', 'Project', 'Exam', 'Reading'];
+
 export type Task = {
   id: string;
   title: string;
@@ -85,7 +87,8 @@ export type Task = {
   done: boolean;
 };
 
-export type BulletinCategory = 'Academic Affairs' | 'Department' | 'Facilities' | 'Finance' | 'System';
+/** Categories are free-form because they come from the live announcements table. */
+export type BulletinCategory = string;
 
 export type Bulletin = {
   id: string;
@@ -94,6 +97,8 @@ export type Bulletin = {
   body: string;
   /** human relative time, e.g. "2 hours ago" */
   relative: string;
+  /** staff member who published the notice, when known */
+  author?: string;
 };
 
 export type Milestone = {
