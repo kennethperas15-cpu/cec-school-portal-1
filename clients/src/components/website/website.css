@@ -73,15 +73,15 @@
 .cecweb-stat span { font-size: 13px; color: #5b6b82; font-weight: 600; }
 
 /* Programs (dark) */
-.cecweb-programs { background: #0a0a0b; color: #fff; padding: clamp(64px, 9vw, 120px) clamp(20px, 7vw, 110px); }
+.cecweb-programs { background: linear-gradient(160deg, #0B3D91 0%, #123f7d 55%, #0B254E 100%); color: #fff; padding: clamp(64px, 9vw, 120px) clamp(20px, 7vw, 110px); }
 .cecweb-programs h2 { font-size: clamp(28px, 4.2vw, 50px); font-weight: 800; letter-spacing: -.02em; }
-.cecweb-programs > p { color: #a1a1aa; font-size: 16px; }
+.cecweb-programs > p { color: #BFDBFE; font-size: 16px; }
 .cecweb-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 34px; }
-.cecweb-level { background: #141416; border: 1px solid #26262b; border-radius: 16px; padding: 24px 20px; transition: transform .3s ease, border-color .3s ease, background-color .3s ease; }
-.cecweb-level:hover { transform: translateY(-4px) scale(1.02); border-color: #FFCA28; background: #1c1c20; }
+.cecweb-level { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 24px 20px; transition: transform .3s ease, border-color .3s ease, background-color .3s ease; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.cecweb-level:hover { transform: translateY(-4px) scale(1.02); border-color: #FFCA28; background: rgba(255,202,40,.12); }
 .cecweb-level b { color: #FFCA28; font-size: 14px; letter-spacing: .14em; }
-.cecweb-level strong { display: block; font-size: 19px; margin: 8px 0 6px; }
-.cecweb-level span { color: #a1a1aa; font-size: 14px; line-height: 1.55; }
+.cecweb-level strong { display: block; font-size: 19px; margin: 8px 0 6px; color: #fff; }
+.cecweb-level span { color: #BFDBFE; font-size: 14px; line-height: 1.55; }
 
 /* Awards */
 .cecweb-awards { background: #fafbfe; padding: clamp(64px, 9vw, 120px) clamp(20px, 7vw, 110px); }
@@ -96,11 +96,11 @@
 .cecweb-award span { font-size: 13px; color: #5b6b82; }
 
 /* Ticker + events */
-.cecweb-ticker { background: #b91c1c; color: #fff; overflow: hidden; white-space: nowrap; padding: 11px 0; font-weight: 700; font-size: 14px; }
+.cecweb-ticker { background: #dbeafe; color: #0B3D91; overflow: hidden; white-space: nowrap; padding: 11px 0; font-weight: 700; font-size: 14px; border-top: 1px solid #bfdbfe; border-bottom: 1px solid #bfdbfe; }
 .cecweb-ticker-track { display: inline-block; padding-left: 100%; animation: cecwebTicker 30s linear infinite; }
 .cecweb-ticker:hover .cecweb-ticker-track { animation-play-state: paused; }
 .cecweb-ticker-track span { margin: 0 34px; }
-.cecweb-ticker-live { background: #fff; color: #b91c1c; border-radius: 6px; padding: 2px 9px; font-size: 11px; margin-right: 8px; }
+.cecweb-ticker-live { background: #0B3D91; color: #fff; border-radius: 6px; padding: 2px 9px; font-size: 11px; margin-right: 8px; }
 @keyframes cecwebTicker { from { transform: translateX(0); } to { transform: translateX(-100%); } }
 .cecweb-events { background: #fff; padding: clamp(56px, 8vw, 100px) clamp(20px, 7vw, 110px); }
 .cecweb-events h2 { font-size: clamp(28px, 4vw, 46px); font-weight: 800; letter-spacing: -.02em; color: #0f1f38; }

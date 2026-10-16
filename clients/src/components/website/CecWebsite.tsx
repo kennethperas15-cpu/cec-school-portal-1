@@ -23,7 +23,7 @@ const LEVELS: [string, string, string][] = [
 const AWARDS: [string, string, string][] = [
   ['2026', 'Regional Academic Excellence Award', 'DepEd Region VII'],
   ['2026', 'Champion — Regional Math Olympiad', 'Philippine Math Society'],
-  ['2025', 'Top Performing School — Nursing Board', 'Professional Regulation Commission'],
+  ['2025', 'Top Performing School — Licensure Exam for Professional Teachers', 'Professional Regulation Commission'],
   ['2025', 'Outstanding Chinese-Filipino School', 'CFA Federation'],
   ['2024', 'Gold — International Science & Math Quiz', 'ICAS Assessment'],
   ['2024', 'Best School Athletics Program', 'Cebu City Sports Council'],
