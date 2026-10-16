@@ -62,7 +62,7 @@ function fail(message) {
   process.exit(1);
 }
 
-const SOURCES = ['src', 'public', 'index.html', 'vite.config.ts', 'package.json', '.env', '.env.local']
+const SOURCES = ['src', 'public', 'index.html', 'vite.config.ts', 'package.json', '.env', '.env.local', '.env.production']
   .map((entry) => path.join(CLIENTS, entry));
 
 const builtIndex = path.join(OUT, 'index.html');
@@ -86,10 +86,14 @@ const staging = path.join(os.tmpdir(), 'opencode', 'cec-portal-dev');
 console.log('[portal] building the CEC portal for 5173…');
 fs.rmSync(staging, { recursive: true, force: true });
 
+// This is a production-mode build, so clients/.env.production (the live API
+// address) would otherwise be baked into the dev copy. Force the relative value
+// that the 5173 dev server proxies to 127.0.0.1:4000, so local work never talks
+// to the deployed API or falls foul of its CORS allow-list.
 const result = spawnSync(
   process.execPath,
   [viteBin, 'build', '--outDir', staging, '--emptyOutDir', '--logLevel', 'warn'],
-  { cwd: CLIENTS, stdio: 'inherit' },
+  { cwd: CLIENTS, stdio: 'inherit', env: { ...process.env, VITE_API_URL: '/api' } },
 );
 if (result.status !== 0) fail(`the portal build failed (exit ${result.status ?? 'unknown'})`);
 
