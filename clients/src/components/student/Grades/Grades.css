@@ -1,0 +1,3115 @@
+
+
+.student-grades-001 {
+  width: 1305.47px;
+  padding-left: 260px;
+  padding-right: 25.47px;
+  position: relative;
+  background: linear-gradient(0deg, #FAF8FF 0%, #FAF8FF 100%), white;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-002 {
+  align-self: stretch;
+  padding-top: 64px;
+  background: #FAF8FF;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-003 {
+  width: 100%;
+  max-width: 1600px;
+  padding: 32px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 24px;
+  display: flex;
+}
+
+.student-grades-004 {
+  align-self: stretch;
+  padding-bottom: 4px;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-005 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-006 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  display: flex;
+}
+
+.student-grades-007 {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: rgba(216, 226, 255, 0.50);
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.student-grades-008 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-009 {
+  width: 10.67px;
+  height: 13.33px;
+  background: #0058BE;
+}
+
+.student-grades-010 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #001A42;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-011 {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: #E2E7FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-012 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-013 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-014 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 30px;
+  font-family: Liberation Serif;
+  font-weight: 600;
+  line-height: 36;
+  word-wrap: break-word;
+}
+
+.student-grades-015 {
+  align-self: stretch;
+  height: 48px;
+  position: relative;
+}
+
+.student-grades-016 {
+  left: 0;
+  top: -0.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 15px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-017 {
+  left: 328.77px;
+  top: 1.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-018 {
+  left: 432.69px;
+  top: -0.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 15px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-019 {
+  left: 0;
+  top: 23.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 15px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-020 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 7.99px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+}
+
+.student-grades-021 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.student-grades-022 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-023 {
+  width: 15px;
+  height: 16.50px;
+  background: #0058BE;
+}
+
+.student-grades-024 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-025 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.student-grades-026 {
+  width: 12px;
+  height: 12px;
+  background: white;
+}
+
+.student-grades-027 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-028 {
+  align-self: stretch;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.student-grades-029 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 14.50px;
+  display: inline-flex;
+}
+
+.student-grades-030 {
+  align-self: stretch;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-031 {
+  padding-right: 29.78px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-032 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.student-grades-033 {
+  width: 27.98px;
+  height: 28px;
+  background: rgba(30, 58, 138, 0.10);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-034 {
+  width: 16.50px;
+  height: 13.50px;
+  background: #1E3A8A;
+}
+
+.student-grades-035 {
+  align-self: stretch;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-036 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 2px;
+  display: flex;
+}
+
+.student-grades-037 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-038 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 36px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.student-grades-039 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 20px;
+  font-family: Liberation Serif;
+  font-weight: 600;
+  line-height: 28;
+  word-wrap: break-word;
+}
+
+.student-grades-040 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-041 {
+  align-self: stretch;
+  padding-top: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-042 {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 8px;
+  padding-right: 31.59px;
+  background: #D8E2FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-043 {
+  width: 11.67px;
+  height: 11.67px;
+  background: #001A42;
+}
+
+.student-grades-044 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #001A42;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-045 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 16.50px;
+  display: inline-flex;
+}
+
+.student-grades-046 {
+  padding-right: 16.71px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-047 {
+  width: 25.17px;
+  height: 28px;
+  background: rgba(33, 112, 228, 0.10);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-048 {
+  width: 15px;
+  height: 9px;
+  background: #0058BE;
+}
+
+.student-grades-049 {
+  align-self: stretch;
+  height: 44px;
+  position: relative;
+}
+
+.student-grades-050 {
+  left: 0;
+  top: 0;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 36px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.student-grades-051 {
+  left: 67.41px;
+  top: 21.50px;
+  position: absolute;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-052 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-053 {
+  align-self: stretch;
+  padding-top: 4px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.student-grades-054 {
+  width: 7.05px;
+  height: 8px;
+  background: #2170E4;
+  border-radius: 9999px;
+}
+
+.student-grades-055 {
+  padding-right: 27.83px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-056 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 9.50px;
+  display: inline-flex;
+}
+
+.student-grades-057 {
+  padding-right: 36.25px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-058 {
+  width: 26.33px;
+  height: 28px;
+  background: rgba(201, 230, 255, 0.30);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-059 {
+  width: 15px;
+  height: 15px;
+  background: #004565;
+}
+
+.student-grades-060 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  display: flex;
+}
+
+.student-grades-061 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 3.99px;
+  display: inline-flex;
+}
+
+.student-grades-062 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 36px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.student-grades-063 {
+  align-self: stretch;
+  height: 8px;
+  position: relative;
+  background: #E2E7FF;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.student-grades-064 {
+  width: 96.04px;
+  height: 8px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #2170E4;
+  border-radius: 9999px;
+}
+
+.student-grades-065 {
+  align-self: stretch;
+  padding-top: 8.50px;
+  padding-bottom: 3.50px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  display: flex;
+}
+
+.student-grades-066 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 9px;
+  display: inline-flex;
+}
+
+.student-grades-067 {
+  padding-right: 33.11px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-068 {
+  width: 26.08px;
+  height: 28px;
+  background: rgba(30, 58, 138, 0.10);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-069 {
+  width: 13.50px;
+  height: 13.50px;
+  background: #1E3A8A;
+}
+
+.student-grades-070 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 5.99px;
+  display: inline-flex;
+}
+
+.student-grades-071 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-072 {
+  align-self: stretch;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-073 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 16px;
+  font-family: Liberation Serif;
+  font-weight: 600;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-074 {
+  align-self: stretch;
+  padding-top: 7px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-075 {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 8px;
+  padding-right: 53.22px;
+  background: #F2F3FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-076 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-077 {
+  padding-right: 49.75px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-078 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #90A8FF;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.student-grades-079 {
+  width: 23.81px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-080 {
+  width: 16.50px;
+  height: 15.75px;
+  background: white;
+}
+
+.student-grades-081 {
+  align-self: stretch;
+  padding-top: 7.25px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-082 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: flex;
+}
+
+.student-grades-083 {
+  align-self: stretch;
+  padding-bottom: 0.75px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-084 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 20px;
+  font-family: Liberation Serif;
+  font-weight: 600;
+  line-height: 27.50;
+  word-wrap: break-word;
+}
+
+.student-grades-085 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #90A8FF;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-086 {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 10px;
+  padding-right: 36.95px;
+  background: #2170E4;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-087 {
+  width: 11.67px;
+  height: 11.67px;
+  background: white;
+}
+
+.student-grades-088 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-089 {
+  align-self: stretch;
+  height: 172px;
+  position: relative;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+}
+
+.student-grades-090 {
+  left: 16px;
+  top: 52px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.student-grades-091 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-092 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 20;
+  letter-spacing: 0.70px;
+  word-wrap: break-word;
+}
+
+.student-grades-093 {
+  padding: 4px;
+  background: #F2F3FF;
+  overflow: hidden;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-094 {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: white;
+  border-radius: 6px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-095 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-096 {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-radius: 6px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-097 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-098 {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  left: 908.95px;
+  top: 16px;
+  position: absolute;
+  background: #EAEDFF;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.student-grades-099 {
+  width: 15px;
+  height: 15px;
+  background: #0058BE;
+}
+
+.student-grades-100 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-101 {
+  align-self: stretch;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-102 {
+  align-self: stretch;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  background: rgba(242, 243, 255, 0.50);
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-103 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.student-grades-104 {
+  width: 32px;
+  height: 32px;
+  background: #1E3A8A;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-105 {
+  width: 15px;
+  height: 16.67px;
+  background: white;
+}
+
+.student-grades-106 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 16px;
+  font-family: Liberation Serif;
+  font-weight: 600;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-107 {
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-108 {
+  height: 32px;
+  padding-left: 36px;
+  padding-right: 48px;
+  background: white;
+  border-radius: 6px;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-109 {
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-right: 81.17px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-110 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 15;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-111 {
+  width: 13.50px;
+  height: 9px;
+  left: 12.25px;
+  top: 12.50px;
+  position: absolute;
+  background: #757682;
+}
+
+.student-grades-112 {
+  width: 980px;
+  min-width: 980px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-113 {
+  align-self: stretch;
+  background: #F2F3FF;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-114 {
+  width: 101.67px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 24px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-115 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.student-grades-116 {
+  width: 176.63px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-117 {
+  width: 63.48px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-118 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.student-grades-119 {
+  width: 116.16px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-120 {
+  width: 98.66px;
+  padding: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.student-grades-121 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.student-grades-122 {
+  width: 91.56px;
+  padding: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-123 {
+  width: 87.19px;
+  padding: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.student-grades-124 {
+  width: 114.16px;
+  padding: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-125 {
+  width: 130.50px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 8px;
+  padding-right: 24px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-126 {
+  align-self: stretch;
+  background: white;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-127 {
+  width: 101.67px;
+  padding-top: 27.50px;
+  padding-bottom: 28.50px;
+  padding-left: 24px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-128 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 15px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-129 {
+  width: 168.63px;
+  padding-left: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-130 {
+  width: 71.48px;
+  padding-top: 29.50px;
+  padding-bottom: 30.50px;
+  padding-left: 16px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-131 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-132 {
+  width: 116.16px;
+  padding-top: 19.50px;
+  padding-bottom: 20.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-133 {
+  width: 98.66px;
+  padding-top: 17.50px;
+  padding-bottom: 20px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 7px;
+  display: inline-flex;
+}
+
+.student-grades-134 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-135 {
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-136 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-137 {
+  width: 91.56px;
+  padding-top: 23.50px;
+  padding-bottom: 20.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-138 {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 11.22px;
+  padding-right: 11.23px;
+  background: #EAEDFF;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-139 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-140 {
+  width: 87.19px;
+  height: 80px;
+  position: relative;
+}
+
+.student-grades-141 {
+  left: 20.98px;
+  top: 29.50px;
+  position: absolute;
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-142 {
+  left: 60.78px;
+  top: 32.50px;
+  position: absolute;
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-143 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-144 {
+  width: 114.16px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-145 {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 10px;
+  padding-right: 27.42px;
+  background: #D8E2FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-146 {
+  width: 3.91px;
+  height: 6px;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.student-grades-147 {
+  width: 130.50px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+  padding-left: 8px;
+  padding-right: 24px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-148 {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-left: 15.98px;
+  padding-right: 16px;
+  background: #F2F3FF;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-149 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-150 {
+  width: 101.67px;
+  padding-top: 39.50px;
+  padding-bottom: 40.50px;
+  padding-left: 24px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-151 {
+  width: 71.48px;
+  padding-top: 41.50px;
+  padding-bottom: 42.50px;
+  padding-left: 16px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-152 {
+  width: 116.16px;
+  padding-top: 31.50px;
+  padding-bottom: 32.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-153 {
+  width: 98.66px;
+  padding-top: 29.50px;
+  padding-bottom: 32px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 7px;
+  display: inline-flex;
+}
+
+.student-grades-154 {
+  width: 91.56px;
+  padding-top: 35.50px;
+  padding-bottom: 32.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-155 {
+  width: 87.19px;
+  height: 104px;
+  position: relative;
+}
+
+.student-grades-156 {
+  left: 12.48px;
+  top: 41.50px;
+  position: absolute;
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-157 {
+  left: 52.86px;
+  top: 44.50px;
+  position: absolute;
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-158 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-159 {
+  width: 114.16px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 34px;
+  padding-bottom: 34px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-160 {
+  width: 130.50px;
+  padding-top: 30px;
+  padding-bottom: 30px;
+  padding-left: 8px;
+  padding-right: 24px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-161 {
+  left: 16.31px;
+  top: 41.50px;
+  position: absolute;
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-162 {
+  left: 55.36px;
+  top: 44.50px;
+  position: absolute;
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-163 {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 10px;
+  padding-right: 17.19px;
+  background: rgba(216, 226, 255, 0.70);
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-164 {
+  width: 3.55px;
+  height: 6px;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.student-grades-165 {
+  left: 14.06px;
+  top: 41.50px;
+  position: absolute;
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-166 {
+  left: 53.14px;
+  top: 44.50px;
+  position: absolute;
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-167 {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 10px;
+  padding-right: 26.61px;
+  background: #E2E7FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-168 {
+  width: 4.72px;
+  height: 6px;
+  background: #757682;
+  border-radius: 9999px;
+}
+
+.student-grades-169 {
+  left: 20.78px;
+  top: 41.50px;
+  position: absolute;
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-170 {
+  left: 60.78px;
+  top: 44.50px;
+  position: absolute;
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-171 {
+  width: 101.67px;
+  padding-top: 51.50px;
+  padding-bottom: 52.50px;
+  padding-left: 24px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-172 {
+  width: 71.48px;
+  padding-top: 53.50px;
+  padding-bottom: 54.50px;
+  padding-left: 16px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-173 {
+  width: 116.16px;
+  padding-top: 43.50px;
+  padding-bottom: 44.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-174 {
+  width: 98.66px;
+  padding-top: 41.50px;
+  padding-bottom: 44px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 7px;
+  display: inline-flex;
+}
+
+.student-grades-175 {
+  width: 91.56px;
+  padding-top: 47.50px;
+  padding-bottom: 44.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-176 {
+  width: 87.19px;
+  height: 128px;
+  position: relative;
+}
+
+.student-grades-177 {
+  left: 15.65px;
+  top: 53.50px;
+  position: absolute;
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-178 {
+  left: 55.36px;
+  top: 56.50px;
+  position: absolute;
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-179 {
+  width: 114.16px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 46px;
+  padding-bottom: 46px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-180 {
+  width: 130.50px;
+  padding-top: 42px;
+  padding-bottom: 42px;
+  padding-left: 8px;
+  padding-right: 24px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-181 {
+  width: 278.30px;
+  padding-top: 17.50px;
+  padding-bottom: 18.50px;
+  padding-left: 24px;
+  padding-right: 1px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-182 {
+  width: 63.48px;
+  padding-top: 21.50px;
+  padding-bottom: 22.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-183 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-184 {
+  width: 116.16px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-185 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 13px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-186 {
+  width: 98.66px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.student-grades-187 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-188 {
+  width: 91.56px;
+  padding-top: 22.50px;
+  padding-bottom: 21.50px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.student-grades-189 {
+  width: 87.19px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.student-grades-190 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 20px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 28;
+  word-wrap: break-word;
+}
+
+.student-grades-191 {
+  width: 244.66px;
+  padding-top: 29px;
+  padding-bottom: 31px;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-192 {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: #1E3A8A;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-193 {
+  width: 12.77px;
+  height: 7.01px;
+  background: white;
+}
+
+.student-grades-194 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-195 {
+  align-self: stretch;
+  padding: 24px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 120px;
+  display: inline-flex;
+}
+
+.student-grades-196 {
+  align-self: stretch;
+  padding-bottom: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: flex;
+}
+
+.student-grades-197 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 13px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-198 {
+  align-self: stretch;
+  padding-top: 12px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.student-grades-199 {
+  width: 112px;
+  height: 112px;
+  position: relative;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-200 {
+  width: 99.03px;
+  height: 99.03px;
+  left: 6.49px;
+  top: 6.49px;
+  position: absolute;
+  outline: 11.82px #E2E7FF solid;
+  outline-offset: -5.91px;
+}
+
+.student-grades-201 {
+  width: 65.77px;
+  height: 99.03px;
+  left: 39.75px;
+  top: 6.48px;
+  position: absolute;
+  outline: 11.82px #00236F solid;
+  outline-offset: -5.91px;
+}
+
+.student-grades-202 {
+  width: 33.26px;
+  height: 77.18px;
+  left: 6.49px;
+  top: 25.59px;
+  position: absolute;
+  outline: 11.82px #2170E4 solid;
+  outline-offset: -5.91px;
+}
+
+.student-grades-203 {
+  width: 39.08px;
+  height: 19.11px;
+  left: 16.92px;
+  top: 6.48px;
+  position: absolute;
+  outline: 11.82px #89CEFF solid;
+  outline-offset: -5.91px;
+}
+
+.student-grades-204 {
+  width: 112px;
+  height: 112px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-205 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 16px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-206 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 10px;
+  font-family: Inter;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-207 {
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.student-grades-208 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: flex;
+}
+
+.student-grades-209 {
+  width: 7.47px;
+  height: 10px;
+  background: #00236F;
+  border-radius: 9999px;
+}
+
+.student-grades-210 {
+  padding-right: 13.57px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-211 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 13px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-212 {
+  padding-right: 18.73px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-213 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-214 {
+  width: 7.39px;
+  height: 10px;
+  background: #2170E4;
+  border-radius: 9999px;
+}
+
+.student-grades-215 {
+  padding-right: 10.25px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-216 {
+  padding-right: 15.72px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-217 {
+  width: 7.36px;
+  height: 10px;
+  background: #89CEFF;
+  border-radius: 9999px;
+}
+
+.student-grades-218 {
+  padding-right: 10.43px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-219 {
+  padding-right: 16.45px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-220 {
+  align-self: stretch;
+  padding: 8px;
+  background: #EAEDFF;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-221 {
+  padding-top: 2px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-222 {
+  width: 16.50px;
+  height: 15.75px;
+  background: #0058BE;
+}
+
+.student-grades-223 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Liberation Serif;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-224 {
+  align-self: stretch;
+  padding: 24px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.student-grades-225 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.student-grades-226 {
+  width: 14.67px;
+  height: 18.33px;
+  background: #00236F;
+}
+
+.student-grades-227 {
+  align-self: stretch;
+  padding-top: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-228 {
+  align-self: stretch;
+  padding: 8px;
+  background: #F2F3FF;
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-229 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 16px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-230 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-231 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 13px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-232 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-233 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 16px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-234 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 16px;
+  font-family: Liberation Serif;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-235 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-236 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 13px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-237 {
+  align-self: stretch;
+  padding: 16px;
+  background: rgba(226, 231, 255, 0.60);
+  border-radius: 8px;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-238 {
+  width: 40px;
+  height: 40px;
+  background: #1E3A8A;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-239 {
+  width: 13.33px;
+  height: 16.67px;
+  background: white;
+}
+
+.student-grades-240 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-content: center;
+}
+
+.student-grades-241 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 14px;
+  font-family: Liberation Serif;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-242 {
+  width: 14.67px;
+  height: 14px;
+  background: #0058BE;
+}
+
+.student-grades-243 {
+  align-self: stretch;
+  height: 36px;
+  position: relative;
+}
+
+.student-grades-244 {
+  left: 0;
+  top: -0.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-245 {
+  left: 0;
+  top: 18.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-246 {
+  left: 45.39px;
+  top: 15.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-247 {
+  padding-top: 4.50px;
+  padding-bottom: 3.50px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-248 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-249 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.student-grades-250 {
+  width: 1020px;
+  height: 64px;
+  left: 260px;
+  top: 0;
+  position: absolute;
+  background: rgba(255, 255, 255, 0.90);
+  box-shadow: 0px 1px 8px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(12px);
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-251 {
+  align-self: stretch;
+  height: 64px;
+  padding-left: 24px;
+  padding-right: 24px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.student-grades-252 {
+  flex: 1 1 0;
+  max-width: 448px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-253 {
+  align-self: stretch;
+  position: relative;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-254 {
+  flex: 1 1 0;
+  height: 40px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 40px;
+  padding-right: 16px;
+  background: #F2F3FF;
+  overflow: hidden;
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-255 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 13px;
+  font-family: Inter;
+  font-weight: 400;
+  word-wrap: break-word;
+}
+
+.student-grades-256 {
+  width: 15px;
+  height: 15px;
+  left: 14.50px;
+  top: 12.50px;
+  position: absolute;
+  background: #757682;
+}
+
+.student-grades-257 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  display: flex;
+}
+
+.student-grades-258 {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: #EAEDFF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.student-grades-259 {
+  width: 15.75px;
+  height: 16.50px;
+  background: #0058BE;
+}
+
+.student-grades-260 {
+  padding-top: 8px;
+  padding-bottom: 15px;
+  padding-left: 8px;
+  padding-right: 8px;
+  position: relative;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-261 {
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-262 {
+  width: 14.67px;
+  height: 18.33px;
+  background: #444651;
+}
+
+.student-grades-263 {
+  width: 16px;
+  height: 16px;
+  left: 9px;
+  top: 6px;
+  position: absolute;
+  background: #BA1A1A;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.student-grades-264 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 10px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.student-grades-265 {
+  padding-left: 4px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.student-grades-266 {
+  width: 32px;
+  height: 32px;
+  background: #00236F;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-267 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #131B2E;
+  font-size: 16px;
+  font-family: Liberation Serif;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-268 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 15;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-269 {
+  width: 10px;
+  height: 6.17px;
+  background: #757682;
+}
+
+.student-grades-270 {
+  width: 260px;
+  height: 800px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: white;
+  box-shadow: 0px 1px 8px rgba(0, 0, 0, 0.04);
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-271 {
+  align-self: stretch;
+  padding-bottom: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.student-grades-272 {
+  width: 40px;
+  height: 40px;
+  background: #1E3A8A;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.student-grades-273 {
+  width: 22px;
+  height: 18px;
+  background: white;
+}
+
+.student-grades-274 {
+  align-self: stretch;
+  padding-bottom: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-275 {
+  align-self: stretch;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: #F2F3FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.student-grades-276 {
+  width: 8px;
+  height: 8px;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.student-grades-277 {
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.student-grades-278 {
+  align-self: stretch;
+  padding-bottom: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-279 {
+  align-self: stretch;
+  padding-top: 4.50px;
+  padding-bottom: 3.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-280 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.student-grades-281 {
+  align-self: stretch;
+  padding-left: 8px;
+  padding-right: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: flex;
+}
+
+.student-grades-282 {
+  align-self: stretch;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.student-grades-283 {
+  width: 15px;
+  height: 15px;
+  background: #444651;
+}
+
+.student-grades-284 {
+  width: 15px;
+  height: 16.67px;
+  background: #444651;
+}
+
+.student-grades-285 {
+  width: 18.33px;
+  height: 13.33px;
+  background: #444651;
+}
+
+.student-grades-286 {
+  align-self: stretch;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  border-left: 4px #2170E4 solid;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.student-grades-287 {
+  width: 13.33px;
+  height: 17.50px;
+  background: white;
+}
+
+.student-grades-288 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.student-grades-289 {
+  align-self: stretch;
+  padding-top: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.student-grades-290 {
+  width: 16.75px;
+  height: 16.67px;
+  background: #444651;
+}
+
+.student-grades-291 {
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.student-grades-292 {
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
