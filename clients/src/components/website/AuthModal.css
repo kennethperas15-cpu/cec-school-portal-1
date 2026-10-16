@@ -1,7 +1,7 @@
 /* AuthModal — red-pill design, scoped authm-* classes (Tailwind-visual-equivalent). */
 .authm-veil { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 16px; overflow-y: auto; animation: authmFadeIn .25s ease-out; }
 @keyframes authmFadeIn { from { opacity: 0; } to { opacity: 1; } }
-.authm-panel { position: relative; display: flex; flex-direction: row; width: 100%; max-width: 1024px; border-radius: 16px; background: #fff; box-shadow: 0 30px 80px rgba(0,0,0,.4); overflow: hidden; min-height: 600px; animation: authmPopIn .3s cubic-bezier(.32,.72,.35,1); }
+.authm-panel { position: relative; display: flex; flex-direction: row; width: 100%; max-width: 1024px; border-radius: 20px; background: #fff; box-shadow: 0 30px 80px rgba(0,0,0,.4); overflow: hidden; min-height: 600px; animation: authmPopIn .3s cubic-bezier(.32,.72,.35,1); }
 @keyframes authmPopIn { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
 .authm-ad { position: relative; display: none; width: 50%; flex-direction: column; justify-content: space-between; padding: 24px; color: #fff; background: #0f172a; overflow: hidden; }
 @media (min-width: 768px) { .authm-ad { display: flex; } }
@@ -16,10 +16,10 @@
 @media (min-width: 768px) { .authm-form { width: 50%; } }
 .authm-close { position: absolute; right: 16px; top: 16px; border-radius: 999px; padding: 8px; color: #94a3b8; background: transparent; border: 0; cursor: pointer; transition: background-color .2s, color .2s; }
 .authm-close:hover { background: #f1f5f9; color: #475569; }
-.authm-tabs { display: flex; gap: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 24px; }
-.authm-tab { padding: 8px 16px; font-size: 12px; font-weight: 700; border-radius: 8px; border: 0; cursor: pointer; transition: background-color .2s, color .2s; background: #f1f5f9; color: #475569; }
-.authm-tab:hover { background: #e2e8f0; }
-.authm-tab-active { background: #0B3D91; color: #fff; box-shadow: 0 4px 10px rgba(11,61,145,.3); }
+.authm-tabs { display: flex; gap: 4px; background: #eef2f9; border: 0; border-radius: 14px; padding: 5px; margin-bottom: 24px; }
+.authm-tab { flex: 1; padding: 10px 12px; font-size: 12.5px; font-weight: 700; border-radius: 10px; border: 0; cursor: pointer; transition: background-color .2s, color .2s, box-shadow .2s; background: transparent; color: #5b6b82; }
+.authm-tab:hover { background: rgba(255,255,255,.65); color: #0B3D91; }
+.authm-tab-active { background: #fff; color: #0B3D91; box-shadow: 0 2px 8px rgba(15,31,56,.14); }
 .authm-title { font-size: 24px; font-weight: 800; letter-spacing: -.01em; color: #0f172a; margin: 0; }
 .authm-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
 .authm-field { margin-top: 16px; }
@@ -51,69 +51,76 @@
 .authm-mini-label { display: block; font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px; }
 .authm-mini-input, .authm-mini-select { width: 100%; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 12px; box-sizing: border-box; }
 .authm-success { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px; margin-top: 12px; font-size: 13px; color: #14532d; }
-/* Enroll tab — matched to the CEC portal look (navy • gold • sky) */
-.authm-enroll { --en-navy: #0B3D91; --en-deep: #0B254E; --en-gold: #FFCA28; --en-sky: #BFDBFE; --en-ink: #0f1f38; }
-.authm-enroll .auth-form { gap: 14px; }
-.authm-enroll .auth-heading { margin-bottom: 14px; }
-.authm-enroll .auth-title { position: relative; font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: var(--en-ink); padding-bottom: 10px; }
-.authm-enroll .auth-title::after { content: ''; position: absolute; left: 0; bottom: 0; width: 56px; height: 4px; border-radius: 999px; background: linear-gradient(90deg, var(--en-navy), var(--en-gold)); }
+/* Enroll tab — modern CEC onboarding (navy • gold • sky) */
+.authm-enroll { --en-navy: #0B3D91; --en-deep: #0B254E; --en-gold: #FFCA28; --en-ink: #0f1f38; --en-line: #e6ecf6; --en-field: #f4f7fc; }
+.authm-enroll .auth-form { gap: 20px; }
+.authm-enroll .auth-heading { margin-bottom: 16px; }
+.authm-enroll .auth-title { position: relative; font-size: 26px; font-weight: 800; letter-spacing: -.03em; color: var(--en-ink); padding-bottom: 12px; }
+.authm-enroll .auth-title::after { content: ''; position: absolute; left: 0; bottom: 0; width: 64px; height: 5px; border-radius: 999px; background: linear-gradient(90deg, var(--en-navy), var(--en-gold)); }
 .authm-enroll .auth-subtitle { font-size: 13px; color: #5b6b82; line-height: 1.6; }
 
-/* Stepper */
-.authm-enroll .enroll-steps { display: flex; align-items: center; margin: 2px 0 18px; }
-.authm-enroll .enroll-step { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
-.authm-enroll .enroll-step-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; flex-shrink: 0; color: #fff; background: #cbd5e1; transition: background-color .25s ease, box-shadow .25s ease; }
-.authm-enroll .enroll-step-dot.current { background: linear-gradient(135deg, var(--en-navy), #123f7d); box-shadow: 0 6px 16px rgba(11,61,145,.42); }
-.authm-enroll .enroll-step-dot.done { background: linear-gradient(135deg, #16a34a, #15803d); box-shadow: 0 6px 16px rgba(22,163,74,.3); }
-.authm-enroll .enroll-step-label { font-size: 12px; font-weight: 600; color: #64748B; line-height: 1.25; }
-.authm-enroll .enroll-step-label.current { color: var(--en-navy); font-weight: 800; }
-.authm-enroll .enroll-step-bar { flex: 1; height: 3px; border-radius: 999px; background: #e2e8f0; margin: 0 6px; transition: background-color .25s ease; }
-.authm-enroll .enroll-step-bar.filled { background: var(--en-navy); }
+/* Segmented progress */
+.authm-enroll .enroll-steps { display: flex; gap: 8px; margin: 2px 0 22px; }
+.authm-enroll .enroll-step { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 11px 12px; border-radius: 14px; background: var(--en-field); transition: background-color .25s ease, box-shadow .25s ease; }
+.authm-enroll .enroll-step-dot { width: 24px; height: 24px; border-radius: 9px; display: grid; place-items: center; font-size: 11px; font-weight: 800; flex-shrink: 0; color: var(--en-navy); background: #fff; box-shadow: 0 1px 3px rgba(15,31,56,.14); transition: background-color .25s ease, color .25s ease; }
+.authm-enroll .enroll-step-label { font-size: 12px; font-weight: 700; color: #5b6b82; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.authm-enroll .enroll-step-bar { display: none; }
+.authm-enroll .enroll-step.current { background: linear-gradient(135deg, var(--en-navy), #123f7d); box-shadow: 0 12px 24px rgba(11,61,145,.26); }
+.authm-enroll .enroll-step.current .enroll-step-dot { background: rgba(255,255,255,.22); color: #fff; box-shadow: none; }
+.authm-enroll .enroll-step.current .enroll-step-label { color: #fff; }
+.authm-enroll .enroll-step.done { background: #e8f0ff; }
+.authm-enroll .enroll-step.done .enroll-step-dot { background: #dbeafe; color: var(--en-navy); }
 
-/* Fieldsets become soft navy-tinted cards */
-.authm-enroll fieldset.enroll-fieldset, .authm-enroll fieldset.auth-field { border: 1px solid #e3e9f5; border-radius: 16px; padding: 16px; background: linear-gradient(180deg, #fbfcff 0%, #f4f8ff 100%); }
-.authm-enroll .enroll-legend { font-size: 12px; font-weight: 800; color: var(--en-navy); text-transform: uppercase; letter-spacing: .08em; padding: 0 8px; }
+/* Sections — airy, no boxes */
+.authm-enroll .enroll-section { display: grid; gap: 14px; }
+.authm-enroll .enroll-section-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; color: var(--en-ink); letter-spacing: -.01em; margin: 0; }
+.authm-enroll .enroll-section-title::before { content: ''; width: 6px; height: 18px; border-radius: 999px; background: linear-gradient(180deg, var(--en-navy), var(--en-gold)); flex-shrink: 0; }
 
-/* Labels + fields */
+/* Two-up field rows */
+.authm-enroll .auth-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Fields */
 .authm-enroll .auth-field { gap: 7px; }
-.authm-enroll .auth-field label { font-size: 11px; font-weight: 800; color: #33415c; text-transform: uppercase; letter-spacing: .06em; }
-.authm-enroll .required-star { color: #dc2626; }
+.authm-enroll .auth-field label { font-size: 12px; font-weight: 600; color: #475569; text-transform: none; letter-spacing: 0; }
+.authm-enroll .required-star { color: #ef4444; }
 .authm-enroll .auth-input-wrap input,
-.authm-enroll .auth-input-wrap select { border-radius: 10px; border: 1px solid #d7e0f0; background: #fff; padding: 11px 13px; font-size: 14px; color: var(--en-ink); }
-.authm-enroll .auth-input-wrap select { cursor: pointer; }
+.authm-enroll .auth-input-wrap select { width: 100%; border: 1.5px solid transparent; background: var(--en-field); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--en-ink); transition: background-color .2s, border-color .2s, box-shadow .2s; }
+.authm-enroll .auth-input-wrap input:hover,
+.authm-enroll .auth-input-wrap select:hover { background: #eef4ff; }
 .authm-enroll .auth-input-wrap input:focus,
-.authm-enroll .auth-input-wrap select:focus { border-color: var(--en-navy); outline: none; box-shadow: 0 0 0 3px rgba(11,61,145,.14); }
-.authm-enroll .auth-input-wrap input::placeholder { color: #94a3b8; }
-.authm-enroll .auth-input-wrap input[readonly] { background: #f1f5f9; color: #475569; }
+.authm-enroll .auth-input-wrap select:focus { background: #fff; border-color: var(--en-navy); outline: none; box-shadow: 0 0 0 4px rgba(11,61,145,.13); }
+.authm-enroll .auth-input-wrap select { cursor: pointer; }
+.authm-enroll .auth-input-wrap input::placeholder { color: #9aa7bc; }
+.authm-enroll .auth-input-wrap input[readonly] { background: #eef2f9; color: #64748b; }
 
 /* Pills */
 .authm-enroll .role-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0; }
-.authm-enroll .role-pill { border-radius: 999px; border: 1.5px solid #d7e0f0; background: #fff; color: #33415c; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; transition: border-color .2s ease, color .2s ease, background-color .2s ease, box-shadow .2s ease; }
-.authm-enroll .role-pill:hover { border-color: var(--en-navy); color: var(--en-navy); background: #eef4ff; }
-.authm-enroll .role-pill.active { background: linear-gradient(135deg, var(--en-navy), #123f7d); border-color: var(--en-navy); color: #fff; box-shadow: 0 8px 18px rgba(11,61,145,.28); }
+.authm-enroll .role-pill { border: 0; border-radius: 12px; background: var(--en-field); color: #475569; padding: 11px 18px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color .2s, color .2s, box-shadow .2s; }
+.authm-enroll .role-pill:hover { background: #e0e9f8; color: var(--en-navy); }
+.authm-enroll .role-pill.active { background: linear-gradient(135deg, var(--en-navy), #123f7d); color: #fff; box-shadow: 0 10px 20px rgba(11,61,145,.24); }
 
 /* Info + hint */
-.authm-enroll .auth-info-box { background: #eff6ff; border: 1px solid #dbeafe; border-left: 4px solid var(--en-navy); border-radius: 12px; color: #1e3a8a; font-size: 13px; }
+.authm-enroll .auth-info-box { background: #eff6ff; border: 0; border-left: 4px solid var(--en-navy); border-radius: 14px; color: #1e3a8a; font-size: 13px; }
 .authm-enroll .auth-info-box strong { color: #172554; }
 .authm-enroll .auth-info-box p { margin: 4px 0 0; }
-.authm-enroll .field-hint { font-size: 12px; color: #64748b; }
-.authm-enroll .auth-alert-error { border-radius: 12px; font-size: 12px; }
+.authm-enroll .field-hint { font-size: 12px; color: #7b8aa3; }
 
-/* Wizard nav + submit */
-.authm-enroll .enroll-nav { display: flex; gap: 10px; margin-top: 6px; }
-.authm-enroll .enroll-nav-back { flex: 1; border-radius: 999px; border: 1.5px solid #d7e0f0; background: #fff; padding: 13px; font-size: 13px; font-weight: 800; color: var(--en-navy); cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
-.authm-enroll .enroll-nav-back:hover { border-color: var(--en-navy); background: #eef4ff; }
-.authm-enroll .enroll-nav-next { flex: 2; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--en-navy), #0a2f74); padding: 13px; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer; box-shadow: 0 10px 24px rgba(11,61,145,.35); transition: filter .2s ease, transform .2s ease; }
-.authm-enroll .enroll-nav-next:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.authm-enroll .enroll-submit { flex: 2; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--en-gold), #f2ad13); color: var(--en-deep); padding: 15px; font-size: 14px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; box-shadow: 0 14px 30px rgba(255,202,40,.4); transition: filter .2s ease, transform .2s ease; }
-.authm-enroll .enroll-submit:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1px); }
+/* Modern buttons */
+.authm-enroll .enroll-nav { display: flex; gap: 10px; margin-top: 4px; }
+.authm-enroll .enroll-nav-back { flex: 1; border: 0; border-radius: 14px; background: var(--en-field); padding: 15px; font-size: 13px; font-weight: 800; color: var(--en-navy); cursor: pointer; transition: background-color .2s; }
+.authm-enroll .enroll-nav-back:hover { background: #e0e9f8; }
+.authm-enroll .enroll-nav-next { flex: 2; border: 0; border-radius: 14px; background: linear-gradient(135deg, var(--en-navy), #0a2f74); padding: 15px; font-size: 14px; font-weight: 800; color: #fff; cursor: pointer; box-shadow: 0 14px 26px rgba(11,61,145,.28); transition: transform .2s, filter .2s; }
+.authm-enroll .enroll-nav-next:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.authm-enroll .enroll-submit { flex: 2; border: 0; border-radius: 14px; background: linear-gradient(135deg, var(--en-gold), #f2ad13); color: var(--en-deep); padding: 16px; font-size: 14px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; box-shadow: 0 16px 30px rgba(255,202,40,.36); transition: transform .2s, filter .2s; }
+.authm-enroll .enroll-submit:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
 .authm-enroll .enroll-submit:disabled { opacity: .7; cursor: default; }
 
-/* Issued receipt card */
-.authm-enroll .account-issued-card { background: linear-gradient(180deg, #fbfcff, #f4f8ff); border: 1px solid #e3e9f5; }
-.authm-enroll .issued-badge { background: #eef4ff; color: var(--en-navy); }
-.authm-enroll .auth-btn { border-radius: 999px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+/* Receipt card */
+.authm-enroll .account-issued-card { background: var(--en-field); border: 1px solid var(--en-line); border-radius: 20px; }
+.authm-enroll .issued-badge { background: #e8f0ff; color: var(--en-navy); }
+.authm-enroll .auth-btn { border-radius: 14px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
 .authm-enroll .auth-btn-primary { background: linear-gradient(135deg, var(--en-gold), #f2ad13); color: var(--en-deep); }
+@media (max-width: 560px) { .authm-enroll .auth-form-row { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) {
   .authm-veil, .authm-panel { animation: none !important; }
 }

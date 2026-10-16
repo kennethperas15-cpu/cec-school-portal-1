@@ -369,7 +369,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
             const done = n < step && !skipped;
             const current = step === n;
             return (
-              <div key={label} role="listitem" aria-current={current ? 'step' : undefined} className="enroll-step">
+              <div key={label} role="listitem" aria-current={current ? 'step' : undefined} className={`enroll-step${done ? ' done' : current ? ' current' : ''}`}>
                 <span className={`enroll-step-dot${done ? ' done' : current ? ' current' : ''}`}>{done ? '✓' : n}</span>
                 <span className={`enroll-step-label${current ? ' current' : ''}`}>{label}</span>
                 {n < STEPS.length && <span className={`enroll-step-bar${done || step > n ? ' filled' : ''}`} />}
@@ -400,8 +400,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
           </span>
         </div>
 
-        <fieldset className="auth-field enroll-fieldset">
-          <legend className="enroll-legend">School Year &amp; Classification</legend>
+        <section className="enroll-section">
+          <h3 className="enroll-section-title">School Year &amp; Classification</h3>
           <div className="auth-form-row">
             <div className="auth-field">
               <label htmlFor="enr-ay">School Year <span className="required-star">*</span></label>
@@ -438,7 +438,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
               </div>
             </div>
           )}
-        </fieldset>
+        </section>
 
         <div className="auth-form-row">
           <div className="auth-field">
@@ -478,8 +478,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         )}
 
         {applicantType === 'new' && (
-          <fieldset className="auth-field enroll-fieldset">
-            <legend className="enroll-legend">Learner Information</legend>
+          <section className="enroll-section">
+            <h3 className="enroll-section-title">Learner Information</h3>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-last">Last Name <span className="required-star">*</span></label>
@@ -553,7 +553,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
                   onChange={(e) => setMotherTongue(e.target.value)} placeholder="e.g. Cebuano" autoComplete="off" />
               </div>
             </div>
-          </fieldset>
+          </section>
         )}
         {wizNav(false, true)}
         </>
@@ -562,8 +562,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         {step === 2 && applicantType === 'new' && (
         <div>
         {applicantType === 'new' && (
-          <fieldset className="auth-field enroll-fieldset">
-            <legend className="enroll-legend">Address</legend>
+          <section className="enroll-section">
+            <h3 className="enroll-section-title">Address</h3>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-house">House No. / Street</label>
@@ -596,12 +596,12 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
                 </div>
               </div>
             </div>
-          </fieldset>
+          </section>
         )}
 
         {applicantType === 'new' && (
-          <fieldset className="auth-field enroll-fieldset">
-            <legend className="enroll-legend">Parent / Guardian</legend>
+          <section className="enroll-section">
+            <h3 className="enroll-section-title">Parent / Guardian</h3>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-father">Father&apos;s Name</label>
@@ -642,7 +642,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
               </div>
             </div>
             <span className="field-hint">Account credentials are delivered to this email address.</span>
-          </fieldset>
+          </section>
         )}
         {wizNav(true, true)}
         </div>
@@ -651,8 +651,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         {step === 3 && (
         <div>
         {isTransferee && (
-          <fieldset className="auth-field enroll-fieldset">
-            <legend className="enroll-legend">Last School Attended</legend>
+          <section className="enroll-section">
+            <h3 className="enroll-section-title">Last School Attended</h3>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-lgrade">Last Grade Level <span className="required-star">*</span></label>
@@ -692,7 +692,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
                 </div>
               </div>
             </div>
-          </fieldset>
+          </section>
         )}
 
         <div className="auth-info-box">
