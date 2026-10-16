@@ -1,733 +1,1106 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { useCollection, uid, genSchoolId, isValidSchoolId, type SchoolRole } from '../../services/crud';
-import { useTheme } from '../../services/theme';
-import { portalApi } from '../../services/portal';
-import api, { clearTokens } from '../../services/api';
-import { pushNotification } from '../../services/notify';
-import { publishAnnouncement } from '../../services/announcements';
-import { DOC_STAGES, SUBMIT_STAGES, listTrackedDocs, writeStage } from '../../services/docStages';
-import { pipelineBadges } from '../../services/pipeline';
-import { setPhoto, readPhotoFile } from '../../services/photos';
-import { PhotoAvatar } from '../shared/PhotoAvatar';
-import { AlertPopup } from '../shared/AlertPopup';
-import { ChangePassword } from '../shared/ChangePassword';
-import { RoleDashboardHome } from '../shared/RoleDashboardHome';
-import { DashboardCommandMenu } from '../shared/DashboardCommandMenu';
-import { NotificationCenter } from '../shared/NotificationCenter';
-import { openEditDialog } from '../shared/EditDialog';
-import { DashboardShell } from '../shared/DashboardShell';
-import { semesterNo, useAcademicConfig } from '../../services/academicConfig';
-import type { DashboardSection } from '../shared/RoleDashboardHome';
+import './AdminDashboard.css';
+import './AdminLayout.css';
+import type { UserAuthData } from '../auth/Login';
 
-type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
-const NAVY = '#0B3D91';
-const BASE = import.meta.env.BASE_URL || '/';
-type Group = { id: string; label: string; icon: string; items: { label: string; route: string }[] };
-const GROUPS: Group[] = [
-  { id: 'home', label: 'DASHBOARD', icon: '⌂', items: [{ label: 'Dashboard', route: 'a_dashboard' }] },
-  { id: 'account', label: 'ACCOUNT MGMT', icon: '◈', items: [{ label: 'RBAC Management', route: 'a_auth_rbac' }, { label: 'Account Creation', route: 'a_auth_accounts' }, { label: 'Password Reset', route: 'a_auth_reset' }] },
-  { id: 'enroll', label: 'ENROLLMENT MGMT', icon: '▤', items: [{ label: 'Enrollment Approval', route: 'a_enroll_approval' }, { label: 'Document Verification', route: 'a_enroll_docs' }, { label: 'Study Load Builder', route: 'a_acad_offerings' }, { label: 'Status Monitoring', route: 'a_enroll_status' }] },
-  { id: 'finance', label: 'FINANCIAL MGMT', icon: '▦', items: [{ label: 'Billing & Invoices', route: 'a_fin_billing' }, { label: 'Fee Structure', route: 'a_fin_fees' }, { label: 'Payment Monitoring', route: 'a_fin_payments' }, { label: 'Scholarships', route: 'a_fin_scholar' }] },
-  { id: 'hr', label: 'HR / FACULTY', icon: '⍾', items: [{ label: 'Teacher Records', route: 'a_hr_records' }, { label: 'Load Assignment', route: 'a_hr_load' }, { label: 'Credentials', route: 'a_hr_cred' }] },
-  { id: 'comm', label: 'COMMUNICATION', icon: '✉', items: [{ label: 'Broadcast Messaging', route: 'a_comm_broadcast' }, { label: 'System Announcements', route: 'a_comm_announce' }] },
-  { id: 'system', label: 'SYSTEM ADMIN', icon: '⚙', items: [{ label: 'System Config', route: 'a_sys_config' }, { label: 'Audit Log', route: 'a_sys_audit' }, { label: 'Backup & Restore', route: 'a_sys_backup' }, { label: 'Security', route: 'a_sys_security' }] },
-];
-const pill: React.CSSProperties = { border: '1px solid #e2e7ef', background: '#fff', borderRadius: 999, padding: '6px 12px', fontSize: 12, color: '#6b7890' };
-const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8ecf3', borderRadius: 16, padding: 28, maxWidth: 1120, margin: '0 auto' };
-const box: React.CSSProperties = { border: '1px solid #e6eaf1', borderRadius: 12, padding: 18, marginTop: 14 };
-const btn: React.CSSProperties = { background: NAVY, color: '#fff', border: 0, borderRadius: 8, padding: '10px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' };
-const ghost: React.CSSProperties = { border: '1px solid #e2e7ef', background: '#fff', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' };
-const inp: React.CSSProperties = { border: '1px solid #e2e7ef', borderRadius: 8, padding: '10px 12px', fontSize: 13, width: '100%' };
+interface AdminDashboardProps {
+  currentUser: UserAuthData;
+  onNotify: (message: string) => void;
+  onLogout: () => void;
+}
 
-type Rec3 = { id: string; name: string; role: string };
-type Col3 = { list: Rec3[]; create: (x: { id?: string; name: string; role: string }) => void; update: (id: string, p: Partial<Rec3>) => void; remove: (id: string) => void };
-
-const AdminTable = ({ title, col, colA, colB, phA, phB, onNotify, footer }: { title: string; col: Col3; colA: string; colB: string; phA: string; phB: string; onNotify: (t: string) => void; footer: ReactNode }) => {
-  const [a, setA] = useState('');
-  const [b, setB] = useState('');
-  return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>{title}</h1>
-    <form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!a.trim()) return; col.create({ id: uid('x'), name: a.trim(), role: b.trim() || '—' }); setA(''); setB(''); onNotify(`${title} record created`); }}>
-      <input style={inp} placeholder={phA} value={a} onChange={(e) => setA(e.target.value)} aria-label={phA} />
-      <input style={inp} placeholder={phB} value={b} onChange={(e) => setB(e.target.value)} aria-label={phB} />
-      <button style={btn} type="submit">Add</button>
-    </form>
-    <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>{colA}</th><th style={{ padding: 12 }}>{colB}</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>{col.list.map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{r.id}</div></td><td style={{ padding: 12 }}>{r.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog(`Edit ${colB}`, r.role, (v) => { col.update(r.id, { role: v }); onNotify('Updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>)}{!col.list.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>No records yet.</td></tr>}</tbody></table></div>{footer}</section>);
-};
-
-// Registrar COE queue: pending transaction numbers, one-click ready/reject.
-const CoeQueue = ({ onNotify }: { onNotify: (t: string) => void }) => {
-  const [rows, setRows] = useState<{ id: string; transaction_no: string; full_name: string; program: string | null; purpose: string; status: string; created_at: string }[]>([]);
-  const [filter, setFilter] = useState('pending');
-  const load = async () => {
-    try {
-      setRows(await portalApi.coeQueue(filter));
-    } catch { /* offline — queue unavailable */ }
-  };
-  useEffect(() => { void load(); }, [filter]);
-  const decide = async (id: string, decision: 'ready' | 'rejected', txn: string) => {
-    try {
-      const result = await portalApi.coeDecide(id, decision);
-      pushNotification(['student'], { title: `COE ${txn} ${decision}`, detail: decision === 'ready' ? 'Ready for pickup at the Registrar Office.' : 'Returned — see the registrar.', category: 'Academic', target: 'COE Request' });
-      onNotify(`COE ${txn} marked ${decision}${result.emailSent ? ' — student emailed' : ''}`);
-      void load();
-    } catch {
-      onNotify('Could not update — check the connection');
-    }
-  };
+export function AdminDashboard(_props: AdminDashboardProps) {
   return (
-    <div style={{ ...box }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <strong>Certificate of Enrollment requests</strong>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="COE status filter" style={{ ...inp, width: 'auto', padding: '8px 10px' }}>
-            <option value="pending">Pending</option>
-            <option value="ready">Ready</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <button style={ghost} onClick={() => void load()}>Refresh</button>
+    <div className="admin-screen admin-dashboard-001">
+      <div className="admin-dashboard-002">
+        <div className="admin-dashboard-003">
+          <div className="admin-dashboard-004">
+            <div className="admin-dashboard-005" />
+            <div className="admin-dashboard-006">
+              <div className="admin-dashboard-007">
+                <div className="admin-dashboard-008">
+                  <div className="admin-dashboard-009" />
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-011">SYSTEM OPERATIONAL • REGISTRY SYNCED (0.04s)</div>
+                  </div>
+                </div>
+                <div className="admin-dashboard-012">
+                  <div className="admin-dashboard-013">Welcome back, Dr. Holloway</div>
+                </div>
+                <div className="admin-dashboard-014">
+                  <div className="admin-dashboard-015">Institutional Registry &amp; Administration Workspace • Academic Year 2025–2026,<br/>Second Semester. All biometric gate monitors and enrollment validation queues are<br/>operating nominally.</div>
+                </div>
+              </div>
+              <div className="admin-dashboard-016">
+                <div className="admin-dashboard-017">
+                  <div className="admin-dashboard-018">
+                    <div className="admin-dashboard-019">ACTIVE TERM</div>
+                  </div>
+                  <div className="admin-dashboard-020">2nd Sem</div>
+                </div>
+                <div className="admin-dashboard-021">
+                  <div className="admin-dashboard-018">
+                    <div className="admin-dashboard-019">CENSUS DAY</div>
+                  </div>
+                  <div className="admin-dashboard-020">Day 42</div>
+                </div>
+                <div className="admin-dashboard-022">
+                  <div className="admin-dashboard-018">
+                    <div className="admin-dashboard-019">QUEUE LOAD</div>
+                  </div>
+                  <div className="admin-dashboard-023">Optimal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="admin-dashboard-024">
+            <div className="admin-dashboard-025">
+              <div className="admin-dashboard-010">
+                <div className="admin-dashboard-026" />
+              </div>
+              <div className="admin-dashboard-010">
+                <div className="admin-dashboard-027">Immediate Actions</div>
+              </div>
+            </div>
+            <div className="admin-dashboard-028">
+              <div className="admin-dashboard-029">
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-031" />
+                </div>
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-032">Add Student</div>
+                </div>
+              </div>
+              <div className="admin-dashboard-033">
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-034" />
+                </div>
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-035">Add Teacher</div>
+                </div>
+              </div>
+              <div className="admin-dashboard-033">
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-034" />
+                </div>
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-035">Create Course</div>
+                </div>
+              </div>
+              <div className="admin-dashboard-033">
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-036" />
+                </div>
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-035">Assign Schedule</div>
+                </div>
+              </div>
+              <div className="admin-dashboard-037">
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-038" />
+                </div>
+                <div className="admin-dashboard-030">
+                  <div className="admin-dashboard-032">Process Enrollments</div>
+                </div>
+                <div className="admin-dashboard-039">
+                  <div className="admin-dashboard-040">28 Pending</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="admin-dashboard-041">
+            <div className="admin-dashboard-042">
+              <div className="admin-dashboard-006">
+                <div className="admin-dashboard-043">
+                  <div className="admin-dashboard-044">TOTAL<br/>STUDENTS</div>
+                </div>
+                <div className="admin-dashboard-045">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-046" />
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-047">
+                <div className="admin-dashboard-048">
+                  <div className="admin-dashboard-012">
+                    <div className="admin-dashboard-049">2,845</div>
+                  </div>
+                  <div className="admin-dashboard-050">
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-051" />
+                    </div>
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-052">+128 this term</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-053">
+                    <div className="admin-dashboard-054">Active matriculated</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="admin-dashboard-042">
+              <div className="admin-dashboard-006">
+                <div className="admin-dashboard-055">
+                  <div className="admin-dashboard-044">FACULTY<br/>MEMBERS</div>
+                </div>
+                <div className="admin-dashboard-056">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-057" />
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-047">
+                <div className="admin-dashboard-048">
+                  <div className="admin-dashboard-012">
+                    <div className="admin-dashboard-049">142</div>
+                  </div>
+                  <div className="admin-dashboard-058">
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-059" />
+                    </div>
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-060">98% clearance</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-053">
+                    <div className="admin-dashboard-054">Full-time &amp; Adjunct</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="admin-dashboard-061">
+              <div className="admin-dashboard-006">
+                <div className="admin-dashboard-062">
+                  <div className="admin-dashboard-044">COURSE<br/>CATALOG</div>
+                </div>
+                <div className="admin-dashboard-063">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-057" />
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-047">
+                <div className="admin-dashboard-048">
+                  <div className="admin-dashboard-012">
+                    <div className="admin-dashboard-049">318</div>
+                  </div>
+                  <div className="admin-dashboard-058">
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-064" />
+                    </div>
+                    <div className="admin-dashboard-065">
+                      <div className="admin-dashboard-066">8 Academic<br/>Depts</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-053">
+                    <div className="admin-dashboard-054">Active modules running</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="admin-dashboard-042">
+              <div className="admin-dashboard-067">
+                <div className="admin-dashboard-010">
+                  <div className="admin-dashboard-044">ENROLLMENTS</div>
+                </div>
+                <div className="admin-dashboard-068">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-069" />
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-047">
+                <div className="admin-dashboard-048">
+                  <div className="admin-dashboard-012">
+                    <div className="admin-dashboard-049">14,290</div>
+                  </div>
+                  <div className="admin-dashboard-050">
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-070" />
+                    </div>
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-052">Validated Seats</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-053">
+                    <div className="admin-dashboard-054">Course registrations</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="admin-dashboard-061">
+              <div className="admin-dashboard-067">
+                <div className="admin-dashboard-071">
+                  <div className="admin-dashboard-044">ACTIVE<br/>CLASSES</div>
+                </div>
+                <div className="admin-dashboard-072">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-073" />
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-047">
+                <div className="admin-dashboard-048">
+                  <div className="admin-dashboard-012">
+                    <div className="admin-dashboard-049">426</div>
+                  </div>
+                  <div className="admin-dashboard-058">
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-074" />
+                    </div>
+                    <div className="admin-dashboard-075">
+                      <div className="admin-dashboard-066">Lec &amp; Lab<br/>Sections</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-053">
+                    <div className="admin-dashboard-054">Weekly synchronous</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="admin-dashboard-061">
+              <div className="admin-dashboard-006">
+                <div className="admin-dashboard-076">
+                  <div className="admin-dashboard-044">ATTENDANCE<br/>RATE</div>
+                </div>
+                <div className="admin-dashboard-077">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-078" />
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-047">
+                <div className="admin-dashboard-048">
+                  <div className="admin-dashboard-012">
+                    <div className="admin-dashboard-079">96.2%</div>
+                  </div>
+                  <div className="admin-dashboard-050">
+                    <div className="admin-dashboard-080" />
+                    <div className="admin-dashboard-081">
+                      <div className="admin-dashboard-052">RFID Biometric<br/>Live</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-053">
+                    <div className="admin-dashboard-054">Campus gate sync</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="admin-dashboard-082">
+            <div className="admin-dashboard-083">
+              <div className="admin-dashboard-084">
+                <div className="admin-dashboard-006">
+                  <div className="admin-dashboard-085">
+                    <div className="admin-dashboard-086">
+                      <div className="admin-dashboard-010">
+                        <div className="admin-dashboard-087">Pending Enrollment Requests</div>
+                      </div>
+                      <div className="admin-dashboard-088">
+                        <div className="admin-dashboard-089">28 Pending</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-090">Priority course overloads, cross-enlistment, and section requisites requiring<br/>Registrar sign-off</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-091">
+                    <div className="admin-dashboard-092">View all<br/>requests</div>
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-093" />
+                    </div>
+                  </div>
+                </div>
+                <div className="admin-dashboard-094">
+                  <div className="admin-dashboard-095">
+                    <div className="admin-dashboard-096">
+                      <div className="admin-dashboard-097">
+                        <div className="admin-dashboard-098">
+                          <div className="admin-dashboard-099">STUDENT PROFILE</div>
+                        </div>
+                        <div className="admin-dashboard-100">
+                          <div className="admin-dashboard-099">PROGRAM<br/>&amp; YEAR</div>
+                        </div>
+                        <div className="admin-dashboard-101">
+                          <div className="admin-dashboard-102">LOAD<br/>UNITS</div>
+                        </div>
+                        <div className="admin-dashboard-103">
+                          <div className="admin-dashboard-099">PRIORITY<br/>STATUS</div>
+                        </div>
+                        <div className="admin-dashboard-104">
+                          <div className="admin-dashboard-105">ACTION</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-106">
+                        <div className="admin-dashboard-107">
+                          <div className="admin-dashboard-108">
+                            <div className="admin-dashboard-109">KP</div>
+                          </div>
+                          <div className="admin-dashboard-010">
+                            <div className="admin-dashboard-012">
+                              <div className="admin-dashboard-110">Kenneth<br/>Peras</div>
+                            </div>
+                            <div className="admin-dashboard-012">
+                              <div className="admin-dashboard-111">ID: 2022-<br/>8941-CS</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-112">
+                          <div className="admin-dashboard-113">BS<br/>Computer<br/>Science</div>
+                          <div className="admin-dashboard-012">
+                            <div className="admin-dashboard-114">Year 4 •<br/>Graduating</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-115">
+                          <div className="admin-dashboard-116">24</div>
+                          <div className="admin-dashboard-117">
+                            <div className="admin-dashboard-118">+3<br/>Overload</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-119">
+                          <div className="admin-dashboard-120">
+                            <div className="admin-dashboard-121" />
+                            <div className="admin-dashboard-122">Graduating<br/>Priority</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-123">
+                          <div className="admin-dashboard-025">
+                            <div className="admin-dashboard-124">
+                              <div className="admin-dashboard-125">Approve</div>
+                            </div>
+                            <div className="admin-dashboard-126">
+                              <div className="admin-dashboard-127">Review</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-128">
+                        <div className="admin-dashboard-107">
+                          <div className="admin-dashboard-129">
+                            <div className="admin-dashboard-109">MS</div>
+                          </div>
+                          <div className="admin-dashboard-010">
+                            <div className="admin-dashboard-012">
+                              <div className="admin-dashboard-110">Maria<br/>Santos</div>
+                            </div>
+                            <div className="admin-dashboard-012">
+                              <div className="admin-dashboard-111">ID: 2023-<br/>1490-IT</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-112">
+                          <div className="admin-dashboard-113">BS<br/>Information<br/>Tech</div>
+                          <div className="admin-dashboard-012">
+                            <div className="admin-dashboard-114">Year 3 •<br/>Regular</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-130">
+                          <div className="admin-dashboard-116">21</div>
+                          <div className="admin-dashboard-117">
+                            <div className="admin-dashboard-127">Regular<br/>Max</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-131">
+                          <div className="admin-dashboard-132">
+                            <div className="admin-dashboard-133" />
+                            <div className="admin-dashboard-134">Prereq<br/>Waiver</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-135">
+                          <div className="admin-dashboard-025">
+                            <div className="admin-dashboard-124">
+                              <div className="admin-dashboard-125">Approve</div>
+                            </div>
+                            <div className="admin-dashboard-126">
+                              <div className="admin-dashboard-127">Review</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-128">
+                        <div className="admin-dashboard-107">
+                          <div className="admin-dashboard-136">
+                            <div className="admin-dashboard-109">DT</div>
+                          </div>
+                          <div className="admin-dashboard-010">
+                            <div className="admin-dashboard-012">
+                              <div className="admin-dashboard-110">Dave Tan</div>
+                            </div>
+                            <div className="admin-dashboard-012">
+                              <div className="admin-dashboard-111">ID: 2024-<br/>5221-CS</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-112">
+                          <div className="admin-dashboard-113">BS<br/>Computer<br/>Science</div>
+                          <div className="admin-dashboard-012">
+                            <div className="admin-dashboard-114">Year 2 •<br/>Shifter</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-137">
+                          <div className="admin-dashboard-116">18</div>
+                          <div className="admin-dashboard-117">
+                            <div className="admin-dashboard-138">Credited<br/>Lab</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-139">
+                          <div className="admin-dashboard-140">
+                            <div className="admin-dashboard-141" />
+                            <div className="admin-dashboard-089">Cross-<br/>Enlistment</div>
+                          </div>
+                        </div>
+                        <div className="admin-dashboard-142">
+                          <div className="admin-dashboard-025">
+                            <div className="admin-dashboard-124">
+                              <div className="admin-dashboard-125">Approve</div>
+                            </div>
+                            <div className="admin-dashboard-126">
+                              <div className="admin-dashboard-127">Review</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-084">
+                <div className="admin-dashboard-006">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-087">Faculty Grade Submission Status</div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-090">Midterm encoding window • 8 Academic divisions oversight</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-143">
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-144" />
+                    </div>
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-134">Deadline: 2 Days Remaining</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="admin-dashboard-145">
+                  <div className="admin-dashboard-146">
+                    <div className="admin-dashboard-006">
+                      <div className="admin-dashboard-147">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-148">College of Computer Studies</div>
+                        </div>
+                        <div className="admin-dashboard-149">
+                          <div className="admin-dashboard-150">CCS</div>
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-151">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-066">46 Draft • 12 Submitted • 240 Finalized</div>
+                        </div>
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-152">92%</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-153">
+                      <div className="admin-dashboard-154" />
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-146">
+                    <div className="admin-dashboard-006">
+                      <div className="admin-dashboard-147">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-148">College of Engineering</div>
+                        </div>
+                        <div className="admin-dashboard-149">
+                          <div className="admin-dashboard-150">COE</div>
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-151">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-066">38 Draft • 24 Submitted • 186 Finalized</div>
+                        </div>
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-152">88%</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-153">
+                      <div className="admin-dashboard-155" />
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-146">
+                    <div className="admin-dashboard-006">
+                      <div className="admin-dashboard-147">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-148">College of Arts &amp; Sciences</div>
+                        </div>
+                        <div className="admin-dashboard-149">
+                          <div className="admin-dashboard-150">CAS</div>
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-151">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-066">12 Draft • 8 Submitted • 320 Finalized</div>
+                        </div>
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-156">95%</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-153">
+                      <div className="admin-dashboard-157" />
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-158">
+                    <div className="admin-dashboard-006">
+                      <div className="admin-dashboard-147">
+                        <div className="admin-dashboard-159">
+                          <div className="admin-dashboard-160">College of Business &amp;<br/>Administration</div>
+                        </div>
+                        <div className="admin-dashboard-161">
+                          <div className="admin-dashboard-122">Flagged • Needs<br/>Follow-up</div>
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-151">
+                        <div className="admin-dashboard-162">
+                          <div className="admin-dashboard-111">64 Draft • 30 Pending • 142<br/>Finalized</div>
+                        </div>
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-163">79%</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-153">
+                      <div className="admin-dashboard-164" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-084">
+                <div className="admin-dashboard-006">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-087">Upcoming Milestones &amp; Institutional Calendar</div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-090">Scheduled academic phases for AY 2025–2026 Term 2</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-165">
+                    <div className="admin-dashboard-166">Academic Calendar</div>
+                    <div className="admin-dashboard-030">
+                      <div className="admin-dashboard-167" />
+                    </div>
+                  </div>
+                </div>
+                <div className="admin-dashboard-041">
+                  <div className="admin-dashboard-168">
+                    <div className="admin-dashboard-048">
+                      <div className="admin-dashboard-006">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-169">EXAMINATION PHASE</div>
+                        </div>
+                        <div className="admin-dashboard-170" />
+                      </div>
+                      <div className="admin-dashboard-012">
+                        <div className="admin-dashboard-171">Midterm<br/>Examination Week</div>
+                      </div>
+                      <div className="admin-dashboard-012">
+                        <div className="admin-dashboard-172">Central proctor<br/>assignment and proctored<br/>lab booking locks.</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-047">
+                      <div className="admin-dashboard-173">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-167" />
+                        </div>
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-134">March 16 – 20, 2026</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-168">
+                    <div className="admin-dashboard-048">
+                      <div className="admin-dashboard-006">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-174">REGISTRAR CUTOFF</div>
+                        </div>
+                        <div className="admin-dashboard-175" />
+                      </div>
+                      <div className="admin-dashboard-012">
+                        <div className="admin-dashboard-171">Final Course Drop<br/>Deadline</div>
+                      </div>
+                      <div className="admin-dashboard-012">
+                        <div className="admin-dashboard-172">Hard freeze for dropping<br/>modules without grade<br/>penalty.</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-047">
+                      <div className="admin-dashboard-173">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-176" />
+                        </div>
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-134">March 04, 2026</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-168">
+                    <div className="admin-dashboard-048">
+                      <div className="admin-dashboard-006">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-177">GOVERNANCE</div>
+                        </div>
+                        <div className="admin-dashboard-178" />
+                      </div>
+                      <div className="admin-dashboard-012">
+                        <div className="admin-dashboard-171">Faculty Academic<br/>Council</div>
+                      </div>
+                      <div className="admin-dashboard-012">
+                        <div className="admin-dashboard-172">Curricular modifications<br/>and candidate list for<br/>honor societies.</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-047">
+                      <div className="admin-dashboard-173">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-179" />
+                        </div>
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-134">March 28, 2026</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="admin-dashboard-180">
+              <div className="admin-dashboard-084">
+                <div className="admin-dashboard-006">
+                  <div className="admin-dashboard-010">
+                    <div className="admin-dashboard-087">Live Activity Audit</div>
+                  </div>
+                  <div className="admin-dashboard-178" />
+                </div>
+                <div className="admin-dashboard-181">
+                  <div className="admin-dashboard-182">
+                    <div className="admin-dashboard-183">
+                      <div className="admin-dashboard-184">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-185" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-186">
+                      <div className="admin-dashboard-187">
+                        <div className="admin-dashboard-188"><span className="admin-dashboard-284">Grade correction authorized by<br/></span><span className="admin-dashboard-285">Dr. Holloway</span><span className="admin-dashboard-284"> for </span><span className="admin-dashboard-284">CS 302</span><span className="admin-dashboard-284">.</span></div>
+                      </div>
+                      <div className="admin-dashboard-189">12 mins ago • Registrar Session</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-182">
+                    <div className="admin-dashboard-183">
+                      <div className="admin-dashboard-190">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-191" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-192">
+                      <div className="admin-dashboard-193">
+                        <div className="admin-dashboard-188"><span className="admin-dashboard-284">New student matriculation<br/>verified for </span><span className="admin-dashboard-285">Kenneth Peras</span><span className="admin-dashboard-284"><br/>(BSCS-IV).</span></div>
+                      </div>
+                      <div className="admin-dashboard-194">34 mins ago • Admissions Unit</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-182">
+                    <div className="admin-dashboard-183">
+                      <div className="admin-dashboard-195">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-196" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-192">
+                      <div className="admin-dashboard-193">
+                        <div className="admin-dashboard-188"><span className="admin-dashboard-284">Room schedule overlap<br/>resolved: Assigned </span><span className="admin-dashboard-284">Lab 402</span><span className="admin-dashboard-284"> to<br/>Engr. Reyes.</span></div>
+                      </div>
+                      <div className="admin-dashboard-194">1 hr ago • System Scheduler</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-182">
+                    <div className="admin-dashboard-183">
+                      <div className="admin-dashboard-195">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-197" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-192">
+                      <div className="admin-dashboard-193">
+                        <div className="admin-dashboard-188"><span className="admin-dashboard-284">Course syllabus version<br/>archived: </span><span className="admin-dashboard-284">IT 312 Systems</span><span className="admin-dashboard-284"><br/></span><span className="admin-dashboard-284">Integration</span><span className="admin-dashboard-284">.</span></div>
+                      </div>
+                      <div className="admin-dashboard-194">3 hrs ago • Academic Dep</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="admin-dashboard-198">
+                  <div className="admin-dashboard-199">View Complete Institutional Log</div>
+                </div>
+              </div>
+              <div className="admin-dashboard-084">
+                <div className="admin-dashboard-006">
+                  <div className="admin-dashboard-200">
+                    <div className="admin-dashboard-087">Announcements<br/>Bulletin</div>
+                  </div>
+                  <div className="admin-dashboard-201">
+                    <div className="admin-dashboard-030">
+                      <div className="admin-dashboard-202" />
+                    </div>
+                    <div className="admin-dashboard-203">
+                      <div className="admin-dashboard-125">+ New<br/>Broadcast</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="admin-dashboard-181">
+                  <div className="admin-dashboard-204">
+                    <div className="admin-dashboard-006">
+                      <div className="admin-dashboard-010">
+                        <div className="admin-dashboard-060">FACULTY MEMORANDUM</div>
+                      </div>
+                      <div className="admin-dashboard-010">
+                        <div className="admin-dashboard-111">Today, 09:15</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-205">Midterm Grade Portal Closure<br/>Notice</div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-172">Broadcast delivered to all 142 teaching<br/>faculty. Submission locks on Friday at<br/>23:59 sharp.</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-204">
+                    <div className="admin-dashboard-006">
+                      <div className="admin-dashboard-010">
+                        <div className="admin-dashboard-066">CAMPUS OPERATIONS</div>
+                      </div>
+                      <div className="admin-dashboard-010">
+                        <div className="admin-dashboard-111">Yesterday</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-205">Campus Wi-Fi &amp; Registry<br/>Network Upgrade</div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-172">Centralized gateway firmware<br/>deployment scheduled on Sunday<br/>(01:00 AM – 03:00 AM).</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-204">
+                    <div className="admin-dashboard-006">
+                      <div className="admin-dashboard-010">
+                        <div className="admin-dashboard-052">REGISTRY PROTOCOL</div>
+                      </div>
+                      <div className="admin-dashboard-010">
+                        <div className="admin-dashboard-111">Feb 24</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-205">Graduation Clearance<br/>Protocol v2.4 Published</div>
+                    </div>
+                    <div className="admin-dashboard-012">
+                      <div className="admin-dashboard-172">Automated student clearance workflow<br/>now available for senior department<br/>counselors.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="admin-dashboard-084">
+                <div className="admin-dashboard-006">
+                  <div className="admin-dashboard-147">
+                    <div className="admin-dashboard-010">
+                      <div className="admin-dashboard-206" />
+                    </div>
+                    <div className="admin-dashboard-207">
+                      <div className="admin-dashboard-087">Security &amp;<br/>Infrastructure</div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-208">
+                    <div className="admin-dashboard-209" />
+                    <div className="admin-dashboard-210">Secure</div>
+                  </div>
+                </div>
+                <div className="admin-dashboard-211">
+                  <div className="admin-dashboard-212">
+                    <div className="admin-dashboard-213">
+                      <div className="admin-dashboard-214">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-038" />
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-215">
+                        <div className="admin-dashboard-066">ACTIVE SESSIONS</div>
+                        <div className="admin-dashboard-110">456<br/>Authenticated</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-216">
+                      <div className="admin-dashboard-217">418<br/>Students</div>
+                      <div className="admin-dashboard-218">
+                        <div className="admin-dashboard-219">38 Faculty</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-212">
+                    <div className="admin-dashboard-213">
+                      <div className="admin-dashboard-220">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-221" />
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-222">
+                        <div className="admin-dashboard-066">DATABASE<br/>SNAPSHOT</div>
+                        <div className="admin-dashboard-110">04:00 AM<br/>Today</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-216">
+                      <div className="admin-dashboard-223">
+                        <div className="admin-dashboard-216">
+                          <div className="admin-dashboard-070" />
+                        </div>
+                        <div className="admin-dashboard-224">Verified<br/>100%</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="admin-dashboard-212">
+                    <div className="admin-dashboard-213">
+                      <div className="admin-dashboard-225">
+                        <div className="admin-dashboard-010">
+                          <div className="admin-dashboard-226" />
+                        </div>
+                      </div>
+                      <div className="admin-dashboard-227">
+                        <div className="admin-dashboard-066">SERVER REPLICATION</div>
+                        <div className="admin-dashboard-228">Cloudflare Edge Multi-</div>
+                        <div className="admin-dashboard-228">Zone</div>
+                      </div>
+                    </div>
+                    <div className="admin-dashboard-229">
+                      <div className="admin-dashboard-230">14ms<br/>latency</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div style={{ marginTop: 10 }}>{rows.map((r) => <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}>
-        <div><strong>{r.transaction_no}</strong> • {r.full_name}{r.program ? ` • ${r.program}` : ''}<div style={{ fontSize: 12, color: '#6b7890' }}>{r.purpose} • {new Date(r.created_at).toLocaleDateString()}</div></div>
-        {r.status === 'pending' ? (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => void decide(r.id, 'ready', r.transaction_no)}>Mark ready</button>
-            <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => void decide(r.id, 'rejected', r.transaction_no)}>Reject</button>
+      <div className="admin-dashboard-231">
+        <div className="admin-dashboard-232">
+          <div className="admin-dashboard-010">
+            <div className="admin-dashboard-012">
+              <div className="admin-dashboard-087">Admin Portal</div>
+            </div>
+            <div className="admin-dashboard-012">
+              <div className="admin-dashboard-066">School Management<br/>System</div>
+            </div>
           </div>
-        ) : (<span style={{ fontSize: 12, fontWeight: 800, color: r.status === 'ready' ? '#15803d' : '#b91c1c' }}>{r.status.toUpperCase()}</span>)}
-      </div>)}
-      {!rows.length && <div style={{ fontSize: 13, color: '#6b7890' }}>No {filter} COE requests.</div>}</div>
+          <div className="admin-dashboard-233">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-234" />
+            </div>
+            <div className="admin-dashboard-235">
+              <div className="admin-dashboard-236">AY 2025–2026 • 2nd<br/>Semester</div>
+            </div>
+          </div>
+        </div>
+        <div className="admin-dashboard-232">
+          <div className="admin-dashboard-237">
+            <div className="admin-dashboard-238">
+              <div className="admin-dashboard-239">
+                <div className="admin-dashboard-240">Search student ID, course, faculty...</div>
+              </div>
+            </div>
+            <div className="admin-dashboard-241">
+              <div className="admin-dashboard-242" />
+            </div>
+          </div>
+          <div className="admin-dashboard-243">
+            <div className="admin-dashboard-244">
+              <div className="admin-dashboard-030">
+                <div className="admin-dashboard-245" />
+              </div>
+              <div className="admin-dashboard-246" />
+            </div>
+            <div className="admin-dashboard-244">
+              <div className="admin-dashboard-030">
+                <div className="admin-dashboard-247" />
+              </div>
+              <div className="admin-dashboard-248" />
+            </div>
+          </div>
+          <div className="admin-dashboard-249">
+            <div className="admin-dashboard-250" />
+          </div>
+          <div className="admin-dashboard-147">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-251">
+                <div className="admin-dashboard-252">Dr. Margaret Holloway</div>
+              </div>
+              <div className="admin-dashboard-251">
+                <div className="admin-dashboard-253">Chief Academic Administrator /<br/>System Registrar</div>
+              </div>
+            </div>
+            <div className="admin-dashboard-254">
+              <div className="admin-dashboard-010">
+                <div className="admin-dashboard-255" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="admin-dashboard-256">
+        <div className="admin-dashboard-257">
+          <div className="admin-dashboard-258">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-259" />
+            </div>
+          </div>
+          <div className="admin-dashboard-010">
+            <div className="admin-dashboard-260">
+              <div className="admin-dashboard-261">AERO SIS</div>
+            </div>
+            <div className="admin-dashboard-053">
+              <div className="admin-dashboard-066">Institutional Registry</div>
+            </div>
+          </div>
+        </div>
+        <div className="admin-dashboard-262">
+          <div className="admin-dashboard-263">
+            <div className="admin-dashboard-243">
+              <div className="admin-dashboard-170" />
+              <div className="admin-dashboard-010">
+                <div className="admin-dashboard-134">AY 2025–2026</div>
+              </div>
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-150">2nd Sem</div>
+            </div>
+          </div>
+        </div>
+        <div className="admin-dashboard-264">
+          <div className="admin-dashboard-265">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-266" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-267">Dashboard</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-269" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Student Management</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-271" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Teacher Management</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-272" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Course Management</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-273" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Class Schedule</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-274" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Enrollment Management</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-275" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Grades Management</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-276" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Attendance Management</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-277" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">User Accounts</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-278" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Announcements</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-279" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Settings</div>
+            </div>
+          </div>
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-280" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-270">Activity Logs</div>
+            </div>
+          </div>
+        </div>
+        <div className="admin-dashboard-281">
+          <div className="admin-dashboard-268">
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-282" />
+            </div>
+            <div className="admin-dashboard-010">
+              <div className="admin-dashboard-283">Logout</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
-export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
-  const [active, setActive] = useState('Dashboard');
-  const [expanded, setExpanded] = useState('home');
-  const [collapsed, setCollapsed] = useState(false);
-  // Mobile: start shut, auto-close after each navigation so content is usable
-  useEffect(() => {
-    try {
-      if (window.innerWidth < 800) setCollapsed(true);
-    } catch { /* non-browser render */ }
-  }, [active]);
-  const { dark, toggle } = useTheme();
-  const academicConfig = useAcademicConfig();
-  // v2 stores: pre-launch — no demo students, teachers, or payments (all start empty)
-  const enroll = useCollection<{ id: string; name: string; meta: string }>('a_enroll_v2', []);
-  const accounts = useCollection<{ id: string; name: string; role: string }>('a_accounts_v2', []);
-  const fees = useCollection<{ id: string; name: string; role: string }>('a_fees_v2', []);
-  const faculty = useCollection<{ id: string; name: string; role: string }>('a_faculty_v2', []);
-  const rooms = useCollection<{ id: string; name: string; role: string }>('a_rooms_v2', []);
-  const offers = useCollection<{ id: string; name: string; role: string }>('a_offers_v2', []);
-  const bills = useCollection<{ id: string; name: string; role: string }>('a_bills_v2', []);
-  const broadcasts = useCollection<{ id: string; name: string; role: string }>('a_broadcast_v2', []);
-  const loads = useCollection<{ id: string; name: string; role: string }>('a_loads_v2', []);
-  const creds = useCollection<{ id: string; name: string; role: string }>('a_creds_v2', []);
-  const scholars = useCollection<{ id: string; name: string; role: string }>('a_scholars_v2', []);
-  const syscfg = useCollection('a_syscfg', [{ id: 'school_year', name: 'Current school year', role: '2026–2027' }]);
-  const [perms, setPerms] = useState<Record<string, boolean>>({ 'Teacher-Students': true, 'Teacher-Teachers': true, 'Admin-Students': true, 'Admin-Teachers': true, 'Admin-Finance': true, 'Admin-Admin': true });
-  const [fn, setFn] = useState(''); const [fi, setFi] = useState(''); const [fr, setFr] = useState('student');
-  const [enrN, setEnrN] = useState(''); const [enrM, setEnrM] = useState('BSIT • Applied');
-  const [walkN, setWalkN] = useState(''); const [walkE, setWalkE] = useState(''); const [walkP, setWalkP] = useState('');
-  const [autoApprove, setAutoApprove] = useState(() => { try { return localStorage.getItem('cec:auto_approve') === '1'; } catch { return false; } });
-  const [boxVal, setBoxVal] = useState('');
-  // Study-load builder draft (unified subject + teacher + room + schedule)
-  const [slSubject, setSlSubject] = useState('');
-  const [slTeacher, setSlTeacher] = useState('');
-  const [slRoom, setSlRoom] = useState('');
-  const [slDays, setSlDays] = useState<string[]>(['M', 'W', 'F']);
-  const [slStart, setSlStart] = useState('08:00');
-  const [slEnd, setSlEnd] = useState('09:30');
-  const [slSection, setSlSection] = useState('');
-  const [slCap, setSlCap] = useState('40');
-  const studyloads = useCollection<{ id: string; name: string; role: string; meta: string; subject: string; teacher: string; room: string; days: string[]; start: string; end: string; section: string; cap: string; batch: number }>('a_studyloads_v2', []);
-  const [slMax, setSlMax] = useState(() => {
-    try {
-      return Math.max(1, Number(localStorage.getItem('cec:sl_batch_max')) || 8);
-    } catch {
-      return 8;
-    }
-  });
-  const [slSubmitted, setSlSubmitted] = useState<number[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('cec:sl_submitted') ?? '[]') as number[];
-    } catch {
-      return [];
-    }
-  });
-  const setBatchMax = (v: number) => {
-    const max = Math.max(1, Math.min(99, Math.floor(v) || 8));
-    setSlMax(max);
-    try {
-      localStorage.setItem('cec:sl_batch_max', String(max));
-    } catch { /* ignore */ }
-  };
-  const [boxDetail, setBoxDetail] = useState('');
-  const [broadcastAudience, setBroadcastAudience] = useState<'all' | 'students' | 'teachers'>('all');
-  const [broadcastCategory, setBroadcastCategory] = useState<'General' | 'Urgent' | 'Events'>('General');
-  const [facId, setFacId] = useState('');
-  const [remoteReceipts, setRemoteReceipts] = useState<{ id: string; title: string; detail?: string | null; status?: string | null }[]>([]);
-  useEffect(() => {
-    portalApi.items(undefined, 'receipt').then((rows) => setRemoteReceipts(rows)).catch(() => undefined);
-  }, []);
-  const [resetWho, setResetWho] = useState('');
-  const [docTick, setDocTick] = useState(0);
-  const bumpDocs = () => setDocTick((t) => t + 1);
-  const [popup, setPopup] = useState<{ title: string; message: string; lines?: string[] } | null>(null);
-  const [photoTick, setPhotoTick] = useState(0);
-  const [photoError, setPhotoError] = useState('');
-  const myPhotoId = currentUser?.id || 'ADMIN';
-
-  const uploadPhoto = async (file: File | undefined) => {
-    if (!file) return;
-    setPhotoError('');
-    try {
-      const url = await readPhotoFile(file);
-      setPhoto(myPhotoId, url);
-      setPhotoTick((t) => t + 1);
-      onNotify('Profile photo updated');
-    } catch (e) {
-      setPhotoError(e instanceof Error ? e.message : 'Could not read that image.');
-    }
-  };
-  const [mysqlOn, setMysqlOn] = useState(false);
-
-  // Pull shared queue once, filtered to the current term (merges pending applications)
-  useEffect(() => {
-    let live = true;
-    portalApi.enrollPending({ schoolYear: academicConfig.schoolYear, semester: semesterNo(academicConfig.semester) }).then((rows) => {
-      if (!live) return;
-      setMysqlOn(true);
-      enroll.setList((current) => {
-        const ids = new Set(current.map((r) => r.id));
-        const missing = rows.filter((r) => !ids.has(r.id)).map((r) => ({
-          id: r.id, name: `${r.first_name} ${r.last_name}`.trim(), meta: `${r.program} • Year ${r.year_level}${r.school_year ? ` • ${r.school_year} ${r.semester === 2 ? '2nd' : '1st'} Sem` : ''} • Current term pending${r.payment_reference_no ? ` • Ref ${r.payment_reference_no}` : ''}${r.assigned_school_id ? ` • ID ${r.assigned_school_id}` : ''}`,
-        }));
-        return missing.length ? [...missing, ...current] : current;
-      });
-    }).catch(() => { if (live) setMysqlOn(false); });
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const decideEnrollment = async (id: string, decision: 'approved' | 'rejected' | 'enrolled') => {
-    try { await portalApi.enrollDecide(id, decision === 'rejected' ? 'rejected' : 'approved'); } catch { /* local-only fallback */ }
-    const applicant = enroll.list.find((a) => a.id === id);
-    if (decision === 'rejected') {
-      enroll.remove(id);
-      syncStudentStatus(id, 'Rejected');
-    } else if (decision === 'enrolled') {
-      // EDP final step: enrollee lands on the teacher roster so all systems connect
-      try {
-        const raw = localStorage.getItem('cec:t_roster_v2');
-        const roster = raw ? (JSON.parse(raw) as { id: string; name: string; course: string; email: string }[]) : [];
-        if (applicant && !roster.some((r) => r.id === id)) {
-          roster.push({ id, name: applicant.name, course: (applicant.meta || '').split('•')[0].trim(), email: '-' });
-          localStorage.setItem('cec:t_roster_v2', JSON.stringify(roster));
-        }
-      } catch { /* ignore */ }
-      enroll.remove(id);
-      syncStudentStatus(id, 'Enrolled');
-    } else {
-      syncStudentStatus(id, 'Approved');
-    }
-    onNotify(`${id} ${decision} — student tracker updated${mysqlOn ? ' (MySQL)' : ''}`);
-  };
-
-  // Explicit registrar stepping stones — the ONLY way stages advance:
-  // Docs ✓ → Approve → Enroll (row leaves the queue only when Enrolled/Rejected)
-  const setAppStage = (id: string, stage: 'Pending • Documents Verified' | 'Approved') => {
-    syncStudentStatus(id, stage);
-    onNotify(`${id} → ${stage} — student tracker updated`);
-  };
-
-  const syncStudentStatus = (id: string, status: string) => {
-    try {
-      const raw = localStorage.getItem('cec:s_enroll_apps');
-      if (!raw) return;
-      const rows = JSON.parse(raw) as { id: string; name: string; role: string }[];
-      localStorage.setItem('cec:s_enroll_apps', JSON.stringify(rows.map((r) => (r.id === id ? { ...r, role: status } : r))));
-    } catch { /* ignore */ }
-  };
-  const toggleAuto = () => {
-    setAutoApprove((v) => {
-      try { localStorage.setItem('cec:auto_approve', v ? '0' : '1'); } catch { /* ignore */ }
-      onNotify(v ? 'Auto-approve OFF — applications need admin review' : 'Auto-approve ON — new applications approved automatically');
-      return !v;
-    });
-  };
-  const route = GROUPS.flatMap((g) => g.items).find((i) => i.label === active)?.route ?? 'a_dashboard';
-  const moduleItems = ['Dashboard', ...GROUPS.flatMap((g) => g.items.map((item) => item.label))];
-  const navigate = (label: string) => setActive(moduleItems.includes(label) ? label : 'Dashboard');
-  const searchRecords = [
-    ...accounts.list.map((item) => ({ title: item.name, detail: `${item.id} • ${item.role}`, target: 'Account Creation' })),
-    ...enroll.list.map((item) => ({ title: item.name, detail: `${item.id} • ${item.meta}`, target: 'Enrollment Approval' })),
-    ...faculty.list.map((item) => ({ title: item.name, detail: item.role, target: 'Teacher Records' })),
-    ...bills.list.map((item) => ({ title: item.name, detail: item.role, target: 'Billing & Invoices' })),
-    ...broadcasts.list.map((item) => ({ title: item.name, detail: item.role, target: 'System Announcements' })),
-  ];
-  const footer = null;
-
-  const table = (title: string, cols: string[], rows: React.ReactNode, form?: React.ReactNode) => (
-    <section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>{title}</h1>{form}<div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}>{cols.map((c) => <th key={c} style={{ padding: 12 }}>{c}</th>)}</tr></thead><tbody>{rows}</tbody></table></div>{footer}</section>
-  );
-
-  const render = () => {
-    if (active === 'Dashboard') {
-      const peso = (s: string) => {
-        const t = s.trim();
-        if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
-        const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/);
-        return m ? Number(m[1]) : 0;
-      };
-      const openBills = bills.list.filter((bill) => !/paid|closed|verified/i.test(`${bill.name} ${bill.role}`));
-      const outstanding = openBills.reduce((n, b) => n + peso(`${b.name} ${b.role}`), 0);
-      const teachers = faculty.list.length + accounts.list.filter((a) => a.role === 'teacher').length;
-      const students = accounts.list.filter((a) => a.role === 'student').length;
-      const adminSections: DashboardSection[] = [
-        { title: 'Enrollment queue', target: 'Enrollment Approval', emptyMessage: 'No applications are waiting for review.', items: enroll.list.slice(0, 5).map((application) => ({ title: application.name, detail: `${application.id} • ${application.meta}`, status: 'Review', target: 'Enrollment Approval' })) },
-        { title: 'Billing follow-up', target: 'Payment Monitoring', emptyMessage: 'No open billing records are available.', items: openBills.slice(0, 5).map((bill) => ({ title: bill.name, detail: bill.role, status: 'Open', target: 'Payment Monitoring' })) },
-        { title: 'Faculty and accounts', target: 'Teacher Records', emptyMessage: 'Faculty and teacher accounts will appear here when created.', items: [...faculty.list.map((item) => ({ title: item.name, detail: item.role, status: 'Faculty', target: 'Teacher Records' })), ...accounts.list.filter((account) => account.role === 'teacher').map((item) => ({ title: item.name, detail: `${item.id} • Teacher account`, status: 'Account', target: 'Account Creation' }))].slice(0, 5) },
-        { title: 'Study loads', target: 'Study Load Builder', emptyMessage: 'No study loads built yet.', items: studyloads.list.slice(0, 5).map((s) => ({ title: s.name, detail: s.role, status: 'Load', target: 'Study Load Builder' })) },
-      ];
-      const priority = enroll.list[0]
-        ? { title: `Review enrollment: ${enroll.list[0].name}`, detail: `${enroll.list[0].meta} • ${enroll.list.length} application${enroll.list.length === 1 ? '' : 's'} in queue.`, actionLabel: 'Open approval queue', target: 'Enrollment Approval' }
-        : openBills[0]
-          ? { title: `Follow up on ${openBills[0].name}`, detail: `₱${outstanding.toLocaleString()} across open billing records.`, actionLabel: 'Open billing', target: 'Payment Monitoring' }
-          : { title: 'No urgent items in the current queues', detail: 'Enrollment and billing queues are clear. Build or review study loads.', actionLabel: 'Open study loads', target: 'Study Load Builder', tone: 'clear' as const };
-      return (
-        <RoleDashboardHome
-          role="admin"
-          name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'}
-          onNavigate={navigate}
-          dashboardSections={adminSections}
-          priority={priority}
-          liveMetrics={[
-            { label: 'Total students', value: String(students), detail: students ? 'Student accounts in the portal' : 'No student accounts recorded' },
-            { label: 'Active teachers', value: String(teachers), detail: teachers ? 'Faculty records and teacher accounts' : 'No teacher accounts recorded' },
-            { label: 'Pending applications', value: String(enroll.list.length), detail: enroll.list.length ? 'Current enrollment approval queue' : 'No applications awaiting review' },
-            { label: 'Outstanding balances', value: outstanding > 0 ? `₱${outstanding.toLocaleString()}` : '₱0', detail: outstanding > 0 ? 'Unpaid billing records' : 'No open billing balances recorded' },
-          ]}
-        />
-      );
-    }
-    if (active === 'Enrollment Approval') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Enrollment Approval</h1>
-        <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}><div><strong>Auto-approve new applications: {autoApprove ? 'ON' : 'OFF'}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>Online + walk-in applications land here. Advance each one yourself: Docs ✓ → Approve → Enroll ✓. Nothing moves without a registrar click.</div><div style={{ display: 'flex', gap: 8, marginTop: 8 }}>{(() => { const p = pipelineBadges(); return (<><span style={{ ...pill, background: p.docs ? '#ecfdf5' : '#fff' }}>Registrar docs {p.docs ? '✓' : '—'}</span><span style={{ ...pill, background: p.pay ? '#ecfdf5' : '#fff' }}>Accounting pay {p.pay ? '✓' : '—'}</span></>); })()}</div></div><button style={autoApprove ? ghost : btn} onClick={toggleAuto}>{autoApprove ? 'Turn OFF' : 'Turn ON'}</button></div>
-        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Applicant</th><th style={{ padding: 12 }}>Detail</th><th style={{ padding: 12 }}>Decision</th></tr></thead><tbody>{enroll.list.map((a) => <tr key={a.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><PhotoAvatar userId={a.id} name={a.name} size={32} /><strong>{a.name} - {a.id}</strong></div></td><td style={{ padding: 12 }}>{a.meta}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 8 }}><button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'approved')}>Approve</button><button style={{ background: '#0B3D91', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'enrolled')}>Enroll ✓</button><button style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => decideEnrollment(a.id, 'rejected')}>Reject</button><button style={ghost} onClick={() => {         openEditDialog('Edit detail', a.meta, (v) => { enroll.update(a.id, { meta: v }); onNotify('Updated'); }) }}>Edit</button></div></td></tr>)}{!enroll.list.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>Queue empty — new student applications will appear here.</td></tr>}</tbody></table></div>
-        <form style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }} onSubmit={async (e) => {
-          e.preventDefault();
-          if (!walkN.trim() || !walkE.trim()) { onNotify('Enter walk-in name and personal email'); return; }
-          const prog = enrM.split('•')[0].trim() || 'BSIT';
-          // EDP direct enroll: account issued on the spot, no queue wait
-          try {
-            const res = await api.post('/auth/enrollment', { fullName: walkN.trim(), personalEmail: walkE.trim(), phone: walkP.trim() || '09170000000', program: prog, yearLevel: 1, requestedRole: 'student' });
-            const d = res.data?.data ?? {};
-            setPopup({ title: 'Walk-in enrolled ✓', message: 'Hand these portal credentials to the student — they can sign in right away.', lines: [`Name: ${walkN.trim()}`, `School email: ${d.schoolEmail ?? '—'}`, `Temp password: ${d.temporaryPassword ?? '—'}`, `School ID: ${d.schoolId ?? '—'}`] });
-            onNotify('Walk-in student enrolled with portal access');
-          } catch (err) {
-            const apiErr = err as { response?: unknown };
-            if (apiErr.response) { onNotify('Enrollment failed — check details and try again'); return; }
-            // Offline: issue locally so the student still walks out with access
-            const nid = genSchoolId('student');
-            const temp = `CEC-${Math.floor(100000 + Math.random() * 900000)}`;
-            const mail = `${walkN.trim().toLowerCase().replace(/[^a-z\s.]/g, '').replace(/\s+/g, '.')}@cec.edu.ph`;
-            try {
-              const raw = localStorage.getItem('cec:registrations');
-              const rows = raw ? (JSON.parse(raw) as unknown[]) : [];
-              rows.push({ id: nid, fullName: walkN.trim(), personalEmail: walkE.trim(), phone: walkP.trim(), program: prog, yearLevel: 1, requestedRole: 'student', schoolEmail: mail, temporaryPassword: temp, createdAt: new Date().toISOString() });
-              localStorage.setItem('cec:registrations', JSON.stringify(rows));
-              const aRaw = localStorage.getItem('cec:a_accounts_v2');
-              const accs = aRaw ? (JSON.parse(aRaw) as unknown[]) : [];
-              accs.push({ id: nid, name: walkN.trim(), role: 'student' });
-              localStorage.setItem('cec:a_accounts_v2', JSON.stringify(accs));
-            } catch { /* ignore */ }
-            setPopup({ title: 'Walk-in enrolled ✓ (offline)', message: 'Hand these portal credentials to the student.', lines: [`Name: ${walkN.trim()}`, `School email: ${mail}`, `Temp password: ${temp}`, `School ID: ${nid}`] });
-            onNotify('Walk-in student enrolled (offline mode)');
-          }
-          setWalkN(''); setWalkE(''); setWalkP('');
-        }}>
-          <input style={{ ...inp, flex: 2, minWidth: 160 }} placeholder="Walk-in full name" value={walkN} onChange={(e) => setWalkN(e.target.value)} aria-label="Walk-in name" />
-          <input style={{ ...inp, flex: 2, minWidth: 160 }} placeholder="Personal email (Gmail)" value={walkE} onChange={(e) => setWalkE(e.target.value)} aria-label="Walk-in email" />
-          <input style={{ ...inp, flex: 1, minWidth: 120 }} placeholder="Phone" value={walkP} onChange={(e) => setWalkP(e.target.value)} aria-label="Walk-in phone" />
-          <button style={btn} type="submit">Enroll walk-in ✓</button>
-        </form>
-        <form style={{ display: 'flex', gap: 8, marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); if (!enrN.trim()) return; const nid = genSchoolId('student'); enroll.create({ id: nid, name: enrN.trim(), meta: enrM }); try { const raw = localStorage.getItem('cec:s_enroll_apps'); const rows = raw ? (JSON.parse(raw) as { id: string; name: string; role: string }[]) : []; rows.push({ id: nid, name: `${enrM.split('•')[0].trim()} • walk-in`, role: 'Pending' }); localStorage.setItem('cec:s_enroll_apps', JSON.stringify(rows)); } catch { /* ignore */ } setEnrN(''); onNotify('Walk-in application queued — approve above to enroll'); }}><input style={inp} placeholder="Queue applicant (no account yet)" value={enrN} onChange={(e) => setEnrN(e.target.value)} /><input style={inp} value={enrM} onChange={(e) => setEnrM(e.target.value)} /><button style={ghost} type="submit">Queue only</button></form>{footer}</section>);
-    }
-    if (active === 'Document Verification') {
-      void docTick;
-      const docs = listTrackedDocs();
-      const stageName = (d: { id: string; stage: number }) => (d.id === 'DOC-2026-0091' ? DOC_STAGES[d.stage] : SUBMIT_STAGES[d.stage]);
-      const stageCount = (d: { id: string }) => (d.id === 'DOC-2026-0091' ? DOC_STAGES.length : SUBMIT_STAGES.length);
-      let docNames: Record<string, string> = {};
-      try {
-        const raw = localStorage.getItem('cec:s_docs');
-        const rows = raw ? (JSON.parse(raw) as { id: string; name: string; role: string }[]) : [];
-        rows.forEach((r) => { docNames[r.id] = `${r.name} — ${r.role}`; });
-      } catch { /* ignore */ }
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Document Verification — Registrar</h1>        <p style={{ color: '#6b7890', fontSize: 13 }}>Confirm submissions here. Student trackers update automatically — students cannot advance stages themselves.</p>
-        <CoeQueue onNotify={onNotify} />
-        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Document</th><th style={{ padding: 12 }}>Stage</th><th style={{ padding: 12 }}>Registrar action</th></tr></thead><tbody>{docs.map((d) => { const atMin = d.stage === 0; const atMax = d.stage >= stageCount(d) - 1; const decide = (dir: 1 | -1) => { try { const next = Math.max(0, Math.min(stageCount(d) - 1, d.stage + dir)); writeStage(d.id, next); const verb = dir === 1 ? 'confirmed' : 'moved back'; pushNotification(['student'], { title: `Document ${d.id}: ${stageName({ ...d, stage: next })}`, detail: dir === 1 ? 'Registrar confirmed your submission — tracker updated automatically.' : `Registrar moved it back to ${stageName({ ...d, stage: next })}.`, category: 'Enrollment', target: 'Document Submission' }); if (dir === 1) setPopup({ title: 'Stage confirmed', message: `${d.id} is now at ${stageName({ ...d, stage: next })}. Student notified.`, lines: [d.id] }); bumpDocs(); onNotify(`${d.id} ${verb} → ${stageName({ ...d, stage: next })}`); } catch { onNotify('Could not save — storage unavailable'); } }; return <tr key={d.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{d.id}</strong><br /><small style={{ color: '#6b7890' }}>{docNames[d.id] ?? 'Awaiting upload'}</small></td><td style={{ padding: 12 }}>{stageName(d)} ({d.stage + 1}/{stageCount(d)})</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={{ ...ghost, ...(atMin ? { opacity: .45, cursor: 'not-allowed' } : null) }} disabled={atMin} onClick={() => decide(-1)}>Return</button><button style={{ ...btn, ...(atMax ? { background: '#94a3b8', cursor: 'not-allowed' } : null) }} disabled={atMax} onClick={() => decide(1)}>Confirm ✓</button></div></td></tr>; })}{!docs.length && <tr><td colSpan={3} style={{ padding: 16, color: '#6b7890' }}>No documents submitted yet — student uploads appear here automatically.</td></tr>}</tbody></table></div>{footer}</section>);
-    }
-    if (active === 'RBAC Management') {
-      const rows = ['Student', 'Teacher', 'Admin']; const cols = ['Students', 'Teachers', 'Finance', 'Admin'];
-      return (<section style={card}><h1 style={{ margin: 0 }}>Role-Based Access Control (RBAC) — Update</h1><div style={{ ...box, padding: 0 }}><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr style={{ background: '#f8fafc' }}><th style={{ textAlign: 'left', padding: 12 }}>Role</th>{cols.map((c) => <th key={c} style={{ padding: 12 }}>{c}</th>)}</tr></thead><tbody>{rows.map((r) => <tr key={r} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{r}</td>{cols.map((c) => <td key={c} style={{ textAlign: 'center', padding: 12 }}><input type="checkbox" checked={!!perms[`${r}-${c}`]} onChange={() => { setPerms((p) => ({ ...p, [`${r}-${c}`]: !p[`${r}-${c}`] })); }} aria-label={`${r}-${c}`} /></td>)}</tr>)}</tbody></table></div><div style={{ marginTop: 12, display: 'flex', gap: 8 }}><button style={btn} onClick={() => onNotify('Permissions updated')}>Save Permissions</button><button style={ghost} onClick={() => { setPerms({}); onNotify('Permissions cleared (Delete)'); }}>Clear all</button></div>{footer}</section>);
-    }
-    if (active === 'Account Creation') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Account Creation / Management</h1>
-        <div style={{ ...box, display: 'flex', gap: 16, alignItems: 'center' }} key={photoTick}>
-          <PhotoAvatar userId={myPhotoId} name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'} size={64} />
-          <div><strong>My admin photo</strong><div style={{ fontSize: 12, color: '#6b7890', margin: '4px 0 8px' }}>JPG/PNG under 2MB.</div>
-            <label style={{ ...ghost, display: 'inline-block' }}>Upload photo<input type="file" accept="image/*" hidden onChange={(e) => uploadPhoto(e.target.files?.[0])} /></label>
-            {photoError && <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 6 }}>{photoError}</div>}
-          </div>
-        </div>
-        {table('Accounts', ['Photo', 'ID', 'Name', 'Role', 'Actions'],
-        accounts.list.map((a) => <tr key={a.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><PhotoAvatar userId={a.id} name={a.name} size={34} /></td><td style={{ padding: 12 }}>{a.id}</td><td style={{ padding: 12 }}><strong>{a.name}</strong><br /><small style={{ color: '#6b7890' }}>{a.id}</small></td><td style={{ padding: 12 }}>{a.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog('Edit name', a.name, (v) => { accounts.update(a.id, { name: v }); onNotify('Account updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { accounts.remove(a.id); onNotify('Account deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); if (!fn.trim() || !fi.trim()) { onNotify('Enter name and ID'); return; } const need: SchoolRole = fr === 'teacher' ? 'teacher' : fr === 'admin' ? 'admin' : 'student'; if (!isValidSchoolId(fi, need)) { onNotify(`ID must be 7 digits starting with ${need === 'student' ? '2' : need === 'teacher' ? '3' : '4'} for ${need}s`); return; } accounts.create({ id: fi.trim(), name: fn.trim(), role: fr }); setFn(''); setFi(''); onNotify('Account created'); }}><input style={inp} placeholder="Full Name" value={fn} onChange={(e) => setFn(e.target.value)} /><select style={inp} value={fr} onChange={(e) => { setFr(e.target.value); setFi(e.target.value === 'student' ? genSchoolId('student') : ''); }} aria-label="Role"><option value="student">student (2xxxxxx)</option><option value="teacher">teacher (3xxxxxx)</option><option value="admin">admin (4xxxxxx)</option></select><input style={inp} placeholder="Assigned 7-digit ID (teacher 3•admin 4)" value={fi} onChange={(e) => setFi(e.target.value.replace(/\D/g, '').slice(0, 7))} inputMode="numeric" />{fr !== 'student' ? null : <button type="button" style={ghost} onClick={() => setFi(genSchoolId('student'))}>Auto ID</button>}<button style={{ ...btn, gridColumn: '1/-1' }} type="submit">Create Account</button></form>))}
-      </section>);
-    }
-    if (active === 'Teacher Records') {
-      return table('Teacher Records / Faculty Faces', ['Photo', 'Name', 'Load', 'Actions'],
-        faculty.list.map((t) => <tr key={t.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><PhotoAvatar userId={t.id} name={t.name} size={38} /></td><td style={{ padding: 12 }}><strong>{t.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{t.id}</div></td><td style={{ padding: 12 }}>{t.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog('Edit record', t.name, (v) => { faculty.update(t.id, { name: v }); onNotify('Updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { faculty.remove(t.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim() || !facId.trim()) { onNotify('Enter faculty name and assigned 3xxxxxx ID'); return; } if (!/^3\d{6}$/.test(facId.trim())) { onNotify('Faculty ID must be 7 digits starting with 3'); return; } faculty.create({ id: facId.trim(), name: boxVal.trim(), role: 'New hire • 6 units' }); setBoxVal(''); setFacId(''); onNotify('Faculty record created'); }}><input style={inp} placeholder="Faculty name" value={boxVal} onChange={(e) => setBoxVal(e.target.value)} /><input style={inp} placeholder="Assigned ID 3xxxxxx" value={facId} onChange={(e) => setFacId(e.target.value.replace(/\D/g, '').slice(0, 7))} inputMode="numeric" aria-label="Faculty ID" /><button style={btn} type="submit">Add</button></form>));
-    }
-    if (active === 'Broadcast Messaging' || active === 'System Announcements') {
-      return table(active, ['Title', 'Detail', 'Actions'],
-        broadcasts.list.map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.name}</strong></td><td style={{ padding: 12 }}>{r.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => { openEditDialog('Edit broadcast', r.name, (v) => { broadcasts.update(r.id, { name: v }); onNotify('Updated'); }); }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { broadcasts.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim() || !boxDetail.trim()) { onNotify('Enter an announcement title and details'); return; } const title = boxVal.trim(); const detail = boxDetail.trim(); const audienceLabel = broadcastAudience === 'all' ? 'All roles' : broadcastAudience === 'students' ? 'Students' : 'Teachers'; broadcasts.create({ id: uid('bc'), name: title, role: `${audienceLabel} • ${broadcastCategory} • Just now` }); setBoxVal(''); setBoxDetail(''); pushNotification(broadcastAudience === 'all' ? 'all' : [broadcastAudience === 'students' ? 'student' : 'teacher'], { title: `System announcement: ${title}`, detail: `${detail} — check your Announcement Board.`, category: 'Communication', target: 'Announcement Board' }); void publishAnnouncement({ title, content: detail, audience: broadcastAudience, category: broadcastCategory }).catch(() => undefined); setPopup({ title: 'Broadcast sent', message: 'Everyone receives it live on their Announcement Board.', lines: [title] }); onNotify(`Broadcast sent to ${audienceLabel.toLowerCase()}`); }}>
-          <input style={{ ...inp, flex: '1 1 200px' }} placeholder="Announcement title" value={boxVal} onChange={(e) => setBoxVal(e.target.value)} aria-label="Announcement title" />
-          <input style={{ ...inp, flex: '2 1 280px' }} placeholder="Details — what, when, where" value={boxDetail} onChange={(e) => setBoxDetail(e.target.value)} aria-label="Announcement details" />
-          <select style={{ ...inp, flex: '0 1 150px', width: 'auto' }} value={broadcastAudience} onChange={(e) => setBroadcastAudience(e.target.value as 'all' | 'students' | 'teachers')} aria-label="Audience">
-            <option value="all">Everyone</option>
-            <option value="students">Students</option>
-            <option value="teachers">Teachers</option>
-          </select>
-          <select style={{ ...inp, flex: '0 1 130px', width: 'auto' }} value={broadcastCategory} onChange={(e) => setBroadcastCategory(e.target.value as 'General' | 'Urgent' | 'Events')} aria-label="Category">
-            <option>General</option>
-            <option>Urgent</option>
-            <option>Events</option>
-          </select>
-          <button style={btn} type="submit">Broadcast</button></form>));
-    }
-    if (active === 'Fee Structure' || active === 'Billing & Invoices' || active === 'Teacher Records' || active === 'Broadcast Messaging' || active === 'System Announcements') {
-      const map: Record<string, typeof fees> = { 'Fee Structure': fees, 'Billing & Invoices': bills, 'Teacher Records': faculty, 'Broadcast Messaging': broadcasts, 'System Announcements': broadcasts };
-      const col = map[active] ?? fees;
-      return table(active, ['Name', 'Detail', 'Actions'],
-        col.list.map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{r.name}</td><td style={{ padding: 12 }}>{r.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => {         openEditDialog('Edit record', r.name, (v) => { col.update(r.id, { name: v }); onNotify('Updated'); }) }}>Edit</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { col.remove(r.id); onNotify('Deleted'); }}>Delete</button></div></td></tr>),
-        (<form style={{ display: 'flex', gap: 8, marginTop: 14 }} onSubmit={(e) => { e.preventDefault(); if (!boxVal.trim()) return; col.create({ id: uid('x'), name: boxVal.trim(), role: 'New' }); setBoxVal(''); onNotify('Created'); }}><input style={inp} placeholder={`New ${active}`} value={boxVal} onChange={(e) => setBoxVal(e.target.value)} /><button style={btn} type="submit">Add</button></form>));
-    }
-    if (active === 'Status Monitoring') {
-      const pending = enroll.list.length;
-      const approved = (() => { try { const raw = localStorage.getItem('cec:s_enroll_apps'); const rows = raw ? (JSON.parse(raw) as { role: string }[]) : []; return rows.filter((r) => r.role.toLowerCase().includes('approv')).length; } catch { return 0; } })();
-      const total = pending + approved + accounts.list.length;
-      const bar = (label: string, v: number, max: number, color: string) => (<div style={{ marginTop: 10 }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>{label}</span><strong>{v}</strong></div><div style={{ height: 8, background: '#edf1f5', borderRadius: 8, marginTop: 6 }}><div style={{ width: `${max ? Math.round((v / max) * 100) : 0}%`, height: '100%', background: color, borderRadius: 8 }} /></div></div>);
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Status Monitoring</h1><div style={box}>{bar('Pending applications', pending, total, '#ee9950')}{bar('Approved enrollments', approved, total, '#2bb17f')}{bar('Active accounts', accounts.list.length, total, '#3d82da')}<div style={{ marginTop: 14 }}><button style={btn} onClick={() => onNotify('Statuses refreshed from live queues')}>Refresh statuses</button></div></div>{footer}</section>);
-    }
-    if (active === 'Study Load Builder') {
-      const DAYS = ['M', 'T', 'W', 'TH', 'F', 'S'];
-      const teacherOptions = faculty.list.length ? faculty.list : accounts.list.filter((a) => a.role === 'teacher');
-      const toggleDay = (d: string) => setSlDays((days) => (days.includes(d) ? days.filter((x) => x !== d) : [...days, d]));
-      // Publish a completed batch so students can plot it in Section Selection.
-      const to12h = (t: string) => {
-        const [hh, mm] = t.split(':').map(Number);
-        if (!Number.isFinite(hh) || !Number.isFinite(mm)) return t;
-        const suffix = hh >= 12 ? 'PM' : 'AM';
-        const h12 = hh % 12 === 0 ? 12 : hh % 12;
-        return `${String(h12).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${suffix}`;
-      };
-      const submitBatch = (batch: number) => {
-        try {
-          const rows = studyloads.list.filter((s) => (s.batch ?? 1) === batch);
-          if (!rows.length) return;
-          const offerings = rows.map((s) => {
-            const [code, ...rest] = (s.subject ?? s.name).split('—');
-            return {
-              edp: s.id,
-              subject: (code ?? s.name).trim(),
-              descriptive: (rest.join('—') || s.name).trim(),
-              schedule: `${(s.days ?? []).join('')} ${to12h(s.start ?? '')}-${to12h(s.end ?? '')}`,
-              room: s.room ?? '',
-              teacher: s.teacher ?? '',
-              type: 'Lec',
-              units: 3,
-              section: s.section ?? '',
-              batch,
-            };
-          });
-          const raw = localStorage.getItem('cec:studyload_offerings');
-          const existing = raw ? (JSON.parse(raw) as { edp: string; batch?: number }[]) : [];
-          const kept = existing.filter((o) => o.batch !== batch);
-          localStorage.setItem('cec:studyload_offerings', JSON.stringify([...kept, ...offerings]));
-          const done = [...new Set([...slSubmitted, batch])];
-          setSlSubmitted(done);
-          localStorage.setItem('cec:sl_submitted', JSON.stringify(done));
-          pushNotification(['student'], { title: `New schedules published: Batch ${batch}`, detail: `${rows.length} classes are ready to plot in Section Selection.`, category: 'Academic', target: 'Section Selection' });
-          onNotify(`Batch ${batch} submitted — students can now plot these schedules`);
-        } catch {
-          onNotify('Could not submit batch — storage unavailable');
-        }
-      };
-      const addStudyLoad = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!slSubject.trim() || !slTeacher.trim() || !slRoom.trim() || !slSection.trim()) {
-          onNotify('Fill in subject, teacher, room, and section');
-          return;
-        }
-        if (!slDays.length) {
-          onNotify('Pick at least one class day');
-          return;
-        }
-        if (!slStart || !slEnd || slStart >= slEnd) {
-          onNotify('Set a valid time range (start before end)');
-          return;
-        }
-        const cap = Math.max(1, Number(slCap) || 0);
-        const sched = `${slDays.join('')} ${slStart}–${slEnd}`;
-        // Normalize every field so cosmetic differences (case, spacing, day
-        // order) can never slip past as a "different" load.
-        const norm = (s: string) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-        const normDays = (days: string[] = []) => [...days].map((d) => d.trim().toUpperCase()).sort().join('');
-        const capOf = (s: { cap?: string; meta: string }) =>
-          (s.cap ?? '').trim() || (/capacity\s+(\d+)/i.exec(s.meta ?? '')?.[1] ?? '');
-        const signature = (s: { subject?: string; teacher?: string; room?: string; section?: string; days?: string[]; start?: string; end?: string; cap?: string; meta: string; name: string; role: string }) => {
-          // Legacy rows (saved before structured fields) fall back to parsed display text.
-          const subject = norm(s.subject ?? s.name.split('•')[0] ?? '');
-          const section = norm(s.section ?? s.name.split('•')[1] ?? '').toUpperCase();
-          const parts = (s.role ?? '').split('•').map((p) => p.trim());
-          const teacher = norm(s.teacher ?? parts[0] ?? '');
-          const room = norm(s.room ?? parts[1] ?? '');
-          return [subject, teacher, room, section, normDays(s.days), (s.start ?? '').trim(), (s.end ?? '').trim(), capOf(s)].join('|');
-        };
-        const draftSig = [
-          norm(slSubject), norm(slTeacher), norm(slRoom), norm(slSection).toUpperCase(),
-          normDays(slDays), slStart.trim(), slEnd.trim(), String(cap),
-        ].join('|');
-        // 1) Identical inputs to a previous load — blocked, no exceptions.
-        const identical = studyloads.list.find((s) => signature(s) === draftSig);
-        if (identical) {
-          onNotify(`Identical study load already exists — "${identical.name}" (${identical.id}). Nothing was created.`);
-          return;
-        }
-        const daysOverlap = (a: string[] = [], b: string[] = []) => a.some((d) => b.includes(d));
-        const timeOverlap = (aStart: string, aEnd: string, bStart = '', bEnd = '') =>
-          !!bStart && !!bEnd && aStart < bEnd && bStart < aEnd;
-        // 2) Same subject + section at an overlapping time.
-        const duplicate = studyloads.list.find((s) =>
-          norm(s.subject ?? '') === norm(slSubject) &&
-          norm(s.section ?? '') === norm(slSection) &&
-          daysOverlap(s.days, slDays) && timeOverlap(slStart, slEnd, s.start, s.end));
-        if (duplicate) {
-          onNotify(`Duplicate blocked — "${duplicate.name}" already runs at ${duplicate.role.split('•').slice(-1)[0].trim()}`);
-          return;
-        }
-        const roomClash = studyloads.list.find((s) =>
-          norm(s.room ?? '') === norm(slRoom) &&
-          daysOverlap(s.days, slDays) && timeOverlap(slStart, slEnd, s.start, s.end));
-        if (roomClash) {
-          onNotify(`Room clash — ${slRoom.trim()} is already booked by "${roomClash.name}" (${roomClash.role})`);
-          return;
-        }
-        const teacherClash = studyloads.list.find((s) =>
-          norm(s.teacher ?? '') === norm(slTeacher) &&
-          daysOverlap(s.days, slDays) && timeOverlap(slStart, slEnd, s.start, s.end));
-        if (teacherClash) {
-          onNotify(`Schedule clash — ${slTeacher.trim()} already teaches "${teacherClash.name}" (${teacherClash.role})`);
-          return;
-        }
-        // Batch rollover: cap loads per batch, open a new batch when full.
-        const batchOf = (s: { batch?: number }) => s.batch ?? 1;
-        const topBatch = studyloads.list.reduce((m, s) => Math.max(m, batchOf(s)), 0);
-        const activeBatch = topBatch === 0 ? 1 : topBatch;
-        const activeCount = studyloads.list.filter((s) => batchOf(s) === activeBatch).length;
-        const targetBatch = activeCount >= slMax ? activeBatch + 1 : activeBatch;
-        studyloads.create({
-          id: uid('LD'),
-          name: `${slSubject.trim()} • ${slSection.trim().toUpperCase()}`,
-          role: `${slTeacher.trim()} • ${slRoom.trim()} • ${sched}`,
-          meta: `Capacity ${cap} • Enrolled 0`,
-          subject: slSubject.trim(),
-          teacher: slTeacher.trim(),
-          room: slRoom.trim(),
-          days: [...slDays],
-          start: slStart,
-          end: slEnd,
-          section: slSection.trim().toUpperCase(),
-          cap: String(cap),
-          batch: targetBatch,
-        });
-        const roomLabel = slRoom.trim();
-        if (!rooms.list.some((r) => r.name.toLowerCase() === roomLabel.toLowerCase())) {
-          rooms.create({ id: uid('rm'), name: roomLabel, role: `Capacity ${cap}` });
-        }
-        if (!offers.list.some((o) => o.name.toLowerCase() === slSubject.trim().toLowerCase())) {
-          offers.create({ id: uid('of'), name: slSubject.trim(), role: `${slSection.trim().toUpperCase()} • ${sched}` });
-        }
-        setSlSubject(''); setSlTeacher(''); setSlRoom(''); setSlSection(''); setSlCap('40');
-        onNotify(targetBatch > activeBatch
-          ? `Batch ${activeBatch} completed (${slMax}/${slMax}) — new Batch ${targetBatch} opened`
-          : `Study load created in Batch ${targetBatch} (${activeCount + 1}/${slMax})`);
-      };
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Study Load Builder</h1>
-        <p style={{ color: '#6b7890', fontSize: 13 }}>One form builds a complete class: subject + teacher + room + days and time + section + capacity. Loads are grouped into batches of <strong>{slMax}</strong> — a new batch opens automatically when one fills up. Rooms and subjects are remembered for reuse.</p>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-          <label htmlFor="sl-max" style={{ fontSize: 13, fontWeight: 700, color: '#33415c' }}>Max loads per batch:</label>
-          <input id="sl-max" style={{ ...inp, width: 90, flex: 'none' }} type="number" min={1} max={99} value={slMax} onChange={(e) => setBatchMax(Number(e.target.value))} aria-label="Maximum loads per batch" />
-        </div>
-        <form style={{ display: 'grid', gap: 10, marginTop: 14 }} onSubmit={addStudyLoad}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input style={{ ...inp, flex: '2 1 220px' }} placeholder="Subject e.g. CS 302 — Database Systems" value={slSubject} onChange={(e) => setSlSubject(e.target.value)} aria-label="Subject" list="sl-subjects" />
-            <datalist id="sl-subjects">{offers.list.map((o) => <option key={o.id} value={o.name} />)}</datalist>
-            <input style={{ ...inp, flex: '1 1 160px' }} placeholder="Section e.g. BSIT-3A" value={slSection} onChange={(e) => setSlSection(e.target.value)} aria-label="Section" />
-            <input style={{ ...inp, flex: '0 1 120px', width: 120 }} placeholder="Capacity" value={slCap} onChange={(e) => setSlCap(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" aria-label="Capacity" />
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input style={{ ...inp, flex: '1 1 200px' }} placeholder="Teacher e.g. Rosa Santos" value={slTeacher} onChange={(e) => setSlTeacher(e.target.value)} aria-label="Teacher" list="sl-teachers" />
-            <datalist id="sl-teachers">{teacherOptions.map((t) => <option key={t.id} value={t.name} />)}</datalist>
-            <input style={{ ...inp, flex: '1 1 200px' }} placeholder="Room e.g. Room 301" value={slRoom} onChange={(e) => setSlRoom(e.target.value)} aria-label="Room" list="sl-rooms" />
-            <datalist id="sl-rooms">{rooms.list.map((r) => <option key={r.id} value={r.name} />)}</datalist>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#33415c' }}>Days:</span>
-            <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Class days">
-              {DAYS.map((d) => <button key={d} type="button" onClick={() => toggleDay(d)} aria-pressed={slDays.includes(d)} style={{ border: slDays.includes(d) ? '2px solid #0B3D91' : '1px solid #e2e7ef', background: slDays.includes(d) ? '#e8f1ff' : '#fff', borderRadius: 8, padding: '8px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', color: '#0B3D91' }}>{d}</button>)}
-            </div>
-            <input style={{ ...inp, flex: '0 1 130px', width: 130 }} type="time" value={slStart} onChange={(e) => setSlStart(e.target.value)} aria-label="Start time" />
-            <span style={{ color: '#6b7890' }}>–</span>
-            <input style={{ ...inp, flex: '0 1 130px', width: 130 }} type="time" value={slEnd} onChange={(e) => setSlEnd(e.target.value)} aria-label="End time" />
-            <button style={btn} type="submit">Create study load</button>
-            <button style={ghost} type="button" onClick={() => {
-              setSlSubject('CS 302 — Database Systems');
-              setSlSection('BSIT-3A');
-              setSlCap('40');
-              setSlTeacher(teacherOptions[0]?.name ?? 'Rosa Santos');
-              setSlRoom(rooms.list[0]?.name ?? 'Room 301');
-              setSlDays(['M', 'W', 'F']);
-              setSlStart('08:00');
-              setSlEnd('09:30');
-              onNotify('Sample study load filled in — press Create study load');
-            }}>Fill sample</button>
-          </div>
-        </form>
-        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Subject • Section</th><th style={{ padding: 12 }}>Teacher • Room • Schedule</th><th style={{ padding: 12 }}>Load</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>
-          {[...new Set(studyloads.list.map((s) => s.batch ?? 1))].sort((a, b) => a - b).map((batch) => {
-            const rows = studyloads.list.filter((s) => (s.batch ?? 1) === batch);
-            const full = rows.length >= slMax;
-            return (<Fragment key={batch}>
-              <tr style={{ background: '#eef4ff' }}><td colSpan={4} style={{ padding: '10px 12px', fontSize: 13, fontWeight: 800, color: '#0B3D91' }}>
-                <span>Batch {batch} • {rows.length}/{slMax}</span>
-                {full
-                  ? <span style={{ background: '#16a34a', color: '#fff', borderRadius: 999, padding: '2px 10px', fontSize: 10, marginLeft: 8 }}>COMPLETED</span>
-                  : <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '2px 10px', fontSize: 10, marginLeft: 8 }}>OPEN</span>}
-                {full && !slSubmitted.includes(batch) && (
-                  <button style={{ ...btn, marginLeft: 12, padding: '6px 14px' }} onClick={() => submitBatch(batch)}>Submit batch → student schedules</button>
-                )}
-                {slSubmitted.includes(batch) && (
-                  <span style={{ background: '#0B3D91', color: '#fff', borderRadius: 999, padding: '2px 10px', fontSize: 10, marginLeft: 8 }}>SUBMITTED ✓</span>
-                )}
-              </td></tr>
-              {rows.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{s.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{s.id}</div></td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}>{s.meta}</td><td style={{ padding: 12 }}><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { studyloads.remove(s.id); onNotify('Study load deleted'); }}>Delete</button></td></tr>)}
-            </Fragment>);
-          })}
-          {!studyloads.list.length && <tr><td colSpan={4} style={{ padding: 16, color: '#6b7890' }}>No study loads yet — build the first class above.</td></tr>}
-        </tbody></table></div>{footer}</section>);
-    }
-    if (active === 'Load Assignment') return <AdminTable title="Load Assignment" col={loads} colA="Faculty" colB="Units • Sections" phA="e.g. Ms. Reyes" phB="e.g. 9 units" onNotify={onNotify} footer={footer} />;
-    if (active === 'Credentials') return <AdminTable title="Faculty Credentials" col={creds} colA="Credential" colB="Validity" phA="e.g. PRC License" phB="Valid until 2028-01-01" onNotify={onNotify} footer={footer} />;
-    if (active === 'Password Reset') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Password Reset</h1><div style={{ ...box }}><ChangePassword identifier={currentUser?.email || myPhotoId} onNotify={onNotify} /></div><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); if (!resetWho.trim()) return; onNotify(`Reset link sent to accounts matching "${resetWho.trim()}"`); pushNotification(['student', 'teacher'], { title: 'Password reset issued', detail: 'Admin issued a password reset for your account.', category: 'System', target: 'Password Recovery' }); setResetWho(''); }}><input style={inp} placeholder="Name, ID or email" value={resetWho} onChange={(e) => setResetWho(e.target.value)} aria-label="Account to reset" /><button style={btn} type="submit">Send reset</button></form><div style={box}>{accounts.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{a.name}</strong> • {a.id}</span><button style={ghost} onClick={() => onNotify(`Reset link sent to ${a.name}`)}>Reset</button></div>)}</div>{footer}</section>);
-    }
-    if (active === 'Scholarships') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Scholarship Approvals</h1><div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Applicant</th><th style={{ padding: 12 }}>Status</th><th style={{ padding: 12 }}>Decision</th></tr></thead><tbody>{scholars.list.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{s.name}</strong></td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}><div style={{ display: 'flex', gap: 6 }}><button style={{ background: '#16a34a', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => { scholars.update(s.id, { role: 'Approved' }); try { const raw = localStorage.getItem('cec:s_scholar_v2'); const rows = raw ? (JSON.parse(raw) as { id: string; role: string }[]) : []; localStorage.setItem('cec:s_scholar_v2', JSON.stringify(rows.map((r) => (r.id === s.id ? { ...r, role: 'Approved by finance office' } : r)))); } catch { /* ignore */ } pushNotification(['student'], { title: 'Scholarship approved', detail: `${s.name} — finance office decision posted.`, category: 'Finance', target: 'Scholarship Application' }); onNotify(`${s.name} scholarship approved — student updated`); }}>Approve</button><button style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }} onClick={() => { scholars.update(s.id, { role: 'Denied' }); try { const raw = localStorage.getItem('cec:s_scholar_v2'); const rows = raw ? (JSON.parse(raw) as { id: string; role: string }[]) : []; localStorage.setItem('cec:s_scholar_v2', JSON.stringify(rows.map((r) => (r.id === s.id ? { ...r, role: 'Denied by finance office' } : r)))); } catch { /* ignore */ } onNotify(`${s.name} scholarship denied — student updated`); }}>Deny</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { scholars.remove(s.id); onNotify('Scholarship record deleted'); }}>Delete</button></div></td></tr>)}</tbody></table></div>{footer}</section>);
-    }
-    if (active === 'Payment Monitoring') {
-      const peso = (s: string) => { const m = s.replace(/,/g, '').match(/₱\s*(\d+(?:\.\d+)?)/); return m ? Number(m[1]) : 0; };
-      const total = bills.list.reduce((n, b) => n + peso(`${b.name} ${b.role}`), 0);
-      let receipts: { id: string; name: string; role: string; remote?: boolean; verifiedRemote?: boolean }[] = [];
-      let verified: string[] = [];
-      try {
-        const hRaw = localStorage.getItem('cec:s_history_v2');
-        receipts = hRaw ? JSON.parse(hRaw) : [];
-        const vRaw = localStorage.getItem('cec:receipts_verified');
-        verified = vRaw ? JSON.parse(vRaw) : [];
-      } catch { /* ignore */ }
-      remoteReceipts.forEach((r) => {
-        if (!receipts.some((x) => x.id === r.id)) {
-          receipts.push({ id: r.id, name: r.title, role: `${r.detail ?? ''} • ${r.status ?? 'Posted'}`, remote: true, verifiedRemote: r.status === 'Verified' });
-        }
-      });
-      const verifyReceipt = (id: string, label: string, remote?: boolean) => {
-        if (remote) {
-          portalApi.itemUpdate(id, { status: 'Verified' }).then(() => {
-            setRemoteReceipts((rows) => rows.map((r) => (r.id === id ? { ...r, status: 'Verified' } : r)));
-            onNotify(`${label} verified — student tracker updated`);
-          }).catch(() => onNotify('Could not reach database — receipt kept as posted'));
-          pushNotification(['student'], { title: 'Receipt verified by accounting', detail: `${label} — your payment tracker now shows Receipt Issued.`, category: 'Finance', target: 'Payment Portal' });
-          return;
-        }
-        if (!verified.includes(id)) {
-          verified = [...verified, id];
-          try { localStorage.setItem('cec:receipts_verified', JSON.stringify(verified)); } catch { /* ignore */ }
-        }
-        pushNotification(['student'], { title: 'Receipt verified by accounting', detail: `${label} — your payment tracker now shows Receipt Issued.`, category: 'Finance', target: 'Payment Portal' });
-        onNotify(`${label} verified — student tracker updated`);
-      };
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Payment Monitoring — Accounting</h1>
-        <div style={box}>Tracked invoices: <strong>{bills.list.length}</strong> • Total on books: <strong>₱{total.toLocaleString()}</strong>
-          <div style={{ marginTop: 12 }}><strong>Student receipts ({receipts.length})</strong></div>
-          {receipts.length ? receipts.map((h) => <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{h.name}</strong><div style={{ fontSize: 11, color: '#6b7890' }}>{h.id} • {h.role}{h.remote ? ' • MySQL' : ''}</div></span>{verified.includes(h.id) || h.verifiedRemote ? <span style={{ background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Verified ✓</span> : <button style={btn} onClick={() => verifyReceipt(h.id, h.name, h.remote)}>Verify</button>}</div>) : <div style={{ fontSize: 13, color: '#6b7890' }}>No student payments posted yet.</div>}
-          {bills.list.map((b) => <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{b.name}</strong> • {b.role}</span><button style={ghost} onClick={() => { bills.update(b.id, { role: `${b.role} • Verified` }); onNotify(`${b.name} marked verified`); }}>Verify</button></div>)}
-        </div>{footer}</section>);
-    }
-    if (active === 'System Config') return <AdminTable title="System Config" col={syscfg} colA="Key" colB="Value" phA="e.g. enrollment_open" phB="e.g. true" onNotify={onNotify} footer={footer} />;
-    if (active === 'Audit Log') {
-      let trail: { id: string; title: string; detail: string }[] = [];
-      try {
-        const raw = localStorage.getItem('cec:notifications:admin');
-        trail = raw ? JSON.parse(raw) : [];
-      } catch { trail = []; }
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Audit Log</h1><div style={box}>{trail.length ? trail.slice(0, 20).map((t) => <div key={t.id} style={{ padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 13 }}><strong>{t.title}</strong><div style={{ color: '#6b7890' }}>{t.detail}</div></div>) : <div style={{ color: '#6b7890' }}>No admin activity recorded yet — actions you take (approvals, broadcasts, confirms) appear here.</div>}</div>{footer}</section>);
-    }
-    if (active === 'Backup & Restore') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Backup &amp; Restore</h1><div style={box}><p style={{ fontSize: 13, color: '#475569' }}>Download every local portal record as JSON, or restore from a backup file. MySQL: full versioned dump lives at <code>database/cec_portal_v2_full.sql</code>.</p><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button style={btn} onClick={() => {
-        const data: Record<string, string | null> = {};
-        for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('cec:')) data[k] = localStorage.getItem(k); }
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `cec-portal-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        onNotify('Backup downloaded');
-      }}>Download backup</button><label style={{ ...ghost, display: 'inline-block' }}>Restore<input type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const data = JSON.parse(String(r.result)) as Record<string, string>; Object.entries(data).forEach(([k, v]) => { if (k.startsWith('cec:')) localStorage.setItem(k, v); }); onNotify('Backup restored — refresh to see it'); } catch { onNotify('Invalid backup file'); } }; r.readAsText(f); }} /></label><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (!window.confirm('Clear ALL local portal records (students, teachers, payments, docs)? The MySQL database is untouched.')) return; const keep = ['cec:theme', 'cec_session_user', 'cec_access_token', 'cec_remember_identifier']; const keys: string[] = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('cec:') && !keep.includes(k)) keys.push(k); } keys.forEach((k) => localStorage.removeItem(k)); onNotify(`Cleared ${keys.length} record stores — refresh for empty systems`); }}>Reset demo data</button></div></div>{footer}</section>);
-    }
-    if (active === 'Security') {
-      return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Security Monitoring</h1><div style={box}><div style={{ fontSize: 14 }}>Auto-approve new enrollments: <strong>{autoApprove ? 'ON' : 'OFF'}</strong> (toggle in Enrollment Approval)</div><div style={{ fontSize: 14, marginTop: 8 }}>Active session: <strong>{currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role})` : '—'}</strong></div><div style={{ fontSize: 14, marginTop: 8 }}>Demo accounts use fixed credentials for thesis presentation; MySQL passwords are bcrypt-hashed.</div><div style={{ marginTop: 12 }}><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { try { localStorage.removeItem('cec:session_user'); } catch { /* ignore */ } clearTokens(); onLogout(); onNotify('All sessions revoked — signed out'); }}>Revoke sessions &amp; sign out</button></div></div>{footer}</section>);
-    }
-    return (<section style={card}><h1 style={{ margin: 0 }}>{active}</h1><div style={box}>Route <strong>{route}</strong> ready.</div>{footer}</section>);
-  };
-
-  return (
-    <DashboardShell
-      role="admin"
-      groups={GROUPS}
-      active={active}
-      expanded={expanded}
-      onExpand={setExpanded}
-      onNavigate={navigate}
-      onLogout={onLogout}
-      userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'}
-      userIdLine={myPhotoId}
-      photoUserId={myPhotoId}
-      photoVersion={photoTick}
-      moduleItems={moduleItems}
-      searchRecords={searchRecords}
-      routeCrumb={active === 'Dashboard' ? 'Overview' : route}
-      popup={popup}
-      onClosePopup={() => setPopup(null)}
-    >
-      {render()}
-    </DashboardShell>
-  );
-};
+export default AdminDashboard;

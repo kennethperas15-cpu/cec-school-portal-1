@@ -1,4 +1,4 @@
-import './ClassRoster.css';
+import './ClassRoster\ClassRoster.css';
 
 export function ClassRoster() {
   return (

@@ -1,4 +1,4 @@
-import './AttendanceTracker.css';
+import './AttendanceTracker\AttendanceTracker.css';
 
 export function AttendanceTracker() {
   return (

@@ -1,4 +1,4 @@
-import './GradeEncode.css';
+import './GradeEncode\GradeEncode.css';
 
 export function GradeEncode() {
   return (
