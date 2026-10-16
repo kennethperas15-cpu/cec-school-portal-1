@@ -1,8 +1,9 @@
 import './EnrolledCourses.css';
+import '../PortalLayout.css';
 
 export function EnrolledCourses() {
   return (
-    <div className="enrolled-courses-001">
+    <div className="student-screen enrolled-courses-001">
       <div className="enrolled-courses-002">
         <div className="enrolled-courses-003">
           <div className="enrolled-courses-004">

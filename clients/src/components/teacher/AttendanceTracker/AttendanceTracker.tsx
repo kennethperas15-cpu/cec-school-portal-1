@@ -1,8 +1,9 @@
-import './AttendanceTracker\AttendanceTracker.css';
+import './AttendanceTracker.css';
+import '../../student/PortalLayout.css';
 
 export function AttendanceTracker() {
   return (
-    <div className="attendance-tracker-001">
+    <div className="teacher-screen attendance-tracker-001">
       <div className="attendance-tracker-002">
         <div className="attendance-tracker-003">
           <div className="attendance-tracker-004">

@@ -1,4 +1,5 @@
 import './StudentDashboard.css';
+import './PortalLayout.css';
 import type { UserAuthData } from '../auth/Login';
 
 interface StudentDashboardProps {
@@ -9,7 +10,7 @@ interface StudentDashboardProps {
 
 export function StudentDashboard(_props: StudentDashboardProps) {
   return (
-    <div className="student-dashboard-001">
+    <div className="student-screen student-dashboard-001">
       <div className="student-dashboard-002">
         <div className="student-dashboard-003">
           <div className="student-dashboard-004">

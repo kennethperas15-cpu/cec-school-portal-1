@@ -1,8 +1,9 @@
 import './Attendance.css';
+import '../PortalLayout.css';
 
 export default function Attendance() {
   return (
-    <div className="attendance-style-001">
+    <div className="student-screen attendance-style-001">
       <div className="attendance-style-002">
         <div className="attendance-style-003">
           <div className="attendance-style-004">

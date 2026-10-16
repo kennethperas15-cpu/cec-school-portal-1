@@ -1,8 +1,9 @@
 import './Grades.css';
+import '../PortalLayout.css';
 
 export function Grades() {
   return (
-    <div className="student-grades-001">
+    <div className="student-screen student-grades-001">
       <div className="student-grades-002">
         <div className="student-grades-003">
           <div className="student-grades-004">

@@ -1,8 +1,9 @@
-import './ClassRoster\ClassRoster.css';
+import './ClassRoster.css';
+import '../../student/PortalLayout.css';
 
 export function ClassRoster() {
   return (
-    <div className="class-roster-001">
+    <div className="teacher-screen class-roster-001">
       <div className="class-roster-002">
         <div className="class-roster-003">
           <div className="class-roster-004">

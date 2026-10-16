@@ -1,8 +1,9 @@
-import './GradeEncode\GradeEncode.css';
+import './GradeEncode.css';
+import '../../student/PortalLayout.css';
 
 export function GradeEncode() {
   return (
-    <div className="grade-encode-001">
+    <div className="teacher-screen grade-encode-001">
       <div className="grade-encode-002">
         <div className="grade-encode-003">
           <div className="grade-encode-004">

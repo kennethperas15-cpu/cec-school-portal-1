@@ -1,8 +1,9 @@
 import './ClassSchedule.css';
+import '../PortalLayout.css';
 
 export function ClassSchedule() {
   return (
-    <div className="class-schedule-001">
+    <div className="student-screen class-schedule-001">
       <div className="class-schedule-002">
         <div className="class-schedule-003">
           <div className="class-schedule-004">
