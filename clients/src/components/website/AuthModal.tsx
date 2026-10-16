@@ -129,7 +129,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
               <div>
                 <div>
                   <h2 className="authm-title">Sign In to CEC Portal</h2>
-                  <p className="authm-sub">Sign in with your school ID or school email and password.</p>
+                  <p className="authm-sub">Sign in with your 7-digit student ID or your CEC email (firstname.lastname.id@cec.edu.ph).</p>
                 </div>
                 <form onSubmit={handleSignIn}>
                   <div className="authm-field">
@@ -142,7 +142,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
                         required
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="2212779 or student@cec.edu.ph"
+                        placeholder="2212779 or juan.delacruz.307588@cec.edu.ph"
                         autoComplete="username"
                         className="authm-input"
                       />
@@ -186,7 +186,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
               <div>
                 <div>
                   <h2 className="authm-title">Password Recovery</h2>
-                  <p className="authm-sub">Enter your 7-digit school ID plus your Gmail — instructions are emailed directly there.</p>
+                  <p className="authm-sub">Enter your 7-digit school ID or your CEC email plus your Gmail — instructions are emailed directly there.</p>
                 </div>
                 {recoverySent ? (
                   <div className="authm-success" role="status">
@@ -196,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
                 ) : (
                   <form onSubmit={handleRecovery}>
                     <div className="authm-field">
-                      <label className="authm-label" htmlFor="authm-rec-id">School ID</label>
+                      <label className="authm-label" htmlFor="authm-rec-id">School ID / CEC email</label>
                       <div className="authm-input-wrap">
                         <User className="authm-icon" />
                         <input
@@ -204,8 +204,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
                           type="text"
                           required
                           value={identifier}
-                          onChange={(e) => setIdentifier(e.target.value.replace(/\D/g, '').slice(0, 7))}
-                          placeholder="e.g. 2414807"
+                          onChange={(e) => setIdentifier(e.target.value.replace(/[^A-Za-z0-9@._-]/g, '').slice(0, 64))}
+                          placeholder="e.g. 2414807 or juan.delacruz.307588@cec.edu.ph"
                           autoComplete="username"
                           className="authm-input"
                         />
