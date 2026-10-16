@@ -16,6 +16,7 @@ const html = renderToString(
 const required = [
   'Welcome back,',
   'BS Computer Science',
+  'Cebu Eastern College',
   'Honor List',
   'Enrolled Courses',
   'Current Cumulative GPA',

@@ -2,7 +2,6 @@ import {
   BookOpen,
   CalendarCheck,
   CalendarDays,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   Medal,
@@ -65,13 +64,17 @@ export const Sidebar = ({ active, onNavigate, mobileOpen, onCloseMobile }: Sideb
       }`}
     >
       <div className="flex items-center justify-between gap-2 px-5 pb-4 pt-5">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1B365D] text-white">
-            <GraduationCap className="h-5 w-5" />
-          </span>
-          <div className="leading-tight">
-            <p className="text-[15px] font-bold text-slate-900">Student Portal</p>
-            <p className="text-[11px] font-medium text-slate-400">University SIS</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <img
+            src={`${import.meta.env.BASE_URL}cec-logo.png`}
+            alt="Cebu Eastern College seal"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 object-contain"
+          />
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-[13px] font-bold text-slate-900">Cebu Eastern College</p>
+            <p className="truncate text-[10px] font-medium text-slate-400">Student Portal</p>
           </div>
         </div>
         <button type="button" className="btn-ghost lg:hidden" onClick={onCloseMobile} aria-label="Close navigation">

@@ -192,7 +192,7 @@ export const App = () => {
           </div>
 
           <footer className="flex flex-col items-center justify-between gap-3 border-t border-line pt-5 text-xs text-slate-400 sm:flex-row">
-            <p>Student Portal · University SIS — template dashboard. Data is stored locally in your browser.</p>
+            <p>Cebu Eastern College · Student Portal — template dashboard. Data is stored locally in your browser.</p>
             <div className="flex items-center gap-1">
               <button
                 type="button"
