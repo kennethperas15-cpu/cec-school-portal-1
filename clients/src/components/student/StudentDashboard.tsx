@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import api from '../../services/api';
 import { useCollection, uid, genSchoolId } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
@@ -11,6 +10,7 @@ import { refreshPipeline, readOfficialAssessment, parseAmount } from '../../serv
 import { setPhoto, readPhotoFile } from '../../services/photos';
 import { ensureSchoolId } from '../../services/crud';
 import { PhotoAvatar } from '../shared/PhotoAvatar';
+import { PasswordRecovery } from '../shared/PasswordRecovery';
 import { ChangePassword } from '../shared/ChangePassword';
 import { AlertPopup } from '../shared/AlertPopup';
 import { FileUploadDialog } from '../shared/FileUploadDialog';
@@ -488,66 +488,11 @@ const TwoFieldForm = ({ title, col, onNotify, ph1, ph2 }: { title: string; col: 
     <div style={box}>{col.list.map((r) => <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><div><strong>{r.name}</strong><div style={{ fontSize: 12, color: '#6b7890' }}>{r.role}</div></div><div style={{ display: 'flex', gap: 6 }}><button style={ghost} onClick={() => openEditDialog('Update status/detail', r.role, (nv) => { col.update(r.id, { role: nv }); onNotify('Updated'); })}>Update</button><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { if (window.confirm('Delete this record?')) { col.remove(r.id); onNotify('Deleted'); } }}>Delete</button></div></div>)}</div><Footer /></section>);
 };
 
-const PasswordRecovery = ({ identifier, email, onNotify }: { identifier: string; email: string; onNotify: (t: string) => void }) => {
-  const [id, setId] = useState(identifier);
-  const [gmail, setGmail] = useState(email);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [error, setError] = useState('');
-  useEffect(() => { setId(identifier); setGmail(email); }, [identifier, email]);
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(''); setMsg('');
-    if (!id.trim()) { setError('Enter your school ID or school email.'); return; }
-    setBusy(true);
-    try {
-      const r = await api.post('/auth/forgot-password', { identifier: id.trim(), email: gmail.trim() || undefined });
-      setMsg(r.data?.message ?? 'If the details match our records, recovery instructions were sent.');
-      onNotify(r.data?.data?.emailSent ? 'Recovery email sent to your Gmail' : 'Recovery request recorded');
-    } catch (err) {
-      const apiError = err as { response?: { data?: { message?: string } } };
-      setError(apiError.response?.data?.message ?? 'Could not submit the recovery request — check your connection.');
-    } finally { setBusy(false); }
-  };
-  return (<section style={card}><h1 style={{ margin: 0 }}>Password Recovery</h1>
-    <p style={{ color: '#6b7890', fontSize: 13, marginTop: 8 }}>Recovery needs your school ID or school email <strong>plus the Gmail address on record</strong>. When both match, we email a reset link.</p>
-    <form style={{ display: 'grid', gap: 10, marginTop: 14, maxWidth: 520 }} onSubmit={submit}>
-      <input style={inp} placeholder="School ID or school email" value={id} onChange={(e) => setId(e.target.value)} aria-label="School ID or school email" />
-      <input style={inp} placeholder="Gmail address on record" value={gmail} onChange={(e) => setGmail(e.target.value)} aria-label="Gmail address on record" />
-      {error && <div style={{ color: '#b91c1c', fontSize: 12 }}>{error}</div>}
-      {msg && <div style={{ color: '#15803d', fontSize: 12 }}>{msg}</div>}
-      <div><button style={{ ...btn, opacity: busy ? .6 : 1 }} type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send recovery link'}</button></div>
-    </form><Footer /></section>);
-};
+type Offering = { edp: string; subject: string; descriptive: string; schedule: string; room: string; type: 'Lec' | 'Lab'; units: number; section: string; batch?: number; teacher?: string; cap?: number };
 
-type Offering = { edp: string; subject: string; descriptive: string; schedule: string; room: string; type: 'Lec' | 'Lab'; units: number; section: string; batch?: number; teacher?: string };
-
-// EDP offerings (BSIT 3rd Year, 1st Sem) — pick ONE schedule per subject.
-// Uniform section picks → Regular; mixed/OPEN picks → Irregular (OPEN).
-const OFFERINGS: Offering[] = [
-  { edp: '2611005', subject: 'GE ELEC 7', descriptive: 'LITERATURES OF THE WORLD', schedule: 'TTHS 02:30-03:30 PM', room: 'H 308', type: 'Lec', units: 3, section: 'BSIT-3A' },
-  { edp: '2611006', subject: 'GE ELEC 7', descriptive: 'LITERATURES OF THE WORLD', schedule: 'TTHS 04:30-05:30 PM', room: 'H 308', type: 'Lec', units: 3, section: 'OPEN' },
-  { edp: '2611118', subject: 'GE 8', descriptive: 'UNDERSTANDING THE SELF WITH MENTAL HEALTH', schedule: 'TTHS 03:30-04:30 PM', room: 'H 307', type: 'Lec', units: 3, section: 'BSIT-3A' },
-  { edp: '2611119', subject: 'GE 8', descriptive: 'UNDERSTANDING THE SELF WITH MENTAL HEALTH', schedule: 'M 07:30-09:00 AM', room: 'H 307', type: 'Lec', units: 3, section: 'OPEN' },
-  { edp: '2612213', subject: 'IT EVD31', descriptive: 'EVENT DRIVEN PROGRAMMING (LECTURE)', schedule: 'MW 01:00-02:00 PM', room: 'OL 107', type: 'Lec', units: 2, section: 'BSIT-3A' },
-  { edp: '2611213', subject: 'IT EVD31', descriptive: 'EVENT DRIVEN PROGRAMMING (LECTURE)', schedule: 'TTH 01:00-02:00 PM', room: 'OL 107', type: 'Lec', units: 2, section: 'OPEN' },
-  { edp: '2611891', subject: 'IT EVD31 LAB', descriptive: 'EVENT DRIVEN PROGRAMMING (LABORATORY)', schedule: 'FS 07:30-09:00 AM', room: 'OCL', type: 'Lab', units: 1, section: 'BSIT-3A' },
-  { edp: '2611890', subject: 'IT EVD31 LAB', descriptive: 'EVENT DRIVEN PROGRAMMING (LABORATORY)', schedule: 'FS 09:00-10:30 AM', room: 'OCL', type: 'Lab', units: 1, section: 'OPEN' },
-  { edp: '2612214', subject: 'IT IAS31', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LECTURE)', schedule: 'MW 02:00-03:00 PM', room: 'OL 108', type: 'Lec', units: 2, section: 'BSIT-3A' },
-  { edp: '2611214', subject: 'IT IAS31', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LECTURE)', schedule: 'TTH 02:00-03:00 PM', room: 'OL 108', type: 'Lec', units: 2, section: 'OPEN' },
-  { edp: '2612215', subject: 'IT NET31', descriptive: 'NETWORKING 1 (LECTURE)', schedule: 'MW 11:00-12:00 PM', room: 'OL 109', type: 'Lec', units: 2, section: 'BSIT-3A' },
-  { edp: '2611215', subject: 'IT NET31', descriptive: 'NETWORKING 1 (LECTURE)', schedule: 'TTH 11:00-12:00 PM', room: 'OL 109', type: 'Lec', units: 2, section: 'OPEN' },
-  { edp: '2611893', subject: 'IT NET31 LAB', descriptive: 'NETWORKING 1 (LABORATORY)', schedule: 'MW 06:00-07:30 PM', room: 'CL 3', type: 'Lab', units: 1, section: 'BSIT-3A' },
-  { edp: '2611898', subject: 'IT NET31 LAB', descriptive: 'NETWORKING 1 (LABORATORY)', schedule: 'S 09:00-10:30 AM', room: 'CL 3', type: 'Lab', units: 1, section: 'OPEN' },
-  { edp: '2612216', subject: 'IT SIA31', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LECTURE)', schedule: 'FS 11:00-12:00 PM', room: 'OL 110', type: 'Lec', units: 2, section: 'BSIT-3A' },
-  { edp: '2611216', subject: 'IT SIA31', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LECTURE)', schedule: 'S 01:30-03:00 PM', room: 'CL 6', type: 'Lec', units: 2, section: 'OPEN' },
-  { edp: '2611892', subject: 'IT IAS31 LAB', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LABORATORY)', schedule: 'MW 07:30-09:00 PM', room: 'CL 5', type: 'Lab', units: 1, section: 'BSIT-3A' },
-  { edp: '2611897', subject: 'IT IAS31 LAB', descriptive: 'INFORMATION ASSURANCE AND SECURITY 1 (LABORATORY)', schedule: 'TTH 07:30-09:00 PM', room: 'CL 5', type: 'Lab', units: 1, section: 'OPEN' },
-  { edp: '2611894', subject: 'IT SIA31 LAB', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LABORATORY)', schedule: 'FS 01:30-03:00 PM', room: 'CL 6', type: 'Lab', units: 1, section: 'BSIT-3A' },
-  { edp: '2611899', subject: 'IT SIA31 LAB', descriptive: 'SYSTEM INTEGRATION AND ARCHITECTURE 2 (LABORATORY)', schedule: 'S 10:30-12:00 PM', room: 'CL 6', type: 'Lab', units: 1, section: 'OPEN' },
-  { edp: '2611895', subject: 'IT SPI31', descriptive: 'SOCIAL AND PROFESSIONAL ISSUES 1', schedule: 'FS 03:00-04:30 PM', room: 'A 201', type: 'Lec', units: 3, section: 'BSIT-3A' },
-  { edp: '2611896', subject: 'IT SPI31', descriptive: 'SOCIAL AND PROFESSIONAL ISSUES 1', schedule: 'MW 04:00-05:30 PM', room: 'A 201', type: 'Lec', units: 3, section: 'OPEN' },
-];
+// Section Selection is driven entirely by registrar/admin-published study loads
+// (see Admin → Study Load Builder → Submit batch). Nothing is shown until a
+// batch is published, so students never plot sections that do not exist yet.
 
 const readPicks = (): Offering[] => {
   try {
@@ -623,17 +568,12 @@ const readDayPreference = (): 'all' | 'morning' | 'afternoon' | 'evening' => {
     return pref === 'morning' || pref === 'afternoon' || pref === 'evening' ? pref : 'all';
   } catch { return 'all'; }
 };
-// Takes derive from saved picks: nothing saved yet → full availability;
-// each taken subject is minus one slot.
-const slotSeed = (edp: string): number => {
-  let h = 0;
-  for (const ch of edp) h = (h * 31 + ch.charCodeAt(0)) | 0;
-  return (Math.abs(h) % 60) + 1;
-};
-
-const slotsLeft = (edp: string): number => {
-  const taken = readPicks().some((p) => p.edp === edp) ? 1 : 0;
-  return Math.max(0, slotSeed(edp) - taken);
+// Capacity is owned by the registrar/admin and travels with a published study
+// load. When a load has no capacity set, we label it "Open" rather than
+// inventing a slot count.
+const capacityOf = (offering: Offering): number | null => {
+  const cap = Number(offering.cap);
+  return Number.isFinite(cap) && cap > 0 ? cap : null;
 };
 
 export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
@@ -947,10 +887,9 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         <p style={{ color: '#6b7890', fontSize: 13 }}>Applications go straight to Admin → Enrollment Approval. Turn on auto-approve there for instant approval.</p><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 720 }} onSubmit={(e) => { e.preventDefault(); submitEnrollment(enrPg, enrYr, enrSm); }}><select style={inp} value={enrPg} onChange={(e) => setEnrPg(e.target.value)}><option>BSIT</option><option>BSCS</option><option>BEED</option></select><select style={inp} value={enrYr} onChange={(e) => setEnrYr(e.target.value)}><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option></select><select style={inp} value={enrSm} onChange={(e) => setEnrSm(e.target.value)}><option>1st Semester</option><option>2nd Semester</option></select><button style={btn} type="submit">Submit</button></form><Footer /></section>);
     }
     if (active === 'Section Selection') {
-      // Admin-published study-load batches merge with the base offerings.
-      const published = readPublishedLoads().filter((o) => !OFFERINGS.some((x) => x.edp === o.edp));
-      const catalog = [...OFFERINGS, ...published];
-      const publishedBatches = [...new Set(published.map((o) => o.batch).filter((b): b is number => typeof b === 'number'))];
+      // Registrar/admin-published study-load batches are the only source.
+      const catalog = readPublishedLoads();
+      const publishedBatches = [...new Set(catalog.map((o) => o.batch).filter((b): b is number => typeof b === 'number'))];
       const subjects8 = [...new Set(catalog.map((o) => o.subject))];
       const saved = readPicks();
       const tag = sectionTagOf(saved);
@@ -978,12 +917,11 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           return pick.edp;
         });
         setSecSel(preset);
-        onNotify(mode === 'regular' ? 'Regular preset: full BSIT-3A load' : 'Irregular preset: OPEN schedules');
+        onNotify(mode === 'regular' ? 'Regular preset applied — one section per subject' : 'Irregular preset applied — mixed schedules');
       };
       const savePicks = () => {
-        const open = chosen.filter((o) => slotsLeft(o.edp) > 0);
-        if (!open.length) { onNotify(open.length === chosen.length ? 'Pick at least one schedule first' : 'Selected schedules are full — pick available ones'); return; }
-        if (open.length < chosen.length) onNotify('Some picks were full and skipped');
+        const open = chosen;
+        if (!open.length) { onNotify('Pick at least one schedule first'); return; }
         try { localStorage.setItem('cec:s_picks', JSON.stringify(open)); } catch { /* ignore */ }
         const label = sectionTagOf(open);
         // EDP sees the tag: update latest application + admin queue entry
@@ -1033,18 +971,16 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           </label>
         </div>
         <p style={{ color: '#6b7890', fontSize: 13 }}>Pick <strong>one schedule per subject</strong> — not a section. All picks in one section → <strong>Regular</strong>; mixed/OPEN picks → <strong>Irregular (OPEN)</strong>. {publishedBatches.length ? <>Includes registrar-published {publishedBatches.map((b) => `Batch ${b}`).join(', ')}. </> : null}{saved.length ? <>Current EDP tag: <strong>{tag}</strong></> : 'No schedules saved yet.'} {chosen.length ? <>Picking now: <strong>{previewTag}</strong></> : null}</p>
-        <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 10 }}>Subject / Descriptive</th><th style={{ padding: 10 }}>Schedule (pick one)</th><th style={{ padding: 10 }}>EDP Code</th><th style={{ padding: 10 }}>Room</th><th style={{ padding: 10 }}>Type</th><th style={{ padding: 10 }}>Units</th><th style={{ padding: 10 }}>Availability</th></tr></thead><tbody>
+        {!catalog.length ? <div style={box}><strong>No schedules published yet</strong><div style={{ fontSize: 13, color: '#6b7890', marginTop: 6 }}>The registrar builds study-load batches and submits them first — published schedules then appear here automatically.</div></div> : <div style={{ ...box, padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 10 }}>Subject / Descriptive</th><th style={{ padding: 10 }}>Schedule (pick one)</th><th style={{ padding: 10 }}>EDP Code</th><th style={{ padding: 10 }}>Room</th><th style={{ padding: 10 }}>Type</th><th style={{ padding: 10 }}>Units</th><th style={{ padding: 10 }}>Availability</th></tr></thead><tbody>
           {subjects8.map((subj) => {
             const opts = catalog.filter((o) => o.subject === subj);
             const visibleOpts = schedFilter === 'all' ? opts : opts.filter((o) => scheduleBucket(o.schedule) === schedFilter);
             const picked = opts.find((o) => secSel.includes(o.edp)) ?? null;
             const shown = picked ?? visibleOpts[0] ?? null;
             if (!shown) return <tr key={subj} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 10 }}><strong>{subj}</strong></td><td colSpan={6} style={{ padding: 10, color: '#8a94a6', fontSize: 12 }}>No {schedFilter} schedules for this subject — switch Class time to All day.</td></tr>;
-            const left = slotsLeft(shown.edp);
-            const full = left <= 0;
-            return <tr key={subj} style={{ borderTop: '1px solid #eef1f6', background: picked ? '#eef4ff' : undefined }}><td style={{ padding: 10 }}><strong>{subj}</strong><br /><small style={{ color: '#6b7890' }}>{shown.descriptive}</small></td><td style={{ padding: 10 }}><div style={{ display: 'grid', gap: 6 }}>{visibleOpts.map((o) => { const l = slotsLeft(o.edp); const f = l <= 0; return <label key={o.edp} style={{ display: 'flex', gap: 8, alignItems: 'center', opacity: f ? .55 : undefined }}><input type="radio" name={`pick-${subj}`} checked={secSel.includes(o.edp)} disabled={f} onClick={() => togglePick(o.edp, subj)} onChange={() => undefined} aria-label={`${o.subject} ${o.schedule}`} /><span>{o.schedule}<br /><small style={{ color: '#6b7890' }}>{o.batch ? `Batch ${o.batch} • ` : ''}{f ? 'Full' : `${l} left`}</small></span></label>; })}</div></td><td style={{ padding: 10 }}><strong>{picked ? shown.edp : '—'}</strong></td><td style={{ padding: 10 }}>{picked ? shown.room : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.type : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.units : '—'}</td><td style={{ padding: 10 }}>{!picked ? <span style={{ color: '#8a94a6', fontSize: 11 }}>Not picked</span> : full ? <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Full</span> : <span style={{ background: left < 10 ? '#fef3c7' : '#dcfce7', color: left < 10 ? '#92400e' : '#15803d', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Available • {left} left</span>}</td></tr>;
+            return <tr key={subj} style={{ borderTop: '1px solid #eef1f6', background: picked ? '#eef4ff' : undefined }}><td style={{ padding: 10 }}><strong>{subj}</strong><br /><small style={{ color: '#6b7890' }}>{shown.descriptive}</small></td><td style={{ padding: 10 }}><div style={{ display: 'grid', gap: 6 }}>{visibleOpts.map((o) => { const cap = capacityOf(o); return <label key={o.edp} style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="radio" name={`pick-${subj}`} checked={secSel.includes(o.edp)} onClick={() => togglePick(o.edp, subj)} onChange={() => undefined} aria-label={`${o.subject} ${o.schedule}`} /><span>{o.schedule}<br /><small style={{ color: '#6b7890' }}>{o.batch ? `Batch ${o.batch} • ` : ''}{cap ? `Capacity ${cap}` : 'Open'}</small></span></label>; })}</div></td><td style={{ padding: 10 }}><strong>{picked ? shown.edp : '—'}</strong></td><td style={{ padding: 10 }}>{picked ? shown.room : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.type : '—'}</td><td style={{ padding: 10 }}>{picked ? shown.units : '—'}</td><td style={{ padding: 10 }}>{!picked ? <span style={{ color: '#8a94a6', fontSize: 11 }}>Not picked</span> : <span style={{ background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>Picked</span>}</td></tr>;
           })}
-        </tbody></table></div>
+        </tbody></table></div>}
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}><button style={btn} onClick={savePicks}>Save schedules ({chosen.length} picked • {chosen.reduce((n, o) => n + o.units, 0)} units)</button></div><Footer /></section>);
     }
     if (active === 'Status Tracker') return (<section style={card}><h1 style={{ margin: 0, fontSize: 23 }}>Enrollment Status Tracker</h1><div style={{ marginTop: 14 }}><LiveEnrollTracker apps={enrollApps.list} /></div><Footer /></section>);
