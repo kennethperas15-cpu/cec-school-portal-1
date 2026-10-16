@@ -1,0 +1,2624 @@
+
+
+.class-roster-001 {
+  width: 1280px;
+  padding-left: 256px;
+  position: relative;
+  background: linear-gradient(0deg, #F8F9FF 0%, #F8F9FF 100%), white;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-002 {
+  align-self: stretch;
+  min-height: 800px;
+  padding-top: 64px;
+  padding-left: 24px;
+  padding-right: 24px;
+  background: #F8F9FF;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-003 {
+  align-self: stretch;
+  padding-bottom: 48px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-004 {
+  align-self: stretch;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-005 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-006 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.class-roster-007 {
+  width: 14.67px;
+  height: 12px;
+  background: #0058BE;
+}
+
+.class-roster-008 {
+  padding-right: 3.19px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-009 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-010 {
+  padding-right: 23.18px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-011 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-012 {
+  align-self: stretch;
+  padding-top: 2px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-013 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-014 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 30px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 600;
+  line-height: 38;
+  word-wrap: break-word;
+}
+
+.class-roster-015 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.class-roster-016 {
+  width: 669.66px;
+  height: 104px;
+  position: relative;
+}
+
+.class-roster-017 {
+  min-width: 260px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  left: 0;
+  top: -50px;
+  position: absolute;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.class-roster-018 {
+  width: 20px;
+  height: 10px;
+  background: #0058BE;
+}
+
+.class-roster-019 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-020 {
+  align-self: stretch;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 4px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-021 {
+  align-self: stretch;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-022 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.class-roster-023 {
+  min-width: 220px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  left: 0;
+  top: 36px;
+  position: absolute;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.class-roster-024 {
+  width: 18.33px;
+  height: 13.33px;
+  background: #0058BE;
+}
+
+.class-roster-025 {
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  left: 347px;
+  top: 58px;
+  position: absolute;
+  background: #00236F;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.class-roster-026 {
+  width: 153.94px;
+  height: 44px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0px 2px 4px -2px rgba(0, 0, 0, 0.10), 0px 4px 6px -1px rgba(0, 0, 0, 0.10);
+  border-radius: 8px;
+}
+
+.class-roster-027 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-028 {
+  width: 18.33px;
+  height: 13.33px;
+  background: white;
+}
+
+.class-roster-029 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.class-roster-030 {
+  align-self: stretch;
+  padding-bottom: 24px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-031 {
+  align-self: stretch;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.class-roster-032 {
+  flex: 1 1 0;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  justify-content: space-between;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-033 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 36px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.class-roster-034 {
+  width: 8px;
+  height: 8px;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.class-roster-035 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.class-roster-036 {
+  width: 48px;
+  height: 48px;
+  background: #EFF4FF;
+  border-radius: 12px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-037 {
+  width: 25.67px;
+  height: 18.67px;
+  background: #00236F;
+}
+
+.class-roster-038 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  justify-content: space-between;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-039 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 36px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.class-roster-040 {
+  width: 13.33px;
+  height: 8px;
+  background: #004942;
+}
+
+.class-roster-041 {
+  width: 46.83px;
+  height: 48px;
+  background: #DCE9FF;
+  border-radius: 12px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-042 {
+  width: 23.33px;
+  height: 23.33px;
+  background: #0058BE;
+}
+
+.class-roster-043 {
+  flex: 1 1 0;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 23px;
+  padding-bottom: 23px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  justify-content: space-between;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-044 {
+  align-self: stretch;
+  height: 44px;
+  position: relative;
+}
+
+.class-roster-045 {
+  left: 0;
+  top: -0.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 36px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.class-roster-046 {
+  left: 77.44px;
+  top: 18px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-047 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-048 {
+  padding-left: 6px;
+  padding-right: 6px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: #E5EEFF;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-049 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-050 {
+  width: 23.33px;
+  height: 22.17px;
+  background: #00236F;
+}
+
+.class-roster-051 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-052 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 36px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.class-roster-053 {
+  width: 48px;
+  height: 48px;
+  background: #FFDAD6;
+  border-radius: 12px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-054 {
+  width: 25.67px;
+  height: 22.17px;
+  background: #BA1A1A;
+}
+
+.class-roster-055 {
+  align-self: stretch;
+  padding-bottom: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-056 {
+  align-self: stretch;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.class-roster-057 {
+  width: 527.03px;
+  height: 68px;
+  position: relative;
+}
+
+.class-roster-058 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #00236F;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-059 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-060 {
+  padding-left: 8px;
+  padding-right: 8px;
+  background: #1E3A8A;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-061 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #90A8FF;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-062 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  left: 145.05px;
+  top: 0;
+  position: absolute;
+  background: #EFF4FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-063 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-064 {
+  padding-left: 8px;
+  padding-right: 8px;
+  background: #E5EEFF;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-065 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-066 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  left: 261.06px;
+  top: 0;
+  position: absolute;
+  background: #EFF4FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-067 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  left: 0;
+  top: 36px;
+  position: absolute;
+  background: #EFF4FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-068 {
+  width: 8px;
+  height: 8px;
+  background: #BA1A1A;
+  border-radius: 9999px;
+}
+
+.class-roster-069 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-070 {
+  padding-left: 8px;
+  padding-right: 8px;
+  background: #FFDAD6;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-071 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #93000A;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-072 {
+  flex: 1 1 0;
+  max-width: 576px;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.class-roster-073 {
+  flex: 1 1 0;
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-074 {
+  align-self: stretch;
+  height: 32px;
+  position: relative;
+  background: #EFF4FF;
+  border-radius: 8px;
+}
+
+.class-roster-075 {
+  height: 20px;
+  left: 12px;
+  top: 6px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-076 {
+  width: 15px;
+  height: 15px;
+  background: #757682;
+}
+
+.class-roster-077 {
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-078 {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 14px;
+  padding-right: 32px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-079 {
+  padding-right: 35.22px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-080 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-081 {
+  height: 18px;
+  left: 179px;
+  top: 7px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-082 {
+  width: 9px;
+  height: 5.55px;
+  background: #757682;
+}
+
+.class-roster-083 {
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-084 {
+  width: 12px;
+  height: 12px;
+  background: #00236F;
+}
+
+.class-roster-085 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-086 {
+  width: 6.67px;
+  height: 3.33px;
+  background: #00236F;
+}
+
+.class-roster-087 {
+  align-self: stretch;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-088 {
+  align-self: stretch;
+  min-width: 976px;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-089 {
+  width: 1053.94px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-090 {
+  align-self: stretch;
+  background: #EFF4FF;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-091 {
+  width: 48px;
+  padding-top: 14px;
+  padding-bottom: 18px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-092 {
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 2.50px;
+  border: 1px #767676 solid;
+}
+
+.class-roster-093 {
+  width: 93.88px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-094 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.class-roster-095 {
+  width: 167.83px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-096 {
+  width: 90px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-097 {
+  width: 188.75px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-098 {
+  width: 144px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-099 {
+  width: 117.75px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-100 {
+  width: 112.56px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-101 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.class-roster-102 {
+  width: 91.17px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.class-roster-103 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.class-roster-104 {
+  align-self: stretch;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-105 {
+  width: 48px;
+  padding-top: 41.50px;
+  padding-bottom: 46.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-106 {
+  width: 93.88px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 36px;
+  padding-bottom: 36px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-107 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 12px;
+  font-family: Liberation Mono;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-108 {
+  width: 151.83px;
+  padding-left: 16px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 7.99px;
+  display: flex;
+}
+
+.class-roster-109 {
+  width: 24.72px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #1E3A8A;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-110 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 18px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-111 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-112 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.class-roster-113 {
+  width: 105.99px;
+  padding-top: 31px;
+  padding-bottom: 30px;
+  padding-left: 31.99px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-114 {
+  width: 43.16px;
+  height: 43px;
+  position: relative;
+  background: #E5EEFF;
+  border-radius: 6px;
+}
+
+.class-roster-115 {
+  left: 10px;
+  top: 3.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-116 {
+  left: 0;
+  top: 23.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-117 {
+  width: 188.75px;
+  padding-top: 44.50px;
+  padding-bottom: 43.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-118 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.class-roster-119 {
+  width: 144px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 40px;
+  padding-bottom: 40px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-120 {
+  width: 112px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: flex;
+}
+
+.class-roster-121 {
+  align-self: stretch;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-122 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-123 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-124 {
+  align-self: stretch;
+  height: 6px;
+  position: relative;
+  background: #E5EEFF;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.class-roster-125 {
+  width: 110.20px;
+  height: 6px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.class-roster-126 {
+  width: 101.75px;
+  padding-left: 16px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.class-roster-127 {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: #DCE9FF;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-128 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-129 {
+  width: 128.56px;
+  padding-top: 44.50px;
+  padding-bottom: 41.50px;
+  padding-left: 32px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-130 {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: #E5EEFF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-131 {
+  width: 6px;
+  height: 6px;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.class-roster-132 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-133 {
+  width: 91.17px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 33.50px;
+  padding-bottom: 33.50px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.class-roster-134 {
+  padding-top: 6px;
+  padding-bottom: 11px;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-135 {
+  justify-content: center;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-136 {
+  width: 3.33px;
+  height: 13.33px;
+  background: #757682;
+}
+
+.class-roster-137 {
+  width: 151.83px;
+  padding-left: 16px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.class-roster-138 {
+  width: 27.73px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #0058BE;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-139 {
+  width: 107.52px;
+  height: 6px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.class-roster-140 {
+  width: 48px;
+  padding-top: 29.50px;
+  padding-bottom: 34.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-141 {
+  width: 93.88px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-142 {
+  width: 23.53px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #D3E4FE;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-143 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #2170E4;
+  font-size: 18px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-144 {
+  width: 105.99px;
+  padding-top: 19px;
+  padding-bottom: 18px;
+  padding-left: 31.99px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-145 {
+  width: 188.75px;
+  padding-top: 32.50px;
+  padding-bottom: 31.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-146 {
+  width: 144px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 28px;
+  padding-bottom: 28px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-147 {
+  width: 99.89px;
+  height: 6px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #2170E4;
+  border-radius: 9999px;
+}
+
+.class-roster-148 {
+  width: 128.56px;
+  padding-top: 32.50px;
+  padding-bottom: 29.50px;
+  padding-left: 32px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-149 {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: #DCE9FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-150 {
+  width: 6px;
+  height: 6px;
+  background: #2170E4;
+  border-radius: 9999px;
+}
+
+.class-roster-151 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #001A42;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-152 {
+  width: 91.17px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 21.50px;
+  padding-bottom: 21.50px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.class-roster-153 {
+  align-self: stretch;
+  background: rgba(255, 218, 214, 0.20);
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-154 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 12px;
+  font-family: Liberation Mono;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-155 {
+  width: 25.64px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #BA1A1A;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-156 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 5.99px;
+  display: inline-flex;
+}
+
+.class-roster-157 {
+  padding-right: 10.37px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-158 {
+  width: 2.67px;
+  height: 12px;
+  background: #BA1A1A;
+}
+
+.class-roster-159 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-160 {
+  align-self: stretch;
+  height: 6px;
+  position: relative;
+  background: #FFDAD6;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.class-roster-161 {
+  width: 79.95px;
+  height: 6px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #BA1A1A;
+  border-radius: 9999px;
+}
+
+.class-roster-162 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-163 {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: #FFDAD6;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-164 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #93000A;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-165 {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: #FFDAD6;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-166 {
+  width: 6px;
+  height: 6px;
+  background: #BA1A1A;
+  border-radius: 9999px;
+}
+
+.class-roster-167 {
+  width: 24.72px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #00236F;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-168 {
+  align-self: stretch;
+  height: 6px;
+  background: #E5EEFF;
+  overflow: hidden;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-169 {
+  align-self: stretch;
+  flex: 1 1 0;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.class-roster-170 {
+  width: 101.75px;
+  padding-left: 16px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8.01px;
+  display: flex;
+}
+
+.class-roster-171 {
+  width: 26.38px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #DCE9FF;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-172 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 18px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-173 {
+  width: 103.92px;
+  height: 6px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.class-roster-174 {
+  width: 30.02px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #D8E2FF;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-175 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #001A42;
+  font-size: 18px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-176 {
+  width: 101.91px;
+  height: 6px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #2170E4;
+  border-radius: 9999px;
+}
+
+.class-roster-177 {
+  width: 25.22px;
+  height: 36px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #FFDAD6;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-178 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #93000A;
+  font-size: 18px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.class-roster-179 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.class-roster-180 {
+  padding-right: 32.03px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-181 {
+  width: 84px;
+  height: 6px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: #BA1A1A;
+  border-radius: 9999px;
+}
+
+.class-roster-182 {
+  align-self: stretch;
+  padding: 16px;
+  background: white;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-183 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.class-roster-184 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.class-roster-185 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: flex;
+}
+
+.class-roster-186 {
+  padding: 8px;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-187 {
+  width: 6.17px;
+  height: 10px;
+  background: rgba(117, 118, 130, 0.50);
+}
+
+.class-roster-188 {
+  width: 32px;
+  height: 32px;
+  padding-top: 7.50px;
+  padding-bottom: 8.50px;
+  background: #00236F;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-189 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-190 {
+  width: 32px;
+  height: 32px;
+  padding-top: 7.50px;
+  padding-bottom: 8.50px;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-191 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-192 {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.class-roster-193 {
+  width: 5.55px;
+  height: 9px;
+  background: #00236F;
+}
+
+.class-roster-194 {
+  width: 1024px;
+  height: 64px;
+  padding-left: 24px;
+  padding-right: 24px;
+  left: 256px;
+  top: 0;
+  position: absolute;
+  background: rgba(255, 255, 255, 0.90);
+  box-shadow: 0px 1px 8px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(12px);
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-195 {
+  flex: 1 1 0;
+  max-width: 576px;
+  padding-top: 2px;
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-196 {
+  align-self: stretch;
+  padding-top: 4px;
+  padding-bottom: 5px;
+  padding-left: 40px;
+  padding-right: 16px;
+  background: #EFF4FF;
+  overflow: hidden;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-197 {
+  flex: 1 1 0;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-198 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.class-roster-199 {
+  height: 20px;
+  left: 8px;
+  top: 3px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-200 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  display: flex;
+}
+
+.class-roster-201 {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: #EFF4FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.class-roster-202 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-203 {
+  padding-top: 4px;
+  padding-bottom: 10px;
+  padding-left: 4px;
+  padding-right: 4px;
+  position: relative;
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-204 {
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-205 {
+  width: 14.67px;
+  height: 18.33px;
+  background: #444651;
+}
+
+.class-roster-206 {
+  width: 8px;
+  height: 8px;
+  left: 11px;
+  top: 4px;
+  position: absolute;
+  background: #BA1A1A;
+  border-radius: 9999px;
+}
+
+.class-roster-207 {
+  padding-left: 4px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.class-roster-208 {
+  width: 32px;
+  height: 32px;
+  background: #00236F;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-209 {
+  width: 12px;
+  height: 12px;
+  background: white;
+}
+
+.class-roster-210 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 15;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-211 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-212 {
+  width: 256px;
+  height: 800px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: white;
+  box-shadow: 0px 1px 8px rgba(0, 0, 0, 0.04);
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-213 {
+  align-self: stretch;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-214 {
+  align-self: stretch;
+  height: 64px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background: white;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.class-roster-215 {
+  width: 36px;
+  height: 36px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.class-roster-216 {
+  width: 18.33px;
+  height: 15px;
+  background: white;
+}
+
+.class-roster-217 {
+  width: 82.80px;
+  height: 36.50px;
+  position: relative;
+}
+
+.class-roster-218 {
+  width: 82.80px;
+  left: 0;
+  top: -1px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-219 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 18px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 600;
+  line-height: 22.50;
+  word-wrap: break-word;
+}
+
+.class-roster-220 {
+  width: 82.80px;
+  left: 0;
+  top: 22.50px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-221 {
+  align-self: stretch;
+  padding-top: 31px;
+  padding-bottom: 7px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-222 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 14;
+  letter-spacing: 0.55px;
+  word-wrap: break-word;
+}
+
+.class-roster-223 {
+  align-self: stretch;
+  flex: 1 1 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: flex;
+}
+
+.class-roster-224 {
+  align-self: stretch;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.class-roster-225 {
+  width: 15px;
+  height: 15px;
+  background: #444651;
+}
+
+.class-roster-226 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.class-roster-227 {
+  align-self: stretch;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.class-roster-228 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.class-roster-229 {
+  width: 15px;
+  height: 13.33px;
+  background: #444651;
+}
+
+.class-roster-230 {
+  width: 15px;
+  height: 16.67px;
+  background: #444651;
+}
+
+.class-roster-231 {
+  width: 16.75px;
+  height: 16.67px;
+  background: #444651;
+}
+
+.class-roster-232 {
+  align-self: stretch;
+  padding: 8px;
+  background: white;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  display: flex;
+}
+
+.class-roster-233 {
+  align-self: stretch;
+  padding: 8px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.class-roster-234 {
+  width: 32px;
+  height: 32px;
+  background: #00236F;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.class-roster-235 {
+  width: 10px;
+  height: 10px;
+  left: 22px;
+  top: 22px;
+  position: absolute;
+  background: #004942;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  display: flex;
+}
+
+.class-roster-236 {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0px 0px 0px 2px white;
+  border-radius: 9999px;
+}
+
+.class-roster-237 {
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.class-roster-238 {
+  align-self: stretch;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.class-roster-239 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.class-roster-240 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.class-roster-241 {
+  width: 15px;
+  height: 15px;
+  background: #BA1A1A;
+}
+
+.class-roster-242 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.class-roster-243 {
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.class-roster-244 {
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}

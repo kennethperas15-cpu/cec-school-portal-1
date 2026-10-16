@@ -1,0 +1,2230 @@
+
+
+.attendance-tracker-001 {
+  width: 1297.22px;
+  padding-left: 256px;
+  padding-right: 17.22px;
+  position: relative;
+  background: linear-gradient(0deg, #F8F9FF 0%, #F8F9FF 100%), white;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-002 {
+  align-self: stretch;
+  min-height: 1112px;
+  padding-top: 64px;
+  padding-left: 24px;
+  padding-right: 24px;
+  background: #F8F9FF;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-003 {
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-004 {
+  align-self: stretch;
+  padding-bottom: 24px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-005 {
+  align-self: stretch;
+  padding: 16px;
+  background: #EFF4FF;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-006 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.attendance-tracker-007 {
+  width: 32px;
+  height: 32px;
+  background: #D8E2FF;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-008 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-009 {
+  width: 13.33px;
+  height: 16.67px;
+  background: #0058BE;
+}
+
+.attendance-tracker-010 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-011 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-012 {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.attendance-tracker-013 {
+  width: 8px;
+  height: 8px;
+  background: #004942;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-014 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-015 {
+  align-self: stretch;
+  padding-bottom: 32px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-016 {
+  align-self: stretch;
+  justify-content: space-between;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.attendance-tracker-017 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.attendance-tracker-018 {
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.attendance-tracker-019 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 14;
+  letter-spacing: 0.55px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-020 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #C5C5D3;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-021 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-022 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 30px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 600;
+  line-height: 38;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-023 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 400;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-024 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+}
+
+.attendance-tracker-025 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.attendance-tracker-026 {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-027 {
+  width: 16.42px;
+  height: 9.02px;
+  background: #0058BE;
+}
+
+.attendance-tracker-028 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-029 {
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.attendance-tracker-030 {
+  width: 16.50px;
+  height: 12px;
+  background: white;
+}
+
+.attendance-tracker-031 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-032 {
+  align-self: stretch;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.attendance-tracker-033 {
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.attendance-tracker-034 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 14;
+  letter-spacing: 0.55px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-035 {
+  align-self: stretch;
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-036 {
+  align-self: stretch;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 16px;
+  padding-right: 32px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-037 {
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-038 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 16px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 24;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-039 {
+  height: 20px;
+  left: 206px;
+  top: 6px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-040 {
+  width: 10px;
+  height: 6.17px;
+  background: #757682;
+}
+
+.attendance-tracker-041 {
+  flex: 1 1 0;
+  padding-bottom: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.attendance-tracker-042 {
+  align-self: stretch;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.attendance-tracker-043 {
+  width: 13.50px;
+  height: 15px;
+  background: #757682;
+}
+
+.attendance-tracker-044 {
+  padding-right: 1px;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-045 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-046 {
+  height: 20px;
+  left: 199.33px;
+  top: 4px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-047 {
+  width: 16.67px;
+  height: 16.67px;
+  background: #757682;
+}
+
+.attendance-tracker-048 {
+  align-self: stretch;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  display: inline-flex;
+}
+
+.attendance-tracker-049 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.attendance-tracker-050 {
+  align-self: stretch;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-051 {
+  padding-right: 32.20px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-052 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-053 {
+  width: 18px;
+  height: 9px;
+  background: #757682;
+}
+
+.attendance-tracker-054 {
+  align-self: stretch;
+  padding-top: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-055 {
+  align-self: stretch;
+  height: 44px;
+  position: relative;
+}
+
+.attendance-tracker-056 {
+  left: 0;
+  top: -0.50px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 36px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-057 {
+  left: 52.25px;
+  top: 25px;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-058 {
+  flex: 1 1 0;
+  padding: 16px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 24px;
+  display: inline-flex;
+}
+
+.attendance-tracker-059 {
+  width: 10px;
+  height: 10px;
+  background: #004942;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-060 {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0px 0px 0px 4px rgba(137, 245, 231, 0.30);
+  border-radius: 9999px;
+}
+
+.attendance-tracker-061 {
+  left: 0;
+  top: 0;
+  position: absolute;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 36px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 44;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-062 {
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  left: 74.03px;
+  top: 23px;
+  position: absolute;
+  background: #DCE9FF;
+  border-radius: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-063 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #004942;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-064 {
+  align-self: stretch;
+  padding-right: 0.01px;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-065 {
+  width: 10px;
+  height: 10px;
+  background: #BA1A1A;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-066 {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0px 0px 0px 4px rgba(255, 218, 214, 0.40);
+  border-radius: 9999px;
+}
+
+.attendance-tracker-067 {
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  left: 79.23px;
+  top: 23px;
+  position: absolute;
+  background: rgba(255, 218, 214, 0.60);
+  border-radius: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-068 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-069 {
+  width: 10px;
+  height: 10px;
+  background: #0058BE;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-070 {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0px 0px 0px 4px rgba(216, 226, 255, 0.50);
+  border-radius: 9999px;
+}
+
+.attendance-tracker-071 {
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  left: 79.25px;
+  top: 23px;
+  position: absolute;
+  background: #D8E2FF;
+  border-radius: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-072 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-073 {
+  width: 10px;
+  height: 10px;
+  background: #00236F;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-074 {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0px 0px 0px 4px rgba(220, 225, 255, 0.50);
+  border-radius: 9999px;
+}
+
+.attendance-tracker-075 {
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  left: 79.23px;
+  top: 23px;
+  position: absolute;
+  background: #DCE1FF;
+  border-radius: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-076 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-077 {
+  flex: 1 1 0;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  padding-left: 16px;
+  padding-right: 16.01px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  justify-content: space-between;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-078 {
+  align-self: stretch;
+  padding-top: 4px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-079 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 22px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 700;
+  line-height: 28;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-080 {
+  width: 48px;
+  height: 48px;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-081 {
+  width: 42.44px;
+  height: 42.44px;
+  left: 2.78px;
+  top: 2.78px;
+  position: absolute;
+  outline: 4.67px #E5EEFF solid;
+  outline-offset: -2.33px;
+}
+
+.attendance-tracker-082 {
+  width: 42.42px;
+  height: 42.43px;
+  left: 2.78px;
+  top: 2.78px;
+  position: absolute;
+  outline: 4.67px #0058BE solid;
+  outline-offset: -2.33px;
+}
+
+.attendance-tracker-083 {
+  width: 13.33px;
+  height: 8px;
+  left: 17.33px;
+  top: 20px;
+  position: absolute;
+  background: #0058BE;
+}
+
+.attendance-tracker-084 {
+  align-self: stretch;
+  padding-bottom: 48px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-085 {
+  align-self: stretch;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border-radius: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-086 {
+  align-self: stretch;
+  padding: 16px;
+  background: white;
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-087 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+}
+
+.attendance-tracker-088 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-089 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-090 {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-091 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-092 {
+  min-width: 240px;
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-093 {
+  align-self: stretch;
+  padding-top: 6px;
+  padding-bottom: 7px;
+  padding-left: 36px;
+  padding-right: 16px;
+  background: #EFF4FF;
+  overflow: hidden;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-094 {
+  width: 188px;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-095 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-096 {
+  height: 18px;
+  left: 12px;
+  top: 5px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-097 {
+  width: 15.38px;
+  height: 14.63px;
+  background: #757682;
+}
+
+.attendance-tracker-098 {
+  padding-top: 8px;
+  padding-bottom: 14px;
+  padding-left: 8px;
+  padding-right: 8px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-099 {
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-100 {
+  width: 13.33px;
+  height: 13.33px;
+  background: #444651;
+}
+
+.attendance-tracker-101 {
+  align-self: stretch;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-102 {
+  align-self: stretch;
+  background: #EFF4FF;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-103 {
+  width: 104.86px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-104 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-105 {
+  width: 263.81px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-106 {
+  width: 306.16px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-107 {
+  width: 84.22px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.attendance-tracker-108 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-109 {
+  width: 126.23px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-110 {
+  width: 90.72px;
+  padding-top: 15.50px;
+  padding-bottom: 16.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-111 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16;
+  letter-spacing: 0.60px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-112 {
+  align-self: stretch;
+  padding-right: 16px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-113 {
+  width: 104.86px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-114 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Liberation Mono;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-115 {
+  width: 247.81px;
+  padding-left: 16px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.attendance-tracker-116 {
+  width: 32px;
+  height: 32px;
+  max-width: 231.81px;
+  position: relative;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 9999px;
+}
+
+.attendance-tracker-117 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-118 {
+  width: 322.16px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  padding-left: 32px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-119 {
+  padding: 4px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: inline-flex;
+}
+
+.attendance-tracker-120 {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  display: flex;
+}
+
+.attendance-tracker-121 {
+  width: 6px;
+  height: 6px;
+  background: #004942;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-122 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #004942;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-123 {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-radius: 6px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-124 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-125 {
+  width: 84.22px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.attendance-tracker-126 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 14px;
+  font-family: Liberation Mono;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-127 {
+  width: 126.23px;
+  padding-top: 20.50px;
+  padding-bottom: 19.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-128 {
+  width: 74.72px;
+  padding-left: 16px;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.attendance-tracker-129 {
+  padding-top: 4px;
+  padding-bottom: 9px;
+  padding-left: 4px;
+  padding-right: 4px;
+  border-radius: 4px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-130 {
+  width: 13.50px;
+  height: 13.50px;
+  background: #757682;
+}
+
+.attendance-tracker-131 {
+  width: 13.50px;
+  height: 12px;
+  background: #757682;
+}
+
+.attendance-tracker-132 {
+  align-self: stretch;
+  padding-right: 16px;
+  background: rgba(239, 244, 255, 0.30);
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-133 {
+  width: 6px;
+  height: 6px;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-134 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-135 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 14px;
+  font-family: Liberation Mono;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-136 {
+  width: 126.23px;
+  padding-top: 10.50px;
+  padding-bottom: 9.50px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: inline-flex;
+}
+
+.attendance-tracker-137 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-138 {
+  width: 32px;
+  height: 32px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #FFDAD6;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-139 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #93000A;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-140 {
+  width: 6px;
+  height: 6px;
+  background: #BA1A1A;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-141 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-142 {
+  width: 84.22px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  display: inline-flex;
+}
+
+.attendance-tracker-143 {
+  text-align: right;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 14px;
+  font-family: Liberation Mono;
+  font-weight: 500;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-144 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-145 {
+  width: 6px;
+  height: 6px;
+  background: #00236F;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-146 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-147 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-148 {
+  width: 32px;
+  height: 32px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #DCE9FF;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-149 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-150 {
+  width: 32px;
+  height: 32px;
+  padding-top: 5.50px;
+  padding-bottom: 6.50px;
+  background: #D8E2FF;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-151 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #001A42;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 700;
+  line-height: 20;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-152 {
+  align-self: stretch;
+  padding: 16px;
+  background: rgba(239, 244, 255, 0.40);
+  justify-content: space-between;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-153 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-154 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.attendance-tracker-155 {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: white;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-156 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-157 {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-158 {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-159 {
+  width: 1024px;
+  height: 64px;
+  padding-left: 24px;
+  padding-right: 24px;
+  left: 256px;
+  top: 0;
+  position: absolute;
+  background: rgba(255, 255, 255, 0.90);
+  box-shadow: 0px 1px 8px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(12px);
+  justify-content: flex-start;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-160 {
+  flex: 1 1 0;
+  max-width: 576px;
+  padding-top: 2px;
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-161 {
+  align-self: stretch;
+  padding-top: 4px;
+  padding-bottom: 5px;
+  padding-left: 40px;
+  padding-right: 16px;
+  background: #EFF4FF;
+  overflow: hidden;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-162 {
+  flex: 1 1 0;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-163 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #757682;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 400;
+  letter-spacing: 0.12px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-164 {
+  height: 20px;
+  left: 8px;
+  top: 3px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-165 {
+  width: 15px;
+  height: 15px;
+  background: #757682;
+}
+
+.attendance-tracker-166 {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  display: flex;
+}
+
+.attendance-tracker-167 {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: #EFF4FF;
+  border-radius: 9999px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.attendance-tracker-168 {
+  width: 8px;
+  height: 8px;
+  background: #0058BE;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-169 {
+  padding-top: 4px;
+  padding-bottom: 10px;
+  padding-left: 4px;
+  padding-right: 4px;
+  position: relative;
+  border-radius: 8px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-170 {
+  width: 14.67px;
+  height: 18.33px;
+  background: #444651;
+}
+
+.attendance-tracker-171 {
+  width: 8px;
+  height: 8px;
+  left: 11px;
+  top: 4px;
+  position: absolute;
+  background: #BA1A1A;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-172 {
+  padding-left: 4px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.attendance-tracker-173 {
+  width: 32px;
+  height: 32px;
+  background: #00236F;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-174 {
+  width: 12px;
+  height: 12px;
+  background: white;
+}
+
+.attendance-tracker-175 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 15;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-176 {
+  width: 9px;
+  height: 5.55px;
+  background: #757682;
+}
+
+.attendance-tracker-177 {
+  width: 256px;
+  height: 1112px;
+  left: 0;
+  top: 0;
+  position: absolute;
+  background: white;
+  box-shadow: 0px 1px 8px rgba(0, 0, 0, 0.04);
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-178 {
+  align-self: stretch;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-179 {
+  align-self: stretch;
+  height: 64px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background: white;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.attendance-tracker-180 {
+  width: 36px;
+  height: 36px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.attendance-tracker-181 {
+  width: 18.33px;
+  height: 15px;
+  background: white;
+}
+
+.attendance-tracker-182 {
+  width: 82.80px;
+  height: 36.50px;
+  position: relative;
+}
+
+.attendance-tracker-183 {
+  width: 82.80px;
+  left: 0;
+  top: -1px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-184 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #00236F;
+  font-size: 18px;
+  font-family: Plus Jakarta Sans;
+  font-weight: 600;
+  line-height: 22.50;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-185 {
+  width: 82.80px;
+  left: 0;
+  top: 22.50px;
+  position: absolute;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-186 {
+  align-self: stretch;
+  padding-top: 31px;
+  padding-bottom: 7px;
+  padding-left: 16px;
+  padding-right: 16px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: flex;
+}
+
+.attendance-tracker-187 {
+  align-self: stretch;
+  flex: 1 1 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  display: flex;
+}
+
+.attendance-tracker-188 {
+  align-self: stretch;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.attendance-tracker-189 {
+  width: 15px;
+  height: 15px;
+  background: #444651;
+}
+
+.attendance-tracker-190 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #444651;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-191 {
+  width: 18.33px;
+  height: 13.33px;
+  background: #444651;
+}
+
+.attendance-tracker-192 {
+  width: 15px;
+  height: 13.33px;
+  background: #444651;
+}
+
+.attendance-tracker-193 {
+  align-self: stretch;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: #1E3A8A;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.attendance-tracker-194 {
+  width: 15px;
+  height: 16.67px;
+  background: white;
+}
+
+.attendance-tracker-195 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-196 {
+  width: 16.75px;
+  height: 16.67px;
+  background: #444651;
+}
+
+.attendance-tracker-197 {
+  align-self: stretch;
+  padding: 8px;
+  background: white;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  display: flex;
+}
+
+.attendance-tracker-198 {
+  align-self: stretch;
+  padding: 8px;
+  background: #EFF4FF;
+  border-radius: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+.attendance-tracker-199 {
+  position: relative;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  display: inline-flex;
+}
+
+.attendance-tracker-200 {
+  width: 32px;
+  height: 32px;
+  background: #00236F;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+
+.attendance-tracker-201 {
+  width: 10px;
+  height: 10px;
+  left: 22px;
+  top: 22px;
+  position: absolute;
+  background: #004942;
+  border-radius: 9999px;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  display: flex;
+}
+
+.attendance-tracker-202 {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0px 0px 0px 2px white;
+  border-radius: 9999px;
+}
+
+.attendance-tracker-203 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0B1C30;
+  font-size: 12px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 16;
+  letter-spacing: 0.24px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-204 {
+  align-self: stretch;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #0058BE;
+  font-size: 11px;
+  font-family: Inter;
+  font-weight: 600;
+  line-height: 14;
+  letter-spacing: 0.44px;
+  word-wrap: break-word;
+}
+
+.attendance-tracker-205 {
+  width: 15px;
+  height: 15px;
+  background: #BA1A1A;
+}
+
+.attendance-tracker-206 {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #BA1A1A;
+  font-size: 14px;
+  font-family: Inter;
+  font-weight: 500;
+  line-height: 20;
+  letter-spacing: 0.07px;
+  word-wrap: break-word;
+}
