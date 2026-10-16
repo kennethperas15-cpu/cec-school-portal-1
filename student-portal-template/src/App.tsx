@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, RotateCcw } from 'lucide-react';
 import { Sidebar, type NavKey } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
-import { Login } from './components/Login';
 import { WelcomeBanner, type BannerAction } from './components/WelcomeBanner';
 import { StatCards, type StatAction } from './components/StatCards';
 import { TodaySchedule } from './components/TodaySchedule';
@@ -11,6 +10,7 @@ import { CourseLoad } from './components/CourseLoad';
 import { AttendanceAudit } from './components/AttendanceAudit';
 import { Bulletins } from './components/Bulletins';
 import { TermMilestones } from './components/TermMilestones';
+import { TuitionPayment } from './components/TuitionPayment';
 import { ScheduleView } from './components/views/ScheduleView';
 import { CoursesView } from './components/views/CoursesView';
 import { GradesView } from './components/views/GradesView';
@@ -49,7 +49,15 @@ const BANNER_TARGET: Record<BannerAction, string> = {
 
 const norm = (value: string) => value.toLowerCase().replace(/\s+/g, '');
 
-/** Shown while an expired session is refreshed against the API. */
+/** Momentary notice while the browser hands off to the CEC website. */
+const Redirecting = () => (
+  <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#0E2340] px-6 text-center text-blue-100">
+    <Loader2 className="h-6 w-6 animate-spin" />
+    <p className="text-sm font-semibold">Taking you to the CEC website…</p>
+  </div>
+);
+
+/** Shown while the shared portal session is refreshed and re-verified. */
 const Restoring = ({ onCancel }: { onCancel: () => void }) => (
   <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0E2340] px-6 text-center text-blue-100">
     <Loader2 className="h-6 w-6 animate-spin" />
@@ -64,7 +72,7 @@ const Restoring = ({ onCancel }: { onCancel: () => void }) => (
       onClick={onCancel}
       className="rounded-xl border border-white/25 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
     >
-      Sign in again instead
+      Go to the CEC website
     </button>
   </div>
 );
@@ -87,6 +95,16 @@ export const App = () => {
       setModal(null);
     }
   }, [signedIn]);
+
+  /*
+   * The CEC website owns signing in, so a signed-out template never shows a form
+   * of its own: it hands the student straight back to the landing page. This is
+   * what Logout does, and it also covers arriving here without a shared session.
+   */
+  useEffect(() => {
+    if (signedIn || store.restoring) return;
+    window.location.assign(CEC_WEBSITE_URL);
+  }, [signedIn, store.restoring]);
 
   const close = () => setModal(null);
 
@@ -161,7 +179,7 @@ export const App = () => {
   };
 
   if (store.restoring) return <Restoring onCancel={store.cancelRestore} />;
-  if (!signedIn) return <Login />;
+  if (!signedIn) return <Redirecting />;
 
   const dashboard = (
     <>
@@ -216,6 +234,8 @@ export const App = () => {
           <TermMilestones milestones={[]} />
         </div>
       </div>
+
+      <TuitionPayment />
     </>
   );
 

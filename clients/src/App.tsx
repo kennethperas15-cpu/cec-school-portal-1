@@ -57,6 +57,33 @@ const persistSessionUser = (user: UserAuthData | null): void => {
   } catch { /* private mode */ }
 };
 
+// Students work in the dedicated Student Portal: a separate app (see
+// student-portal-template/) published alongside this one at <base>template/.
+// It shares this origin, so it adopts the session this login just created.
+const BASE = import.meta.env.BASE_URL || '/';
+const STUDENT_PORTAL_URL = `${BASE}template/`;
+
+/** Escape hatch: ?classic=1 keeps the dashboard built into this app reachable. */
+const classicDashboardRequested = (): boolean => {
+  try {
+    return new URLSearchParams(window.location.search).has('classic');
+  } catch {
+    return false;
+  }
+};
+
+const StudentPortalHandoff = () => {
+  useEffect(() => {
+    // replace() so Back does not bounce the student between the two apps.
+    window.location.replace(STUDENT_PORTAL_URL);
+  }, []);
+  return (
+    <main aria-label="Opening your Student Portal" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#BFDBFE', fontFamily: 'Inter,system-ui,sans-serif', fontSize: 14 }}>
+      Opening your Student Portal…
+    </main>
+  );
+};
+
 export const App = () => {
   const [currentUser, setCurrentUser] = useState<UserAuthData | null>(null);
   const [pendingUser, setPendingUser] = useState<UserAuthData | null>(null);
@@ -168,6 +195,14 @@ export const App = () => {
 
   const props = { currentUser, onNotify: notify, onLogout: logout };
   const role = roleOf(currentUser.role);
+
+  // Students get the new Student Portal. The dashboard built into this app stays
+  // reachable at ?classic=1 until every student feature (payments, COE requests,
+  // enrollment, LMS, support services) has moved across.
+  if (role === 'student' && !classicDashboardRequested()) {
+    return <StudentPortalHandoff />;
+  }
+
   const dashboard = role === 'admin'
     ? <AdminDashboard {...props} />
     : role === 'teacher'

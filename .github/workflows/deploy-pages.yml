@@ -37,6 +37,10 @@ jobs:
       - name: Build client
         working-directory: clients
         run: npm run build
+        env:
+          # clients/.env keeps "/api" for local dev, but the Pages origin has no
+          # API and no proxy, so the deployed build must call the service directly.
+          VITE_API_URL: https://cec-portal-api-5i1q.onrender.com
 
       - name: Install template dependencies
         working-directory: student-portal-template

@@ -1,8 +1,8 @@
 /**
  * Headless smoke test — renders the real app tree to a string so we can verify
  * both surfaces mount without throwing:
- *   1. signed out  -> the CEC sign-in screen
- *   2. signed in   -> the dashboard, with a seeded session + records
+ *   1. signed out  -> the hand-off notice, with no sign-in form of our own
+ *   2. signed in   -> the dashboard, from shared portal tokens + a cached profile
  * Not shipped with the app.
  *   npx vite build --ssr src/ssr-smoke.tsx --outDir dist-ssr && node dist-ssr/ssr-smoke.js
  */
@@ -42,37 +42,27 @@ const reject = (html: string, needles: string[], label: string): void => {
   assertions += needles.length;
 };
 
-/* 1 ── signed out: the school-account sign-in screen, no dashboard leakage. */
-const loginHtml = render();
-expect(
-  loginHtml,
-  [
-    'Cebu Eastern College',
-    'Student Portal',
-    'Sign in',
-    'School ID or CEC email',
-    'Forgot your password?',
-    'Back to the CEC website',
-    'cec-logo.png',
-  ],
-  'login',
+/* 1 ── signed out: hands straight off to the CEC website, with no form here. */
+const signedOutHtml = render();
+expect(signedOutHtml, ['Taking you to the CEC website'], 'signed-out');
+reject(
+  signedOutHtml,
+  ['Academic Menu', 'Enrolled Courses', 'Sign out', 'Dashboard', 'Sign in', 'Password'],
+  'signed-out',
 );
-reject(loginHtml, ['Academic Menu', 'Enrolled Courses', 'Sign out', 'Dashboard'], 'login');
 
-/* 2 ── signed in with a real CEC account (JWT-shaped, unexpired). */
+/* 2 ── signed in through the portal: the shared tokens plus the cached profile. */
+memory.set('cec_access_token', 'header.payload.signature');
+memory.set('cec_refresh_token', 'refresh-token');
 memory.set(
-  'student-portal-template:session:v1',
+  'student-portal-template:user:v1',
   JSON.stringify({
-    accessToken: 'header.payload.signature',
-    refreshToken: 'refresh-token',
-    user: {
-      id: 'user-1',
-      email: 'juan.delacruz.307588@cec.edu.ph',
-      firstName: 'Juan',
-      lastName: 'Dela Cruz',
-      role: 'student',
-      schoolId: '2836159',
-    },
+    id: 'user-1',
+    email: 'juan.delacruz.307588@cec.edu.ph',
+    firstName: 'Juan',
+    lastName: 'Dela Cruz',
+    role: 'student',
+    schoolId: '2836159',
   }),
 );
 
@@ -156,4 +146,4 @@ expect(
 );
 reject(dashboardHtml, ['Sign in', 'Forgot your password?'], 'dashboard');
 
-console.log(`SSR_SMOKE_OK login=${loginHtml.length}b dashboard=${dashboardHtml.length}b, ${assertions} assertions passed`);
+console.log(`SSR_SMOKE_OK signedOut=${signedOutHtml.length}b dashboard=${dashboardHtml.length}b, ${assertions} assertions passed`);

@@ -21,14 +21,23 @@ import { EMPTY_APP_STATE, type AppState } from './data/state';
 import {
   cecAcademicPeriod,
   cecAnnouncements,
-  cecLogin,
   cecLogout,
+  cecMe,
   cecRefresh,
   type AcademicPeriod,
   type CecSession,
   type CecUser,
 } from './lib/api';
-import { clearSession, isAccessTokenExpired, loadSession, saveSession } from './lib/session';
+import {
+  clearCachedUser,
+  clearTokens,
+  isAccessTokenExpired,
+  readCachedUser,
+  readTokens,
+  tokenSubject,
+  writeCachedUser,
+  writeTokens,
+} from './lib/session';
 import { relativeTime } from './lib/metrics';
 
 const STORAGE_KEY = 'student-portal-template:v4';
@@ -43,17 +52,13 @@ type Store = AppState & {
   toast: Toast | null;
   notify: (message: string, tone?: Tone) => void;
 
-  /* --- live session (real CEC accounts) --- */
+  /* --- shared session, issued by the CEC portal's sign-in popover --- */
   session: CecSession | null;
   user: CecUser | null;
-  authError: string;
-  signingIn: boolean;
   restoring: boolean;
-  signIn: (identifier: string, password: string) => Promise<boolean>;
   signOut: () => void;
-  /** Abandon a stalled silent refresh and go straight to the sign-in screen. */
+  /** Stop waiting on a stalled restore and hand off to the CEC website. */
   cancelRestore: () => void;
-  clearAuthError: () => void;
 
   /* --- live academic context --- */
   period: AcademicPeriod | null;
@@ -88,6 +93,21 @@ const applyUser = (profile: Profile, user: CecUser): Profile => ({
   email: user.email,
 });
 
+/**
+ * Tokens plus the cached profile from the shared storage. The profile is only a
+ * first-paint cache; GET /auth/me re-reads it on every boot.
+ */
+const cachedSession = (): CecSession | null => {
+  const tokens = readTokens();
+  if (!tokens) return null;
+  const cached = readCachedUser();
+  if (!cached) return null;
+  // A different account signed in on the portal: never render the stale name.
+  const subject = tokenSubject(tokens.accessToken);
+  if (subject && cached.id && subject !== cached.id) return null;
+  return { ...tokens, user: cached };
+};
+
 const load = (): AppState => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -113,17 +133,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [toast, setToast] = useState<Toast | null>(null);
   const timer = useRef<number | null>(null);
 
-  const stale = useRef<CecSession | null>(null);
-  const [session, setSession] = useState<CecSession | null>(() => {
-    const stored = loadSession();
-    if (!stored) return null;
-    if (!isAccessTokenExpired(stored.accessToken)) return stored;
-    stale.current = stored; // expired: needs a refresh round-trip before it can be used
-    return null;
-  });
-  const [restoring, setRestoring] = useState(() => stale.current !== null);
-  const [authError, setAuthError] = useState('');
-  const [signingIn, setSigningIn] = useState(false);
+  /**
+   * The portal owns signing in, so on boot we adopt whatever session it left in
+   * the shared storage. A cached profile paints immediately while GET /auth/me
+   * re-verifies it, so a cold API never blocks the first render.
+   */
+  const [session, setSession] = useState<CecSession | null>(cachedSession);
+  const [restoring, setRestoring] = useState(() => readTokens() !== null && cachedSession() === null);
 
   const [period, setPeriod] = useState<AcademicPeriod | null>(null);
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
@@ -153,19 +169,40 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   /* ------------------------- session bootstrap ------------------------- */
 
   useEffect(() => {
-    const expired = stale.current;
-    if (!expired) return;
+    const tokens = readTokens();
+    if (!tokens) {
+      clearCachedUser(); // the portal signed out — never keep a stale name around
+      setSession(null);
+      setRestoring(false);
+      return;
+    }
     let cancelled = false;
     void (async () => {
-      const refreshed = await cecRefresh(expired.refreshToken);
-      // Abandon the result if the component unmounted or the user bailed out.
-      if (cancelled || stale.current !== expired) return;
-      if (refreshed.ok) {
-        saveSession(refreshed.data);
-        setSession(refreshed.data);
-      } else {
-        clearSession();
+      let active = tokens;
+      if (isAccessTokenExpired(active.accessToken)) {
+        const refreshed = await cecRefresh(active.refreshToken);
+        if (cancelled) return;
+        if (!refreshed.ok) {
+          clearTokens();
+          clearCachedUser();
+          setSession(null);
+          setRestoring(false);
+          return;
+        }
+        active = refreshed.data;
+        writeTokens(active);
       }
+      const me = await cecMe(active.accessToken);
+      if (cancelled) return;
+      if (me.ok) {
+        writeCachedUser(me.data);
+        setSession({ ...active, user: me.data });
+      } else if (me.status === 401 || me.status === 404) {
+        clearTokens();
+        clearCachedUser();
+        setSession(null);
+      }
+      // A network failure keeps the cached session: the free-tier API cold-starts.
       setRestoring(false);
     })();
     return () => {
@@ -174,8 +211,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const cancelRestore = useCallback(() => {
-    stale.current = null;
-    clearSession();
+    // Leave the portal session intact — only this app stops waiting for it.
     setRestoring(false);
   }, []);
 
@@ -231,36 +267,18 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
       session,
       user: session?.user ?? null,
-      authError,
-      signingIn,
       restoring,
 
-      signIn: async (identifier, password) => {
-        setAuthError('');
-        setSigningIn(true);
-        const result = await cecLogin(identifier.trim(), password);
-        setSigningIn(false);
-        if (!result.ok) {
-          setAuthError(result.message);
-          return false;
-        }
-        saveSession(result.data);
-        setSession(result.data);
-        notify(`Signed in as ${result.data.user.firstName} ${result.data.user.lastName}`);
-        return true;
-      },
-
       signOut: () => {
+        // One session covers both apps, so revoking it signs the portal out too.
         if (session) void cecLogout(session.refreshToken); // best-effort server-side revoke
-        clearSession();
+        clearTokens();
+        clearCachedUser();
         setSession(null);
-        setAuthError('');
         notify('Signed out of the CEC portal', 'info');
       },
 
       cancelRestore,
-
-      clearAuthError: () => setAuthError(''),
 
       period,
       periodLabel,
@@ -336,8 +354,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     toast,
     notify,
     session,
-    authError,
-    signingIn,
     restoring,
     period,
     bulletins,

@@ -586,6 +586,35 @@ export const authService = {
     };
   },
 
+  /**
+   * Profile behind an access token. Clients that share a session (the portal
+   * popover signs in, another same-origin app reads the token) need the name
+   * and school ID, which the access token itself does not carry.
+   */
+  async me(userId: string) {
+    const rows = await sql<{
+      id: string; email: string; first_name: string; last_name: string; role: string;
+      student_number: string | null; employee_number: string | null;
+    }>(
+      `SELECT u.id, u.email, u.first_name, u.last_name, r.name AS role, s.student_number, t.employee_number
+       FROM users u JOIN roles r ON r.id = u.role_id
+       LEFT JOIN students s ON s.user_id = u.id
+       LEFT JOIN teachers t ON t.user_id = u.id
+       WHERE u.id = ? AND u.is_active = TRUE
+       LIMIT 1`,
+      { replacements: [userId], type: QueryTypes.SELECT }
+    );
+    if (!rows.length) throw new Error('Account not found');
+    return {
+      id: rows[0].id,
+      email: rows[0].email,
+      firstName: rows[0].first_name,
+      lastName: rows[0].last_name,
+      role: rows[0].role,
+      schoolId: rows[0].student_number ?? rows[0].employee_number ?? undefined
+    };
+  },
+
   async refresh(refreshToken: string) {
     const rows = await sql<{ id: string; user_id: string; email: string; first_name: string; last_name: string; role: string }>(
       `SELECT s.id, s.user_id, u.email, u.first_name, u.last_name, r.name AS role

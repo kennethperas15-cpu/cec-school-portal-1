@@ -135,6 +135,19 @@ router.post('/login', loginRateLimit(), async (req, res, next) => {
   }
 });
 
+/** Profile for the bearer token — lets a same-origin client adopt a shared session. */
+router.get('/me', authmiddlewareMiddleware, async (req, res, next) => {
+  try {
+    res.json({ success: true, data: await authService.me(req.user?.id ?? '') });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Account not found') {
+      res.status(404).json({ success: false, message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
 router.post('/refresh', async (req, res, next) => {
   try {
     const { refreshToken } = req.body as { refreshToken?: string };
