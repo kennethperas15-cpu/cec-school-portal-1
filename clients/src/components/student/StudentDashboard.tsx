@@ -576,6 +576,17 @@ const capacityOf = (offering: Offering): number | null => {
   return Number.isFinite(cap) && cap > 0 ? cap : null;
 };
 
+// Teacher-recorded attendance (cec:t_attend_v2), matched to the student by name.
+const readTeacherAttendance = (names: string[]): { id: string; name: string; role: string }[] => {
+  try {
+    const raw = localStorage.getItem('cec:t_attend_v2');
+    const rows = raw ? (JSON.parse(raw) as { id: string; student: string; date: string; status: string; section?: string }[]) : [];
+    return rows
+      .filter((r) => r.student && names.includes(r.student.trim().toLowerCase()))
+      .map((r) => ({ id: r.id, name: `${r.date}${r.section ? ` • ${r.section}` : ''}`, role: r.status }));
+  } catch { return []; }
+};
+
 export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('home');
@@ -698,6 +709,15 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const route = GROUPS.flatMap((g) => g.items).find((i) => i.label === active)?.route ?? 's_dashboard';
   const moduleItems = ['Dashboard', ...GROUPS.flatMap((g) => g.items.map((item) => item.label))];
   const navigate = (label: string) => setActive(moduleItems.includes(label) ? label : 'Dashboard');
+  const profileMatchesAccount = !currentUser?.id || profile.id === currentUser.id;
+  const identityNames = [currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '', profileMatchesAccount ? profile.name : ''].filter(Boolean).map((value) => value.trim().toLowerCase());
+  const identityIds = [currentUser?.id, profileMatchesAccount ? profile.id : ''].filter(Boolean).map((value) => String(value).trim().toLowerCase());
+  // Attendance flows in from the teacher's Daily Attendance (cec:t_attend_v2),
+  // matched to this student, alongside any records saved in the student layer.
+  const scopedAttendance = [
+    ...(attendance.list as Rec[]).map((a) => ({ id: a.id, name: a.name, role: a.role })),
+    ...readTeacherAttendance(identityNames),
+  ];
   const searchRecords = [
     { title: profile.name || 'My profile', detail: `${profile.id || 'No school ID yet'} • ${profile.course || 'Program not set'} • ${profile.email || '—'}`, target: 'Profile Management' },
     ...subjects.list.map((item) => ({ title: item.name, detail: item.role, target: 'Grades / Report Card' })),
@@ -720,9 +740,6 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         const raw = localStorage.getItem('cec:t_grades_v2');
         allOfficial = raw ? JSON.parse(raw) : [];
       } catch { allOfficial = []; }
-      const profileMatchesAccount = !currentUser?.id || profile.id === currentUser.id;
-      const identityNames = [currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '', profileMatchesAccount ? profile.name : ''].filter(Boolean).map((value) => value.trim().toLowerCase());
-      const identityIds = [currentUser?.id, profileMatchesAccount ? profile.id : ''].filter(Boolean).map((value) => String(value).trim().toLowerCase());
       const official = allOfficial.filter((grade) => {
         if (grade.studentId && identityIds.includes(grade.studentId.trim().toLowerCase())) return true;
         return !!grade.student && identityNames.includes(grade.student.trim().toLowerCase());
@@ -782,7 +799,6 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       if (nextQuiz) todayItems.push({ title: nextQuiz.name, detail: nextQuiz.role || 'Quiz not completed', status: 'Quiz / exam', target: 'Quiz / Exam' });
       if (upcomingExam) todayItems.push({ title: upcomingExam.title, detail: `${upcomingExam.date} • ${upcomingExam.items} items`, status: 'Upcoming exam', target: 'Quiz / Exam' });
       if (latestAnnouncement) todayItems.push({ title: latestAnnouncement.title, detail: latestAnnouncement.detail, status: 'Announcement', target: 'Announcement Board' });
-      const scopedAttendance = (attendance.list as (Rec & { student?: string; studentId?: string })[]).filter((item) => (item.studentId && identityIds.includes(item.studentId.toLowerCase())) || (item.student && identityNames.includes(item.student.trim().toLowerCase())));
       const attendanceCount = scopedAttendance.length;
       const attendancePresent = scopedAttendance.filter((item) => /present/i.test(item.role)).length;
       const studentSections: DashboardSection[] = [
@@ -879,7 +895,8 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       return (<section style={card}><h1 style={{ margin: 0 }}>Curriculum Checklist — {done}/{checklist.list.length} done</h1><div style={{ height: 10, background: '#edf1f5', borderRadius: 8, marginTop: 12 }}><div style={{ width: `${checklist.list.length ? (done / checklist.list.length) * 100 : 0}%`, height: '100%', background: NAVY, borderRadius: 8 }} /></div><div style={box}>{checklist.list.map((c) => <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><label style={{ display: 'flex', gap: 10, alignItems: 'center' }}><input type="checkbox" checked={c.role === 'done'} onChange={() => { checklist.update(c.id, { role: c.role === 'done' ? 'pending' : 'done' }); onNotify('Checklist updated'); }} />{c.name}</label><button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { checklist.remove(c.id); onNotify('Checklist item deleted'); }}>Delete</button></div>)}</div><Footer /></section>);
     }
     if (active === 'Attendance Records') {
-      return (<section style={card}><h1 style={{ margin: 0 }}>Attendance Records</h1><input style={{ ...inp, marginTop: 14, maxWidth: 400 }} placeholder="Filter by subject..." value={attFilter} onChange={(e) => setAttFilter(e.target.value)} /><div style={box}>{attendance.list.filter((a) => a.name.toLowerCase().includes(attFilter.toLowerCase())).map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><span>{a.name}</span><strong>{a.role}</strong></div>)}</div><Footer /></section>);
+      const rows = scopedAttendance.filter((a) => a.name.toLowerCase().includes(attFilter.toLowerCase()));
+      return (<section style={card}><h1 style={{ margin: 0 }}>Attendance Records</h1><input style={{ ...inp, marginTop: 14, maxWidth: 400 }} placeholder="Filter by date or section..." value={attFilter} onChange={(e) => setAttFilter(e.target.value)} /><div style={box}>{rows.length ? rows.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><span>{a.name}</span><strong>{a.role}</strong></div>) : <div style={{ fontSize: 13, color: '#6b7890' }}>No attendance records yet — your teachers record attendance in Daily Attendance and it appears here automatically.</div>}</div><Footer /></section>);
     }
     if (active === 'Online Enrollment') {
       return (<section style={card}><h1 style={{ margin: 0 }}>Online Enrollment</h1>
