@@ -1,6 +1,6 @@
-import React, { useState, type FormEvent } from 'react';
+import React, { useEffect, useState, type FormEvent } from 'react';
 import { X, User, Lock, Mail } from 'lucide-react';
-import api, { setTokens } from '../../services/api';
+import api, { describeApiError, setTokens } from '../../services/api';
 import type { UserAuthData } from '../auth/Login';
 import { EnrollmentLanding } from '../enrollment/EnrollmentLanding';
 import './AuthModal.css';
@@ -26,6 +26,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
   const [error, setError] = useState('');
   const [recoverySent, setRecoverySent] = useState(false);
 
+  // Wake the API while the student is still typing. It sleeps after ~15 minutes
+  // idle, so without this the first submit of the day arrives at a server that
+  // is still booting and fails.
+  useEffect(() => {
+    api.get('/portal/health').catch(() => { /* the sign-in retry covers a cold server */ });
+  }, []);
+
   const handleSignIn = async (e: FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
@@ -34,8 +41,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
     }
     setError('');
     setLoading(true);
+    const credentials = { identifier: identifier.trim(), password };
     try {
-      const response = await api.post('/auth/login', { identifier: identifier.trim(), password });
+      let response;
+      try {
+        response = await api.post('/auth/login', credentials, { timeout: 20000 });
+      } catch (firstError) {
+        // A broken connection is how a sleeping server answers: it cannot reply
+        // until it has booted. Retry once and give that attempt the full
+        // cold-start budget, rather than reporting a failure the student can
+        // do nothing about.
+        if ((firstError as { response?: unknown }).response) throw firstError;
+        setError('Waking the portal server — the first sign-in of the day can take up to a minute.');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        response = await api.post('/auth/login', credentials, { timeout: 90000 });
+      }
       const user = response.data?.data?.user;
       if (!user) throw new Error('Unexpected server response');
       const token = response.data?.data?.token ?? response.data?.data?.accessToken;
@@ -49,14 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
       if (onNotify) onNotify(`Welcome back, ${user.firstName ?? 'CECian'}!`);
       onLoginSuccess(user);
     } catch (requestError) {
-      const apiError = requestError as { response?: { status?: number; data?: { message?: string } } };
-      if (!apiError.response) {
-        setError('Cannot reach the portal server — it may be waking up. Wait about a minute, then try again.');
-      } else if (apiError.response.status === 401) {
-        setError('Invalid credentials. Please check your school ID/email and password.');
-      } else {
-        setError(apiError.response.data?.message ?? 'Sign-in failed. Please try again in a moment.');
-      }
+      setError(describeApiError(requestError));
     } finally {
       setLoading(false);
     }

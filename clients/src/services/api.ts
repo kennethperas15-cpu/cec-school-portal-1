@@ -1,8 +1,13 @@
 import axios from 'axios';
 
+// The API is hosted on Render's free tier, which shuts down after ~15 minutes
+// of inactivity and needs up to a minute to boot again. A 10 second timeout
+// guaranteed that every first request after a quiet spell failed, which is why
+// signing in "sometimes" did not work: the student's request never reached the
+// server at all. Carry the cold-start budget here so ordinary calls can wait.
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api',
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -90,5 +95,45 @@ api.interceptors.response.use(undefined, async (error) => {
     throw error;
   }
 });
+
+/**
+ * Turns an axios failure into something a student can act on.
+ *
+ * The old wording collapsed three very different faults into one sentence,
+ * which is what made this so hard to diagnose: a sleeping server (no response
+ * at all), a stale cached page whose API call is answered by the static host
+ * (a plain 404 with an HTML body and no `message` field), and genuine bad
+ * credentials. Naming the HTTP status means the next report is diagnosable.
+ */
+export const describeApiError = (error: unknown, action = 'Sign-in'): string => {
+  const apiError = error as {
+    response?: { status?: number; data?: unknown };
+    code?: string;
+  };
+
+  if (!apiError?.response) {
+    const unreachable =
+      apiError?.code === 'ERR_NETWORK' || apiError?.code === 'ECONNABORTED' || apiError?.code === 'ETIMEDOUT';
+    if (unreachable) {
+      return 'Cannot reach the portal server. It sleeps when idle and can take up to a minute to wake, so please try again.';
+    }
+    return error instanceof Error && error.message ? error.message : `${action} failed. Please try again.`;
+  }
+
+  const { status, data } = apiError.response;
+  const message = data && typeof data === 'object' ? (data as { message?: unknown }).message : undefined;
+  if (typeof message === 'string' && message.trim()) return message;
+
+  // 404/405 here means the page is stale: an older build shipped a relative
+  // /api base, so sign-in went to the static host instead of the API.
+  if (status === 404 || status === 405) {
+    return `This page is out of date (HTTP ${status}). Press Ctrl+Shift+R to reload, then try again.`;
+  }
+  if (status === 401) return 'Invalid credentials. Please check your school ID/email and password.';
+  if (typeof status === 'number' && status >= 500) {
+    return `The portal server is waking up or redeploying (HTTP ${status}). Please try again in a minute.`;
+  }
+  return `${action} failed (HTTP ${status ?? 'unknown'}). Please try again.`;
+};
 
 export default api;
