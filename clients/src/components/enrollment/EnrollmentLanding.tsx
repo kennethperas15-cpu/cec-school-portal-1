@@ -60,7 +60,6 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
   const [error, setError] = useState('');
   const [receipt, setReceipt] = useState<EnrollmentReceipt | null>(null);
   const [step, setStep] = useState(1);
-  const [hoverSubmit, setHoverSubmit] = useState(false);
 
   const STEPS = ['Learner & Classification', 'Address & Guardian', 'Background & Submit'] as const;
 
@@ -107,22 +106,14 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
   };
 
   const wizNav = (showBack: boolean, showNext: boolean) => (
-    <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+    <div className="enroll-nav">
       {showBack && (
-        <button
-          type="button"
-          onClick={goBack}
-          style={{ flex: 1, borderRadius: 999, border: '1px solid #cbd5e1', background: '#fff', padding: '13px', fontSize: 13, fontWeight: 800, color: '#0B3D91', cursor: 'pointer' }}
-        >
+        <button type="button" onClick={goBack} className="enroll-nav-back">
           ← Back
         </button>
       )}
       {showNext && (
-        <button
-          type="button"
-          onClick={goNext}
-          style={{ flex: 2, borderRadius: 999, border: 0, background: '#0a3996', padding: '13px', fontSize: 13, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 10px 24px rgba(10,57,150,.35)' }}
-        >
+        <button type="button" onClick={goNext} className="enroll-nav-next">
           Next →
         </button>
       )}
@@ -371,24 +362,17 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
       )}
 
       <form className="auth-form" onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }} role="list" aria-label="Enrollment steps">
+        <div className="enroll-steps" role="list" aria-label="Enrollment steps">
           {STEPS.map((label, i) => {
             const n = i + 1;
             const skipped = applicantType !== 'new' && n === 2;
             const done = n < step && !skipped;
             const current = step === n;
             return (
-              <div key={label} role="listitem" aria-current={current ? 'step' : undefined} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center',
-                  fontSize: 13, fontWeight: 800, flexShrink: 0, color: '#fff',
-                  background: done ? '#16a34a' : current ? '#0a3996' : '#cbd5e1',
-                  boxShadow: current ? '0 6px 16px rgba(10,57,150,.4)' : 'none',
-                }}>
-                  {done ? '✓' : n}
-                </span>
-                <span style={{ fontSize: 12, fontWeight: current ? 800 : 600, color: current ? '#0a3996' : '#64748B', lineHeight: 1.25 }}>{label}</span>
-                {n < STEPS.length && <span style={{ flex: 1, height: 2, borderRadius: 2, background: done || step > n ? '#0a3996' : '#e2e8f0', margin: '0 4px' }} />}
+              <div key={label} role="listitem" aria-current={current ? 'step' : undefined} className="enroll-step">
+                <span className={`enroll-step-dot${done ? ' done' : current ? ' current' : ''}`}>{done ? '✓' : n}</span>
+                <span className={`enroll-step-label${current ? ' current' : ''}`}>{label}</span>
+                {n < STEPS.length && <span className={`enroll-step-bar${done || step > n ? ' filled' : ''}`} />}
               </div>
             );
           })}
@@ -416,8 +400,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
           </span>
         </div>
 
-        <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
-          <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>School Year &amp; Classification</legend>
+        <fieldset className="auth-field enroll-fieldset">
+          <legend className="enroll-legend">School Year &amp; Classification</legend>
           <div className="auth-form-row">
             <div className="auth-field">
               <label htmlFor="enr-ay">School Year <span className="required-star">*</span></label>
@@ -494,8 +478,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         )}
 
         {applicantType === 'new' && (
-          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
-            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Learner Information</legend>
+          <fieldset className="auth-field enroll-fieldset">
+            <legend className="enroll-legend">Learner Information</legend>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-last">Last Name <span className="required-star">*</span></label>
@@ -578,8 +562,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         {step === 2 && applicantType === 'new' && (
         <div>
         {applicantType === 'new' && (
-          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
-            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Address</legend>
+          <fieldset className="auth-field enroll-fieldset">
+            <legend className="enroll-legend">Address</legend>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-house">House No. / Street</label>
@@ -616,8 +600,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         )}
 
         {applicantType === 'new' && (
-          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
-            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Parent / Guardian</legend>
+          <fieldset className="auth-field enroll-fieldset">
+            <legend className="enroll-legend">Parent / Guardian</legend>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-father">Father&apos;s Name</label>
@@ -667,8 +651,8 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
         {step === 3 && (
         <div>
         {isTransferee && (
-          <fieldset className="auth-field" style={{ border: '1px solid #e6eaf1', borderRadius: 12, padding: '14px 16px' }}>
-            <legend style={{ fontSize: 13, fontWeight: 800, color: '#0B3D91', padding: '0 8px' }}>Last School Attended</legend>
+          <fieldset className="auth-field enroll-fieldset">
+            <legend className="enroll-legend">Last School Attended</legend>
             <div className="auth-form-row">
               <div className="auth-field">
                 <label htmlFor="enr-lgrade">Last Grade Level <span className="required-star">*</span></label>
@@ -739,27 +723,12 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
           <span className="field-hint">Found on the receipt issued at the Accounting Office. Online payments (GCash, Maya, cards) are not accepted in this form.</span>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-          <button
-            type="button"
-            onClick={goBack}
-            style={{ flex: 1, borderRadius: 999, border: '1px solid #cbd5e1', background: '#fff', padding: '15px', fontSize: 13, fontWeight: 800, color: '#0B3D91', cursor: 'pointer' }}
-          >
+        <div className="enroll-nav">
+          <button type="button" onClick={goBack} className="enroll-nav-back">
             ← Back
           </button>
-          <button
-            type="submit"
-            disabled={busy}
-            onMouseEnter={() => setHoverSubmit(true)}
-            onMouseLeave={() => setHoverSubmit(false)}
-            style={{
-              flex: 2, borderRadius: 999, border: 0, background: hoverSubmit ? '#072d78' : '#0a3996',
-              padding: '15px', fontSize: 14, fontWeight: 800, letterSpacing: '.06em', color: '#fff',
-              cursor: busy ? 'default' : 'pointer', boxShadow: '0 14px 30px rgba(10,57,150,.3)',
-              transition: 'background-color .2s ease', opacity: busy ? .7 : 1,
-            }}
-          >
-            {busy ? 'SUBMITTING ENROLLMENT…' : 'SUBMIT ENROLLMENT'}
+          <button type="submit" disabled={busy} className="enroll-submit">
+            {busy ? 'Submitting Enrollment…' : 'Submit Enrollment'}
           </button>
         </div>
         </div>

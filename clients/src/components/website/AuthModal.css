@@ -51,20 +51,69 @@
 .authm-mini-label { display: block; font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px; }
 .authm-mini-input, .authm-mini-select { width: 100%; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 12px; box-sizing: border-box; }
 .authm-success { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px; margin-top: 12px; font-size: 13px; color: #14532d; }
-/* Enroll tab matched to the login look */
-.authm-enroll .auth-heading { margin-bottom: 6px; }
-.authm-enroll .auth-title { font-size: 24px; font-weight: 800; letter-spacing: -.01em; color: #0f172a; }
-.authm-enroll .auth-subtitle { font-size: 12px; color: #64748b; }
-.authm-enroll .auth-field label { font-size: 12px; font-weight: 700; color: #334155; text-transform: uppercase; }
-.authm-enroll .auth-input-wrap input, .authm-enroll .auth-input-wrap select { border-radius: 8px; border-color: #cbd5e1; padding: 8px 12px 8px 12px; font-size: 14px; }
-.authm-enroll .auth-input-wrap input:focus, .authm-enroll .auth-input-wrap select:focus { border-color: #0B3D91; box-shadow: 0 0 0 1px #0B3D91; }
+/* Enroll tab — matched to the CEC portal look (navy • gold • sky) */
+.authm-enroll { --en-navy: #0B3D91; --en-deep: #0B254E; --en-gold: #FFCA28; --en-sky: #BFDBFE; --en-ink: #0f1f38; }
+.authm-enroll .auth-form { gap: 14px; }
+.authm-enroll .auth-heading { margin-bottom: 14px; }
+.authm-enroll .auth-title { position: relative; font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: var(--en-ink); padding-bottom: 10px; }
+.authm-enroll .auth-title::after { content: ''; position: absolute; left: 0; bottom: 0; width: 56px; height: 4px; border-radius: 999px; background: linear-gradient(90deg, var(--en-navy), var(--en-gold)); }
+.authm-enroll .auth-subtitle { font-size: 13px; color: #5b6b82; line-height: 1.6; }
+
+/* Stepper */
+.authm-enroll .enroll-steps { display: flex; align-items: center; margin: 2px 0 18px; }
+.authm-enroll .enroll-step { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.authm-enroll .enroll-step-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; flex-shrink: 0; color: #fff; background: #cbd5e1; transition: background-color .25s ease, box-shadow .25s ease; }
+.authm-enroll .enroll-step-dot.current { background: linear-gradient(135deg, var(--en-navy), #123f7d); box-shadow: 0 6px 16px rgba(11,61,145,.42); }
+.authm-enroll .enroll-step-dot.done { background: linear-gradient(135deg, #16a34a, #15803d); box-shadow: 0 6px 16px rgba(22,163,74,.3); }
+.authm-enroll .enroll-step-label { font-size: 12px; font-weight: 600; color: #64748B; line-height: 1.25; }
+.authm-enroll .enroll-step-label.current { color: var(--en-navy); font-weight: 800; }
+.authm-enroll .enroll-step-bar { flex: 1; height: 3px; border-radius: 999px; background: #e2e8f0; margin: 0 6px; transition: background-color .25s ease; }
+.authm-enroll .enroll-step-bar.filled { background: var(--en-navy); }
+
+/* Fieldsets become soft navy-tinted cards */
+.authm-enroll fieldset.enroll-fieldset, .authm-enroll fieldset.auth-field { border: 1px solid #e3e9f5; border-radius: 16px; padding: 16px; background: linear-gradient(180deg, #fbfcff 0%, #f4f8ff 100%); }
+.authm-enroll .enroll-legend { font-size: 12px; font-weight: 800; color: var(--en-navy); text-transform: uppercase; letter-spacing: .08em; padding: 0 8px; }
+
+/* Labels + fields */
+.authm-enroll .auth-field { gap: 7px; }
+.authm-enroll .auth-field label { font-size: 11px; font-weight: 800; color: #33415c; text-transform: uppercase; letter-spacing: .06em; }
+.authm-enroll .required-star { color: #dc2626; }
+.authm-enroll .auth-input-wrap input,
+.authm-enroll .auth-input-wrap select { border-radius: 10px; border: 1px solid #d7e0f0; background: #fff; padding: 11px 13px; font-size: 14px; color: var(--en-ink); }
+.authm-enroll .auth-input-wrap select { cursor: pointer; }
+.authm-enroll .auth-input-wrap input:focus,
+.authm-enroll .auth-input-wrap select:focus { border-color: var(--en-navy); outline: none; box-shadow: 0 0 0 3px rgba(11,61,145,.14); }
 .authm-enroll .auth-input-wrap input::placeholder { color: #94a3b8; }
-.authm-enroll .role-pill { border-radius: 8px; font-size: 12px; font-weight: 700; }
-.authm-enroll fieldset.auth-field legend { font-size: 12px; font-weight: 800; color: #0B3D91; text-transform: uppercase; letter-spacing: .06em; }
-.authm-enroll .auth-btn { border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.authm-enroll .auth-input-wrap input[readonly] { background: #f1f5f9; color: #475569; }
+
+/* Pills */
+.authm-enroll .role-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0; }
+.authm-enroll .role-pill { border-radius: 999px; border: 1.5px solid #d7e0f0; background: #fff; color: #33415c; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; transition: border-color .2s ease, color .2s ease, background-color .2s ease, box-shadow .2s ease; }
+.authm-enroll .role-pill:hover { border-color: var(--en-navy); color: var(--en-navy); background: #eef4ff; }
+.authm-enroll .role-pill.active { background: linear-gradient(135deg, var(--en-navy), #123f7d); border-color: var(--en-navy); color: #fff; box-shadow: 0 8px 18px rgba(11,61,145,.28); }
+
+/* Info + hint */
+.authm-enroll .auth-info-box { background: #eff6ff; border: 1px solid #dbeafe; border-left: 4px solid var(--en-navy); border-radius: 12px; color: #1e3a8a; font-size: 13px; }
+.authm-enroll .auth-info-box strong { color: #172554; }
+.authm-enroll .auth-info-box p { margin: 4px 0 0; }
 .authm-enroll .field-hint { font-size: 12px; color: #64748b; }
-.authm-enroll .auth-info-box { border-radius: 12px; font-size: 13px; }
-.authm-enroll .auth-alert-error { border-radius: 8px; font-size: 12px; }
+.authm-enroll .auth-alert-error { border-radius: 12px; font-size: 12px; }
+
+/* Wizard nav + submit */
+.authm-enroll .enroll-nav { display: flex; gap: 10px; margin-top: 6px; }
+.authm-enroll .enroll-nav-back { flex: 1; border-radius: 999px; border: 1.5px solid #d7e0f0; background: #fff; padding: 13px; font-size: 13px; font-weight: 800; color: var(--en-navy); cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.authm-enroll .enroll-nav-back:hover { border-color: var(--en-navy); background: #eef4ff; }
+.authm-enroll .enroll-nav-next { flex: 2; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--en-navy), #0a2f74); padding: 13px; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer; box-shadow: 0 10px 24px rgba(11,61,145,.35); transition: filter .2s ease, transform .2s ease; }
+.authm-enroll .enroll-nav-next:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.authm-enroll .enroll-submit { flex: 2; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--en-gold), #f2ad13); color: var(--en-deep); padding: 15px; font-size: 14px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; box-shadow: 0 14px 30px rgba(255,202,40,.4); transition: filter .2s ease, transform .2s ease; }
+.authm-enroll .enroll-submit:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1px); }
+.authm-enroll .enroll-submit:disabled { opacity: .7; cursor: default; }
+
+/* Issued receipt card */
+.authm-enroll .account-issued-card { background: linear-gradient(180deg, #fbfcff, #f4f8ff); border: 1px solid #e3e9f5; }
+.authm-enroll .issued-badge { background: #eef4ff; color: var(--en-navy); }
+.authm-enroll .auth-btn { border-radius: 999px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.authm-enroll .auth-btn-primary { background: linear-gradient(135deg, var(--en-gold), #f2ad13); color: var(--en-deep); }
 @media (prefers-reduced-motion: reduce) {
   .authm-veil, .authm-panel { animation: none !important; }
 }
