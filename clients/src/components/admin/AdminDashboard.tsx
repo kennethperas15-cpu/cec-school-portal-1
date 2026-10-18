@@ -35,6 +35,9 @@ import { DashboardPage } from './console/DashboardPage';
 import { StudentsPage } from './console/StudentsPage';
 import { TeachersPage } from './console/TeachersPage';
 import { CoursesPage } from './console/CoursesPage';
+import { AccountsPage } from './console/AccountsPage';
+import { ActivityLogsPage } from './console/ActivityLogsPage';
+import { SettingsPage } from './console/SettingsPage';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string; schoolId?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 const NAVY = '#0B3D91';
@@ -105,10 +108,7 @@ const LEGACY_ALIAS: Record<string, string> = {
   'Enrollment Management': 'Enrollment Approval',
   'Grades Management': 'Academic Records',
   'Attendance Management': 'Academic Records',
-  'User Accounts': 'RBAC Management',
   Announcements: 'System Announcements',
-  Settings: 'System Config',
-  'Activity Logs': 'Audit Log',
 };
 const pill: React.CSSProperties = { border: '1px solid #e4ebf5', background: '#f8fbff', borderRadius: 999, padding: '6px 12px', fontSize: 12, color: '#5b6b82', fontWeight: 600 };
 type Rec3 = { id: string; name: string; role: string };
@@ -364,6 +364,9 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     if (activeView === 'Student Management') return <StudentsPage onNotify={onNotify} />;
     if (activeView === 'Teacher Management') return <TeachersPage onNotify={onNotify} />;
     if (activeView === 'Course Management') return <CoursesPage onNotify={onNotify} />;
+    if (activeView === 'User Accounts') return <AccountsPage onNotify={onNotify} onNavigate={navigate} />;
+    if (activeView === 'Activity Logs') return <ActivityLogsPage onNotify={onNotify} />;
+    if (activeView === 'Settings') return <SettingsPage onNotify={onNotify} />;
     if (activeView === 'Dashboard') {
       const peso = (s: string) => {
         const t = s.trim();
