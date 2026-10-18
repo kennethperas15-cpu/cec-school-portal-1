@@ -3,6 +3,7 @@ import { DashboardShell, type ShellGroup } from '../shared/DashboardShell';
 import { AttendanceTracker, type TeacherAttendance } from './AttendanceTracker/AttendanceTracker';
 import { ClassRoster, type TeacherStudent } from './ClassRoster/ClassRoster';
 import { GradeEncode, type TeacherGrade } from './GradeEncode/GradeEncode';
+import { useAcademicConfig } from '../../services/academicConfig';
 import './teacher-portal.css';
 
 type TeacherUser = {
@@ -64,6 +65,9 @@ const localDate = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
+type TeacherSchedule = { id: string; title: string; when: string; where: string };
+type TeacherPost = { id: string; title: string; body: string };
+
 export type { TeacherAttendance, TeacherGrade, TeacherStudent };
 
 export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
@@ -72,6 +76,7 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [roster, setRoster] = useState<TeacherStudent[]>(() => readRecords(ROSTER_KEY));
   const [grades, setGrades] = useState<TeacherGrade[]>(() => readRecords(GRADES_KEY));
   const [attendance, setAttendance] = useState<TeacherAttendance[]>(() => readRecords(ATTENDANCE_KEY));
+  const academicConfig = useAcademicConfig();
   const name = `${currentUser?.firstName ?? ''} ${currentUser?.lastName ?? ''}`.trim() || 'Teacher';
   const userId = currentUser?.schoolId || currentUser?.id || '';
 
@@ -110,6 +115,37 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     () => [...new Set(roster.map((student) => student.course.trim()).filter(Boolean))],
     [roster],
   );
+  const today = localDate();
+  const attendanceToday = attendance.filter((record) => record.date === today);
+  const attendanceCounts = useMemo(() => ({
+    Present: attendance.filter((record) => record.status === 'Present').length,
+    Late: attendance.filter((record) => record.status === 'Late').length,
+    Excused: attendance.filter((record) => record.status === 'Excused').length,
+    Absent: attendance.filter((record) => record.status === 'Absent').length,
+  }), [attendance]);
+  const completedGrades = grades.filter((grade) => Boolean(grade.prelim || grade.midterm || grade.final));
+  const gradeAverages = completedGrades.flatMap((grade) => {
+    const marks = [grade.prelim, grade.midterm, grade.final].filter(Boolean).map(Number);
+    const average = marks.length ? marks.reduce((sum, mark) => sum + mark, 0) / marks.length : 0;
+    return Number.isFinite(average) ? [average] : [];
+  });
+  const gradeBands = [
+    { label: 'Excellent (90–100)', count: gradeAverages.filter((mark) => mark >= 90).length, color: 'excellent' },
+    { label: 'Satisfactory (80–89)', count: gradeAverages.filter((mark) => mark >= 80 && mark < 90).length, color: 'satisfactory' },
+    { label: 'Needs support (<80)', count: gradeAverages.filter((mark) => mark < 80).length, color: 'support' },
+  ];
+  const schedule = readRecords<TeacherSchedule>('cec:t_sched_v2');
+  const posts = readRecords<TeacherPost>('cec:t_posts_v2');
+  const recentAttendance = [...attendance].sort((left, right) => right.date.localeCompare(left.date)).slice(0, 4);
+  const attendanceRate = attendance.length
+    ? Math.round((attendanceCounts.Present / attendance.length) * 100)
+    : null;
+  const averageGrade = gradeAverages.length
+    ? Math.round(gradeAverages.reduce((sum, grade) => sum + grade, 0) / gradeAverages.length)
+    : null;
+  const greeting = new Date().getHours() < 12
+    ? 'Good morning'
+    : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
   const searchRecords = roster.map((student) => ({
     title: student.name,
     detail: `${student.course || 'No subject assigned'} • ${student.schoolId || student.email || student.id}`,
@@ -137,44 +173,79 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       return <AttendanceTracker roster={roster} attendance={attendance} onSave={persistAttendance} />;
     }
 
-    const presentToday = attendance.filter((record) =>
-      record.date === localDate() && record.status === 'Present',
-    ).length;
-    const completedGradeRows = grades.filter((grade) =>
-      Boolean(grade.prelim || grade.midterm || grade.final),
-    ).length;
+    const classes = courses.map((course) => ({
+      name: course,
+      students: roster.filter((student) => student.course.trim() === course).length,
+    }));
+    const totalBandCount = gradeBands.reduce((sum, band) => sum + band.count, 0);
     return (
-      <div className="teacher-page">
-        <header className="teacher-page-heading">
+      <div className="teacher-page teacher-home">
+        <header className="teacher-home-heading">
           <div>
-            <p className="teacher-eyebrow">TEACHER PORTAL</p>
-            <h1>Welcome, {name}</h1>
-            <p>Manage your student roster, record attendance, and publish grades.</p>
+            <p className="teacher-eyebrow"><span />{academicConfig.semester} {academicConfig.schoolYear} • {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+            <h1>{greeting}, {name}</h1>
+            <p>Here is your teaching overview. Class totals and records update from your portal data.</p>
           </div>
-          <span className="teacher-period">{new Date().toLocaleDateString(undefined, { dateStyle: 'full' })}</span>
+          <div className="teacher-home-actions">
+            <button type="button" className="teacher-button teacher-button-primary" onClick={() => navigate('Attendance Tracker')}>Take attendance</button>
+            <button type="button" className="teacher-button" onClick={() => navigate('Grade Encoding')}>Encode grades</button>
+            <button type="button" className="teacher-button" onClick={() => navigate('Class Roster')}>View class roster</button>
+          </div>
         </header>
         <section className="teacher-stat-grid" aria-label="Teaching overview">
-          <article className="teacher-stat-card"><span>Students in roster</span><strong>{roster.length}</strong></article>
-          <article className="teacher-stat-card"><span>Subjects / sections</span><strong>{courses.length}</strong></article>
-          <article className="teacher-stat-card"><span>Present today</span><strong>{presentToday}</strong></article>
-          <article className="teacher-stat-card"><span>Students with grades</span><strong>{completedGradeRows}</strong></article>
+          <article className="teacher-stat-card"><span>Total students</span><strong>{roster.length}</strong><small>Across your class roster</small></article>
+          <article className="teacher-stat-card"><span>Classes / sections</span><strong>{courses.length}</strong><small>Unique assigned subjects</small></article>
+          <article className="teacher-stat-card"><span>Attendance today</span><strong>{attendanceToday.length ? `${Math.round((attendanceToday.filter((record) => record.status === 'Present').length / attendanceToday.length) * 100)}%` : '—'}</strong><small>{attendanceToday.length ? `${attendanceToday.length} records for ${today}` : 'No records yet today'}</small></article>
+          <article className="teacher-stat-card"><span>Grades entered</span><strong>{completedGrades.length}</strong><small>Students with at least one term mark</small></article>
         </section>
-        <section className="teacher-panel">
+        <section className="teacher-panel teacher-home-panel">
           <div className="teacher-panel-heading">
-            <div><h2>Teaching tools</h2><p>Changes are saved in the shared portal records on this browser.</p></div>
+            <div><h2>My classes</h2><p>Open a roster, encode marks, or record attendance for a class.</p></div>
+            <button type="button" className="teacher-text-button" onClick={() => navigate('Class Roster')}>View all classes <span aria-hidden="true">→</span></button>
           </div>
-          <div className="teacher-quick-actions">
-            {[
-              ['Class Roster', 'Add and manage students and their course assignments.'],
-              ['Grade Encoding', 'Record prelim, midterm, and final marks for each student.'],
-              ['Attendance Tracker', 'Mark and save attendance by class and date.'],
-            ].map(([label, detail]) => (
-              <button type="button" className="teacher-action-card" key={label} onClick={() => navigate(label)}>
-                <strong>{label}</strong><span>{detail}</span><span className="teacher-action-link">Open →</span>
-              </button>
-            ))}
-          </div>
+          {classes.length ? <div className="teacher-class-grid">{classes.slice(0, 4).map((course) => (
+            <article className="teacher-class-card" key={course.name}>
+              <div className="teacher-class-topline"><span className="teacher-course-badge">{course.name}</span><span>{course.students} student{course.students === 1 ? '' : 's'}</span></div>
+              <h3>{course.name}</h3>
+              <p>Student roster and academic records for this subject.</p>
+              <div className="teacher-class-actions">
+                <button type="button" onClick={() => navigate('Class Roster')}>Roster</button>
+                <button type="button" onClick={() => navigate('Grade Encoding')}>Grades</button>
+                <button type="button" onClick={() => navigate('Attendance Tracker')}>Attendance</button>
+              </div>
+            </article>
+          ))}</div> : <div className="teacher-empty">No classes yet. Add students and assign a subject or section in the class roster to get started.<button type="button" className="teacher-button teacher-button-primary" onClick={() => navigate('Class Roster')}>Open class roster</button></div>}
         </section>
+        <div className="teacher-home-columns">
+          <section className="teacher-panel teacher-home-panel">
+            <div className="teacher-panel-heading"><div><h2>Attendance summary</h2><p>{attendanceRate === null ? 'No attendance records saved yet.' : `${attendanceRate}% present across ${attendance.length} saved records.`}</p></div><button type="button" className="teacher-text-button" onClick={() => navigate('Attendance Tracker')}>Full report <span aria-hidden="true">→</span></button></div>
+            <div className="teacher-summary-list">{(['Present', 'Late', 'Excused', 'Absent'] as const).map((status) => {
+              const count = attendanceCounts[status];
+              const percent = attendance.length ? Math.round((count / attendance.length) * 100) : 0;
+              return <div className="teacher-summary-row" key={status}><div className="teacher-summary-label"><span className={`teacher-summary-dot ${status.toLowerCase()}`} />{status}</div><strong>{count}<small>{percent}%</small></strong><div className="teacher-progress"><span className={status.toLowerCase()} style={{ width: `${percent}%` }} /></div></div>;
+            })}</div>
+          </section>
+          <section className="teacher-panel teacher-home-panel">
+            <div className="teacher-panel-heading"><div><h2>Grade performance</h2><p>{averageGrade === null ? 'No grade data entered yet.' : `Class average across entered term marks: ${averageGrade}%.`}</p></div><button type="button" className="teacher-text-button" onClick={() => navigate('Grade Encoding')}>Grade sheet <span aria-hidden="true">→</span></button></div>
+            <div className="teacher-summary-list">{gradeBands.map((band) => {
+              const percent = totalBandCount ? Math.round((band.count / totalBandCount) * 100) : 0;
+              return <div className="teacher-summary-row" key={band.label}><div className="teacher-summary-label"><span className={`teacher-summary-dot ${band.color}`} />{band.label}</div><strong>{band.count}<small>{percent}%</small></strong><div className="teacher-progress"><span className={band.color} style={{ width: `${percent}%` }} /></div></div>;
+            })}</div>
+          </section>
+        </div>
+        <div className="teacher-home-columns teacher-home-bottom">
+          <section className="teacher-panel teacher-home-panel">
+            <div className="teacher-panel-heading"><div><h2>Upcoming schedule</h2><p>Class times saved in your portal.</p></div><span className="teacher-count">{schedule.length}</span></div>
+            {schedule.length ? <div className="teacher-activity-list">{schedule.slice(0, 4).map((item) => <article className="teacher-activity-item" key={item.id}><span className="teacher-activity-marker">◷</span><div><strong>{item.title}</strong><p>{item.when}{item.where ? ` • ${item.where}` : ''}</p></div></article>)}</div> : <div className="teacher-empty">No schedule has been added yet.</div>}
+          </section>
+          <section className="teacher-panel teacher-home-panel">
+            <div className="teacher-panel-heading"><div><h2>Recent activity</h2><p>Latest attendance records and announcements.</p></div></div>
+            {recentAttendance.length || posts.length ? <div className="teacher-activity-list">
+              {recentAttendance.map((record) => <article className="teacher-activity-item" key={record.id}><span className={`teacher-activity-marker ${record.status.toLowerCase()}`}>✓</span><div><strong>{record.student} — {record.status}</strong><p>{record.section || 'Class attendance'} • {record.date}</p></div><button type="button" onClick={() => navigate('Attendance Tracker')}>View</button></article>)}
+              {posts.slice(0, 2).map((post) => <article className="teacher-activity-item" key={post.id}><span className="teacher-activity-marker">✦</span><div><strong>{post.title}</strong><p>{post.body || 'Teacher announcement'}</p></div></article>)}
+            </div> : <div className="teacher-empty">Your saved class activity and announcements will appear here.</div>}
+          </section>
+        </div>
       </div>
     );
   };
