@@ -9,11 +9,42 @@ interface EnrollmentLandingProps {
   onNotify?: (message: string) => void;
 }
 
-const PROGRAMS = [
-  'BSIT', 'BSCS', 'BEED', 'BSED',
-  'SHS — STEM', 'SHS — ABM', 'SHS — HUMSS',
-  'Junior High School', 'Elementary',
+/**
+ * Levels that follow from the chosen program. A college course offers its four
+ * years; basic education offers its grades. `value` is the level within the
+ * program (the range the API stores), `label` is the year or grade the
+ * applicant recognises — Grade 11 is the first level of Senior High, and so on.
+ */
+type ProgramLevel = { value: string; label: string };
+
+const years = (count: number): ProgramLevel[] =>
+  Array.from({ length: count }, (_, index) => ({ value: String(index + 1), label: `Year ${index + 1}` }));
+
+const grades = (from: number, to: number): ProgramLevel[] =>
+  Array.from({ length: to - from + 1 }, (_, index) => ({ value: String(index + 1), label: `Grade ${from + index}` }));
+
+type EnrollmentProgram = { name: string; levels: ProgramLevel[] };
+
+const PROGRAMS: EnrollmentProgram[] = [
+  { name: 'BSIT', levels: years(4) },
+  { name: 'BSCS', levels: years(4) },
+  { name: 'BEED', levels: years(4) },
+  { name: 'BSED', levels: years(4) },
+  { name: 'SHS — STEM', levels: grades(11, 12) },
+  { name: 'SHS — ABM', levels: grades(11, 12) },
+  { name: 'SHS — HUMSS', levels: grades(11, 12) },
+  { name: 'Junior High School', levels: grades(7, 10) },
+  { name: 'Elementary', levels: grades(1, 6) },
 ];
+
+const levelsOf = (program: string): ProgramLevel[] =>
+  PROGRAMS.find((entry) => entry.name === program)?.levels ?? years(4);
+
+/** The chosen level as the applicant reads it, e.g. "Year 3" or "Grade 11". */
+const levelLabelOf = (program: string, level: string): string => {
+  const match = levelsOf(program).find((entry) => entry.value === level);
+  return match ? match.label : `${program} level ${level}`;
+};
 
 const OTC_NOTICE =
   'Payment must be settled physically at the Accounting Office before submitting this form. Enter your Official Receipt / Accounting Reference Number below.';
@@ -65,8 +96,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
 
   const validStep1 = (): string => {
     if (!/^[A-Za-z ]{2,}/.test(program.trim())) return 'Select a program / grade level.';
-    const yl = Number(yearLevel);
-    if (!Number.isInteger(yl) || yl < 1 || yl > 6) return 'Select a valid year / grade level.';
+    if (!levelsOf(program).some((level) => level.value === yearLevel)) return 'Select a valid year / grade level for this program.';
     if (applicantType === 'returning' && !/^2\d{6}$/.test(schoolId.trim())) {
       return 'Enter your assigned 7-digit student school ID (starts with 2).';
     }
@@ -144,8 +174,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
 
   const validate = (): string => {
     if (!/^[A-Za-z ]{2,}/.test(program.trim())) return 'Select a program / grade level.';
-    const yl = Number(yearLevel);
-    if (!Number.isInteger(yl) || yl < 1 || yl > 6) return 'Select a valid year / grade level.';
+    if (!levelsOf(program).some((level) => level.value === yearLevel)) return 'Select a valid year / grade level for this program.';
     if (applicantType === 'returning' && !/^2\d{6}$/.test(schoolId.trim())) {
       return 'Enter your assigned 7-digit student school ID (starts with 2).';
     }
@@ -205,11 +234,11 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
       const name = applicantType === 'new' ? learnerName : `Returning • ${assignedId}`;
       const rawApps = localStorage.getItem('cec:s_enroll_apps');
       const apps = rawApps ? (JSON.parse(rawApps) as { id: string; name: string; role: string }[]) : [];
-      apps.push({ id: assignedId, name: `${program} • Year ${yearLevel} • ${semester === '2' ? '2nd' : '1st'} Sem`, role: 'Pending Accounting Verification' });
+      apps.push({ id: assignedId, name: `${program} • ${levelLabelOf(program, yearLevel)} • ${semester === '2' ? '2nd' : '1st'} Sem`, role: 'Pending Accounting Verification' });
       localStorage.setItem('cec:s_enroll_apps', JSON.stringify(apps));
       const rawQ = localStorage.getItem('cec:a_enroll_v2');
       const queue = rawQ ? (JSON.parse(rawQ) as { id: string; name: string; meta: string }[]) : [];
-      queue.push({ id: assignedId, name, meta: `${program} • Year ${yearLevel} • Ref ${referenceNo.trim()} • Applied (offline)` });
+      queue.push({ id: assignedId, name, meta: `${program} • ${levelLabelOf(program, yearLevel)} • Ref ${referenceNo.trim()} • Applied (offline)` });
       localStorage.setItem('cec:a_enroll_v2', JSON.stringify(queue));
     } catch { /* storage optional */ }
   };
@@ -314,7 +343,7 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
               </div>
             </div>
             <div className="credential-row"><span className="credential-label">Name</span><div className="credential-value-wrap"><code className="credential-value">{s.fullName}</code></div></div>
-            <div className="credential-row"><span className="credential-label">Program / Level</span><div className="credential-value-wrap"><code className="credential-value">{s.program} • Year {s.yearLevel}</code></div></div>
+            <div className="credential-row"><span className="credential-label">Program / Level</span><div className="credential-value-wrap"><code className="credential-value">{s.program} • {levelLabelOf(s.program, String(s.yearLevel))}</code></div></div>
             <div className="credential-row"><span className="credential-label">Academic Year</span><div className="credential-value-wrap"><code className="credential-value">{s.schoolYear ?? '—'} • {s.semester === 2 ? '2nd' : '1st'} Semester</code></div></div>
             <div className="credential-row"><span className="credential-label">Accounting Reference No.</span><div className="credential-value-wrap"><code className="credential-value">{s.paymentReferenceNo}</code></div></div>
             {chosenSlot && (
@@ -444,8 +473,21 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
           <div className="auth-field">
             <label htmlFor="enr-program">Program / Grade Level <span className="required-star">*</span></label>
             <div className="auth-input-wrap">
-              <select id="enr-program" value={program} onChange={(e) => setProgram(e.target.value)}>
-                {PROGRAMS.map((p) => <option key={p} value={p}>{p}</option>)}
+              <select
+                id="enr-program"
+                value={program}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setProgram(next);
+                  // The year / grade level follows the program: a college course
+                  // offers its four years, basic education its grade levels.
+                  const allowed = levelsOf(next);
+                  setYearLevel((current) =>
+                    allowed.some((level) => level.value === current) ? current : allowed[0].value,
+                  );
+                }}
+              >
+                {PROGRAMS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
               </select>
             </div>
           </div>
@@ -453,7 +495,9 @@ export const EnrollmentLanding: React.FC<EnrollmentLandingProps> = ({ onSwitchTo
             <label htmlFor="enr-year">Year / Grade Level <span className="required-star">*</span></label>
             <div className="auth-input-wrap">
               <select id="enr-year" value={yearLevel} onChange={(e) => setYearLevel(e.target.value)}>
-                {['1', '2', '3', '4', '5', '6'].map((y) => <option key={y} value={y}>{y}</option>)}
+                {levelsOf(program).map((level) => (
+                  <option key={level.value} value={level.value}>{level.label}</option>
+                ))}
               </select>
             </div>
           </div>

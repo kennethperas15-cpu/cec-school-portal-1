@@ -11,7 +11,7 @@ import {
   PROGRAM_OPTIONS,
   TASK_TYPES,
   TERM_OPTIONS,
-  YEAR_OPTIONS,
+  yearOptionsFor,
 } from '../types';
 
 type FormProps = { open: boolean; onClose: () => void };
@@ -554,6 +554,11 @@ export const ProfileForm = ({ open, onClose }: FormProps) => {
   const set = <K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 
+  // Year levels belong to the chosen program, so they change with it — and until
+  // a program is chosen there is no year level to offer.
+  const yearChoices = draft.program ? yearOptionsFor(draft.program) : [];
+  const hasProgram = Boolean(draft.program);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!draft.name.trim()) return setError('Please provide your full name.');
@@ -595,8 +600,22 @@ export const ProfileForm = ({ open, onClose }: FormProps) => {
             <input className="field bg-slate-50 text-slate-500" value={draft.email} readOnly disabled />
           </Field>
         </div>
-        <Field label="Program">
-          <select className="field" value={draft.program} onChange={(e) => set('program', e.target.value)}>
+        <Field
+          label="Program"
+          hint={draft.program ? `Runs ${yearChoices.length} year levels` : 'Choose a program to set the year levels'}
+        >
+          <select
+            className="field"
+            value={draft.program}
+            onChange={(e) => {
+              const next = e.target.value;
+              setDraft((d) => {
+                const years = yearOptionsFor(next);
+                // Year levels follow the program: a year it does not run is dropped.
+                return { ...d, program: next, year: years.includes(d.year) ? d.year : '' };
+              });
+            }}
+          >
             <option value="">— Select a program —</option>
             {PROGRAM_OPTIONS.map((program) => (
               <option key={program} value={program}>
@@ -609,10 +628,15 @@ export const ProfileForm = ({ open, onClose }: FormProps) => {
           <Field label="Major">
             <input className="field" placeholder="Software Engineering" value={draft.major} onChange={(e) => set('major', e.target.value)} />
           </Field>
-          <Field label="Year level">
-            <select className="field" value={draft.year} onChange={(e) => set('year', e.target.value)}>
-              <option value="">— Year —</option>
-              {YEAR_OPTIONS.map((year) => (
+          <Field label="Year level" hint={hasProgram ? undefined : 'Select a program first'}>
+            <select
+              className={`field ${hasProgram ? '' : 'bg-slate-50 text-slate-500'}`}
+              value={draft.year}
+              disabled={!hasProgram}
+              onChange={(e) => set('year', e.target.value)}
+            >
+              <option value="">{hasProgram ? '— Year —' : '— Program first —'}</option>
+              {yearChoices.map((year) => (
                 <option key={year} value={year}>
                   {year}
                 </option>

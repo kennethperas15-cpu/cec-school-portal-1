@@ -124,18 +124,34 @@ export type Insights = {
   standing: string;
 };
 
-export const PROGRAM_OPTIONS = [
-  'BS Computer Science',
-  'BS Information Technology',
-  'BS Information Systems',
-  'BS Accountancy',
-  'BS Business Administration',
-  'Bachelor of Elementary Education',
-  'Bachelor of Secondary Education',
-  'BS Civil Engineering',
+/**
+ * A college program, and how many year levels it runs. Year levels are derived
+ * from the declared program rather than offered as one flat list, so a student
+ * who picks a four-year course is never shown a fifth year to choose.
+ * A five-year course only needs its `years` changed here.
+ */
+export type CollegeProgram = { label: string; years: number };
+
+export const COLLEGE_PROGRAMS: CollegeProgram[] = [
+  { label: 'BS Computer Science', years: 4 },
+  { label: 'BS Information Technology', years: 4 },
+  { label: 'BS Information Systems', years: 4 },
+  { label: 'BS Accountancy', years: 4 },
+  { label: 'BS Business Administration', years: 4 },
+  { label: 'Bachelor of Elementary Education', years: 4 },
+  { label: 'Bachelor of Secondary Education', years: 4 },
+  { label: 'BS Civil Engineering', years: 4 },
 ];
 
-export const YEAR_OPTIONS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'];
+export const PROGRAM_OPTIONS = COLLEGE_PROGRAMS.map((program) => program.label);
+
+/** How many year levels the declared program runs. */
+export const programYears = (program: string): number =>
+  COLLEGE_PROGRAMS.find((entry) => entry.label === program)?.years ?? 4;
+
+/** The year levels that program runs, e.g. Year 1 … Year 4. */
+export const yearOptionsFor = (program: string): string[] =>
+  Array.from({ length: programYears(program) }, (_, index) => `Year ${index + 1}`);
 
 export const TERM_OPTIONS = ['Prelim', 'Midterm', 'Semi-Final', 'Final'];
 
