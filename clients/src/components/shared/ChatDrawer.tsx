@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { portalApi } from '../../services/portal';
-import { getSocket, type ChatMessage } from '../../services/socket';
+import { getSocket, isChatConfigured, type ChatMessage } from '../../services/socket';
 
 type Convo = {
   id: string; created_at: string; peer_name: string | null; last_body: string | null; last_at: string | null;
@@ -20,6 +20,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ userId, onNotify }) => {
   const [peer, setPeer] = useState('');
   const [connected, setConnected] = useState(false);
   const [unread, setUnread] = useState(0);
+  const chatConfigured = isChatConfigured();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadConvos = useCallback(async () => {
@@ -121,7 +122,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ userId, onNotify }) => {
         <section aria-label="Messages" style={{ width: 360, maxWidth: 'calc(100vw - 44px)', height: 480, maxHeight: '72vh', background: '#fff', borderRadius: 16, boxShadow: '0 20px 60px rgba(7,27,55,.3)', border: '1px solid #e2e7ef', display: 'flex', flexDirection: 'column', overflow: 'hidden', marginBottom: 12 }}>
           <header style={{ background: '#0B3D91', color: '#fff', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
             {activeId && <button type="button" onClick={() => setActiveId(null)} aria-label="Back to conversations" style={{ background: 'transparent', border: 0, color: '#fff', fontSize: 16, cursor: 'pointer' }}>←</button>}
-            <div style={{ flex: 1 }}><strong style={{ fontSize: 14 }}>Messages</strong><div style={{ fontSize: 11, opacity: .8 }}>{connected ? 'Live • real-time' : 'Offline • retrying'}</div></div>
+            <div style={{ flex: 1 }}><strong style={{ fontSize: 14 }}>Messages</strong><div style={{ fontSize: 11, opacity: .8 }}>{connected ? 'Live • real-time' : chatConfigured ? 'Offline • retrying' : 'Read-only • live messaging unavailable'}</div></div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close messages" style={{ background: 'transparent', border: 0, color: '#fff', fontSize: 18, cursor: 'pointer' }}>×</button>
           </header>
           {!activeId ? (
@@ -152,7 +153,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ userId, onNotify }) => {
                 <div ref={bottomRef} />
               </div>
               <form style={{ display: 'flex', gap: 8, padding: 10, borderTop: '1px solid #eef1f6' }} onSubmit={send}>
-                <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={connected ? 'Type a message…' : 'Connecting…'} disabled={!connected} aria-label="Type a message"
+                <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={connected ? 'Type a message…' : chatConfigured ? 'Connecting…' : 'Live messaging is unavailable on this deployment'} disabled={!connected} aria-label="Type a message"
                   style={{ flex: 1, border: '1px solid #e2e7ef', borderRadius: 10, padding: '10px 12px', fontSize: 13 }} />
                 <button type="submit" disabled={!connected || !draft.trim()} style={{ background: '#0B3D91', color: '#fff', border: 0, borderRadius: 10, padding: '0 16px', fontWeight: 700, cursor: 'pointer' }}>➤</button>
               </form>

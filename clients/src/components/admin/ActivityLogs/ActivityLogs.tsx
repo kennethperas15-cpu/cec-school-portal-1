@@ -576,7 +576,7 @@ export function ActivityLogs() {
                     </div>
                     <div className="admin-activity-logs-217">
                       <div className="admin-activity-logs-083">
-                        <div className="admin-activity-logs-181">127.0.0.1<br/>(Internal)</div>
+                        <div className="admin-activity-logs-181">n/a<br/>(Internal)</div>
                       </div>
                       <div className="admin-activity-logs-083">
                         <div className="admin-activity-logs-157">Cluster<br/>Node: sis-<br/>k8s-pod-7</div>

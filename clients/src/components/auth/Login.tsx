@@ -34,7 +34,7 @@ export const Login: React.FC<LoginProps> = ({
   const [identifier, setIdentifier] = useState(prefillIdentifier);
   const [password, setPassword] = useState(prefillPassword);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   // Single school-account sign-in: teachers and admins use the personal
@@ -46,7 +46,6 @@ export const Login: React.FC<LoginProps> = ({
     try {
       const savedIdentifier = localStorage.getItem('cec_remember_identifier');
       if (savedIdentifier && !prefillIdentifier) setIdentifier(savedIdentifier);
-      setRememberMe(Boolean(savedIdentifier));
     } catch {
       // Storage is optional; the form remains usable when it is unavailable.
     }

@@ -41,8 +41,14 @@ export const getRefreshToken = (): string | null => {
   }
 };
 
-/** Persist tokens; remembered sessions survive tab/browser restarts. */
-export const setTokens = (accessToken?: string, refreshToken?: string, remember = false): void => {
+/**
+ * Persist tokens, in localStorage so a student stays signed in after closing the
+ * tab or restarting the browser — the deployment is used from phones and shared
+ * machines, and losing the session on every visit made the portal feel broken.
+ * The sign-in form still exposes "Remember this device"; unticking it keeps the
+ * session in sessionStorage for that tab only (the safer choice on a public PC).
+ */
+export const setTokens = (accessToken?: string, refreshToken?: string, remember = true): void => {
   try {
     if (remember) localStorage.setItem(REMEMBER_KEY, '1');
     else localStorage.removeItem(REMEMBER_KEY);

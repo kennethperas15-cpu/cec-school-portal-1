@@ -21,7 +21,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
   const [identifier, setIdentifier] = useState('');
   const [gmail, setGmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [recoverySent, setRecoverySent] = useState(false);

@@ -41,5 +41,5 @@ export const REGISTRAR_SLIDES: Slide[] = [
 ];
 
 export const FINANCE_SLIDES: Slide[] = [
-  { src: pub('cec-payment-banks.png'), title: 'UnionBank • BPI', subtitle: 'Pay via UnionBank or BPI bank transfer.' },
+  { src: pub('cec-campus-front.png'), title: 'Cash payments at the EDP office', subtitle: 'Bring your reference number to the counter — the school accepts cash only.' },
 ];

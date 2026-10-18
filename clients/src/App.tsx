@@ -157,7 +157,6 @@ export const App = () => {
     clearTokens();
     persistSessionUser(null);
     resetSocket();
-    sessionStorage.removeItem('cec_refresh_token');
     setCurrentUser(null);
     setPendingUser(null);
     notify('You have been signed out.');

@@ -81,14 +81,9 @@
   }
 }
 
-/* Dragons artwork behind dashboard content (shows once clients/public/cec-dragons-bg.png exists) */
-main.dashboard-main {
-  background-image: url('/cec-school-portal-1/cec-dragons-bg.png');
-  background-size: min(880px, 92vw) auto;
-  background-position: center 12%;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-}
+/* Dashboard artwork is deliberately absent: clients/public holds no dragons
+   image, and referencing a file that does not exist made every dashboard load
+   request a 404. Add the artwork to clients/public and restore a rule here. */
 .cec-dark main.dashboard-main {
   background-image: none;
 }
