@@ -10,6 +10,7 @@ export type TeacherGrade = {
   prelim: string;
   midterm: string;
   final: string;
+  locked?: string;
 };
 
 type Props = {
@@ -77,14 +78,16 @@ export function GradeEncode({ roster, grades, onSave }: Props) {
 
     const studentIds = new Set(students.map((student) => student.schoolId || student.id));
     const names = new Set(students.map((student) => student.name.toLowerCase()));
-    const retained = grades.filter((grade) => !(
-      grade.course === course &&
-      ((grade.studentId && studentIds.has(grade.studentId)) || (grade.student && names.has(grade.student.toLowerCase())))
-    ));
+    const retained = grades.filter((grade) => {
+      const belongsToEditedCourse = grade.course === course &&
+        ((grade.studentId && studentIds.has(grade.studentId)) || (grade.student && names.has(grade.student.toLowerCase())));
+      return !belongsToEditedCourse || Boolean(grade.locked);
+    });
     const next = students.reduce<TeacherGrade[]>((all, student) => {
       const draft = drafts[student.id] ?? emptyDraft();
-      if (!TERMS.some(({ key }) => draft[key] !== '')) return all;
       const existing = gradeFor(student, grades);
+      if (existing?.locked) return all;
+      if (!TERMS.some(({ key }) => draft[key] !== '')) return all;
       all.push({
         id: existing?.id ?? globalThis.crypto?.randomUUID?.() ?? `grade-${Date.now()}-${student.id}`,
         student: student.name,
@@ -118,7 +121,7 @@ export function GradeEncode({ roster, grades, onSave }: Props) {
                 const point = average === null ? null : percentToPoint(average);
                 return <tr key={student.id}>
                   <td><strong>{student.name}</strong><small>{student.schoolId || student.email || student.id}</small></td>
-                  {TERMS.map(({ key, label }) => <td key={key}><label className="teacher-grade-input"><span className="sr-only">{label} grade for {student.name}</span><input type="number" min="0" max="100" step="0.01" value={draft[key]} onChange={(event) => change(student.id, key, event.target.value)} /></label></td>)}
+                  {TERMS.map(({ key, label }) => <td key={key}><label className="teacher-grade-input"><span className="sr-only">{label} grade for {student.name}</span><input type="number" min="0" max="100" step="0.01" value={draft[key]} disabled={Boolean(gradeFor(student, grades)?.locked)} onChange={(event) => change(student.id, key, event.target.value)} /></label></td>)}
                   <td>{average === null ? '—' : `${average.toFixed(1)}%`}</td><td>{point ? formatPoint(point.point) : '—'}</td>
                 </tr>;
               })}</tbody>
