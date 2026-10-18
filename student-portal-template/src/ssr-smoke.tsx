@@ -128,7 +128,7 @@ expect(
     'Settings',
     'Logout',
     'Active Student',
-    'Academic period unavailable', // no API call during SSR
+    'Loading academic period…', // no API call during SSR, so the period is still pending
     'Current Cumulative GPA',
     'With Honors',
     'Current Semester Course Load',

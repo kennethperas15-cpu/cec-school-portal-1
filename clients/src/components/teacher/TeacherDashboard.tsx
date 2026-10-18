@@ -17,6 +17,8 @@ import { openEditDialog } from '../shared/EditDialog';
 import { DashboardShell } from '../shared/DashboardShell';
 import { CommWidget } from '../shared/CommWidget';
 import { useAcademicConfig } from '../../services/academicConfig';
+import { usePublishedTimetables } from '../../services/schedule';
+import { FacultyTimetable } from './FacultyTimetable';
 import type { DashboardSection } from '../shared/RoleDashboardHome';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string; schoolId?: string; program?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
@@ -93,6 +95,10 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   }, [active]);
   const { dark, toggle } = useTheme();
   const academicConfig = useAcademicConfig();
+  const { rows: publishedTimetables } = usePublishedTimetables();
+  const myNameKey = currentUser
+    ? `${currentUser.firstName} ${currentUser.lastName}`.trim().toLowerCase().replace(/\s+/g, ' ')
+    : '';
   const [dashboardSection, setDashboardSection] = useState('');
   const [q, setQ] = useState('');
   const roster = useCollection<{ id: string; name: string; course: string; email: string }>('t_roster_v2', []);
@@ -333,12 +339,44 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         rows: (col.list as { id: string; title: string }[]).map((r) => <tr key={r.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}><strong>{r.title}</strong></td><td style={{ padding: 12, color: '#6b7890' }}>{Object.values(r).slice(2, 4).join(' • ')}</td><td style={{ padding: 12 }}><RowActions onEdit={() => { openEditDialog('Edit title', r.title, (v) => { col.update(r.id, { title: v } as Partial<{ id: string }>); onNotify('Updated'); }); }} onDelete={() => { col.remove(r.id); onNotify('Deleted'); }} /></td></tr>) })}
       </>);
     }
-    if (active === 'Materials' || active === 'Assignments' || active === 'Forum' || active === 'Class Schedule' || active === 'Consultation Slots') {
+    if (active === 'Class Schedule') {
+      // The registrar's published timetable, plus this teacher's own meetings —
+      // the same records the student portal renders.
+      return (
+        <FacultyTimetable
+          instructorName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : ''}
+          instructorEmail={currentUser?.email ?? ''}
+          schoolYear={academicConfig.schoolYear}
+          semester={academicConfig.semester}
+          onNotify={onNotify}
+        />
+      );
+    }
+    if (active === 'Materials' || active === 'Assignments' || active === 'Forum' || active === 'Consultation Slots') {
       const map: Record<string, ReturnType<typeof useCollection>> = { Materials: materials as unknown as ReturnType<typeof useCollection>, Assignments: assigns as unknown as ReturnType<typeof useCollection>, Announcements: posts as unknown as ReturnType<typeof useCollection>, Forum: forum as unknown as ReturnType<typeof useCollection>, Messaging: messages as unknown as ReturnType<typeof useCollection>, 'Announcement Posting': posts as unknown as ReturnType<typeof useCollection>, 'Class Schedule': sched as unknown as ReturnType<typeof useCollection>, 'Consultation Slots': consults as unknown as ReturnType<typeof useCollection> };
       const col = map[active] ?? materials as unknown as ReturnType<typeof useCollection>;
       const classroomFirst = active === 'Materials' || active === 'Assignments';
+      // Classroom bridge cards come from the published timetable: the same
+      // records the registrar and this teacher keep up to date.
+      const publishedForMe = publishedTimetables.filter(
+        (record) =>
+          record.schoolYear.trim().toLowerCase().replace(/[\u2010-\u2015\u2212-]+/g, '-') === academicConfig.schoolYear.trim().toLowerCase().replace(/[\u2010-\u2015\u2212-]+/g, '-') &&
+          record.semester.trim().toLowerCase() === academicConfig.semester.trim().toLowerCase(),
+      );
       const handledSubjects = active === 'Assignments'
-        ? sched.list.map((s) => ({ id: s.id, title: s.title, detail: `${s.when} • ${s.where}` }))
+        ? [...new Map(
+            publishedForMe
+              .flatMap((record) => record.entries
+                .filter((entry) => entry.instructor.trim().toLowerCase().replace(/\s+/g, ' ') === myNameKey)
+                .map((entry) => {
+                  const label = entry.code ? `${entry.code} — ${entry.title}` : entry.title;
+                  return [label, {
+                    id: `${record.itemId}-${label}`,
+                    title: label,
+                    detail: `${record.section} • ${entry.day} ${entry.start}-${entry.end} • ${entry.room || 'Room to be announced'}`,
+                  }] as const;
+                })),
+          ).values()]
         : [];
       return (<>{classroomFirst && <ClassroomBridge mode="teacher" onNotify={onNotify} />}{crudTable({ title: active, columns: ['Title', 'Detail', 'Actions'],
         note: active === 'Assignments' && handledSubjects.length ? <SubjectClassroomCards subjects={handledSubjects} /> : undefined,

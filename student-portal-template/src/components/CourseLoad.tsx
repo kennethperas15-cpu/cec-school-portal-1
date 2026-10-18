@@ -5,11 +5,13 @@ import { gradeForCode, letterGrade } from '../lib/metrics';
 type CourseLoadProps = {
   courses: Course[];
   grades: GradeEntry[];
+  /** True when these courses came from the registrar's published timetable. */
+  published?: boolean;
   onAdd: () => void;
   onRemove: (id: string) => void;
 };
 
-export const CourseLoad = ({ courses, grades, onAdd, onRemove }: CourseLoadProps) => (
+export const CourseLoad = ({ courses, grades, published = false, onAdd, onRemove }: CourseLoadProps) => (
   <section id="courses" className="card scroll-mt-24 p-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-2.5">
@@ -19,10 +21,14 @@ export const CourseLoad = ({ courses, grades, onAdd, onRemove }: CourseLoadProps
         <h2 className="card-title">Current Semester Course Load</h2>
       </div>
       <div className="flex items-center gap-2">
-        <span className="pill bg-slate-100 text-slate-600">{courses.length} Total Enrolled Courses</span>
-        <button type="button" className="btn-soft px-2.5 py-2" onClick={onAdd} aria-label="Enroll a course">
-          <Plus className="h-4 w-4" />
-        </button>
+        <span className="pill bg-slate-100 text-slate-600">
+          {courses.length} {published ? 'Published Courses' : 'Total Enrolled Courses'}
+        </span>
+        {!published && (
+          <button type="button" className="btn-soft px-2.5 py-2" onClick={onAdd} aria-label="Enroll a course">
+            <Plus className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
 
@@ -59,14 +65,16 @@ export const CourseLoad = ({ courses, grades, onAdd, onRemove }: CourseLoadProps
                   ) : (
                     <span className="chip bg-slate-100 text-slate-400">Not graded</span>
                   )}
-                  <button
-                    type="button"
-                    className="text-slate-300 opacity-0 transition hover:text-[#EF4444] focus:opacity-100 group-hover:opacity-100"
-                    onClick={() => onRemove(course.id)}
-                    aria-label={`Remove ${course.code}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {!published && (
+                    <button
+                      type="button"
+                      className="text-slate-300 opacity-0 transition hover:text-[#EF4444] focus:opacity-100 group-hover:opacity-100"
+                      onClick={() => onRemove(course.id)}
+                      aria-label={`Remove ${course.code}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -91,6 +99,13 @@ export const CourseLoad = ({ courses, grades, onAdd, onRemove }: CourseLoadProps
           );
         })}
       </div>
+    )}
+
+    {published && courses.length > 0 && (
+      <p className="mt-4 rounded-xl border border-line bg-slate-50/70 px-4 py-3 text-[12px] font-medium leading-relaxed text-slate-500">
+        This is your official load as published by the registrar office. Corrections, dropping and adding
+        subjects are done through Add/Drop in the registrar's office.
+      </p>
     )}
   </section>
 );

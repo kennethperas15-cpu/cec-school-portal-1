@@ -5,7 +5,12 @@ import { useStore } from '../../store';
 import { PageHeader } from './PageHeader';
 
 export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
-  const { courses, grades, removeCourse } = useStore();
+  const store = useStore();
+  const { grades, removeCourse } = store;
+  // The registrar's published load is the real one; the local list stays as a
+  // personal record for anything it does not cover.
+  const published = store.publishedCourses;
+  const courses = published.length ? published : store.courses;
 
   const units = totalUnits(courses);
   const graded = courses.filter((course) => grades.some((g) => g.course === course.code)).length;
@@ -23,7 +28,11 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
       <PageHeader
         icon={BookOpen}
         title="Enrolled Courses"
-        subtitle="The subjects on your current semester load"
+        subtitle={
+          published.length
+            ? `The subjects the registrar published for section ${published[0].section}`
+            : 'The subjects on your current semester load'
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -40,7 +49,18 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
         ))}
       </div>
 
-      <CourseLoad courses={courses} grades={grades} onAdd={onAdd} onRemove={removeCourse} />
+      <CourseLoad
+        courses={courses}
+        grades={grades}
+        onAdd={onAdd}
+        onRemove={(id) => {
+          if (published.length) {
+            store.notify('Your published load is managed by the registrar office', 'info');
+            return;
+          }
+          removeCourse(id);
+        }}
+      />
     </div>
   );
 };

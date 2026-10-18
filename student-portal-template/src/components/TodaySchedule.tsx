@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, CheckCircle2, Circle, DoorOpen, Plus, Trash2, User } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Circle, DoorOpen, Lock, Trash2, User } from 'lucide-react';
 import type { ScheduleSlot } from '../types';
 import { formatLongDate, formatTime, minutesUntil, slotState } from '../lib/metrics';
 
 type TodayScheduleProps = {
   slots: ScheduleSlot[];
-  onAdd: () => void;
   onRemove: (id: string) => void;
+  /** Open the Class Schedule page — used by the empty state. */
+  onOpenSchedule: () => void;
+  /**
+   * Set when the timetable was published by the registrar: the rows are official
+   * records, so nothing about them can be added or deleted from here.
+   */
+  publishedBy?: string;
 };
 
 type RowHint = { highlight: boolean; label: string; kind: 'completed' | 'starting' | 'upcoming' };
@@ -20,7 +26,7 @@ const rowHint = (slot: ScheduleSlot, now: Date): RowHint => {
   return { highlight: false, label: 'Upcoming', kind: 'upcoming' };
 };
 
-export const TodaySchedule = ({ slots, onAdd, onRemove }: TodayScheduleProps) => {
+export const TodaySchedule = ({ slots, onRemove, onOpenSchedule, publishedBy }: TodayScheduleProps) => {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -37,9 +43,11 @@ export const TodaySchedule = ({ slots, onAdd, onRemove }: TodayScheduleProps) =>
         </div>
         <div className="flex items-center gap-2">
           <span className="pill bg-slate-100 text-slate-600">{formatLongDate()}</span>
-          <button type="button" className="btn-soft px-2.5 py-2" onClick={onAdd} aria-label="Add class to schedule">
-            <Plus className="h-4 w-4" />
-          </button>
+          {publishedBy && slots.length > 0 && (
+            <span className="pill border-[#dbe4ff] bg-[#eaedff] text-[#00236f]">
+              <Lock className="h-3.5 w-3.5" /> Published by {publishedBy}
+            </span>
+          )}
         </div>
       </div>
 
@@ -49,12 +57,11 @@ export const TodaySchedule = ({ slots, onAdd, onRemove }: TodayScheduleProps) =>
             <CalendarDays className="h-5 w-5" />
           </span>
           <p className="max-w-sm text-sm leading-relaxed text-slate-500">
-            No classes scheduled for today. Click{' '}
-            <span className="font-semibold text-slate-700">&lsquo;Class Schedule&rsquo;</span> to populate your
-            timetable.
+            No classes scheduled for today. The timetable is published by the registrar — open{' '}
+            <span className="font-semibold text-slate-700">&lsquo;Class Schedule&rsquo;</span> to see the week ahead.
           </p>
-          <button type="button" className="btn-primary" onClick={onAdd}>
-            <Plus className="h-4 w-4" /> Add Class Schedule
+          <button type="button" className="btn-primary" onClick={onOpenSchedule}>
+            <CalendarDays className="h-4 w-4" /> Open Class Schedule
           </button>
         </div>
       ) : (
@@ -124,16 +131,18 @@ export const TodaySchedule = ({ slots, onAdd, onRemove }: TodayScheduleProps) =>
                   {hint.label}
                 </span>
 
-                <button
-                  type="button"
-                  className={`shrink-0 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
-                    on ? 'text-blue-200 hover:text-white' : 'text-slate-300 hover:text-[#EF4444]'
-                  }`}
-                  onClick={() => onRemove(slot.id)}
-                  aria-label={`Remove ${slot.code}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                {!publishedBy && (
+                  <button
+                    type="button"
+                    className={`shrink-0 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
+                      on ? 'text-blue-200 hover:text-white' : 'text-slate-300 hover:text-[#EF4444]'
+                    }`}
+                    onClick={() => onRemove(slot.id)}
+                    aria-label={`Remove ${slot.code}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             );
           })}

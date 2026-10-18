@@ -38,7 +38,8 @@ import {
   writeCachedUser,
   writeTokens,
 } from './lib/session';
-import { relativeTime } from './lib/metrics';
+import { relativeTime, toMinutes } from './lib/metrics';
+import { fetchTimetables, pickTimetable, subjectsOf, toSlots, type TimetableItem } from './lib/schedule';
 
 const STORAGE_KEY = 'student-portal-template:v4';
 
@@ -63,10 +64,25 @@ type Store = AppState & {
   /* --- live academic context --- */
   period: AcademicPeriod | null;
   periodLabel: string;
+  /** True until the portal answers with the academic period (or fails). */
+  periodLoading: boolean;
   shortYear: string;
   bulletins: Bulletin[];
   bulletinsLoading: boolean;
   refreshBulletins: () => Promise<void>;
+
+  /* --- published class timetable (registrar + faculty) --- */
+  /** Every published timetable the school has, newest publication first. */
+  timetables: TimetableItem[];
+  timetableLoading: boolean;
+  timetableError: string;
+  refreshTimetables: () => Promise<void>;
+  /** The published document for this student's own section, when there is one. */
+  myTimetable: TimetableItem | null;
+  /** Its meetings in the dashboard's slot shape — empty when nothing is published. */
+  mySlots: ScheduleSlot[];
+  /** The published subjects of that section, shaped like the local course list. */
+  publishedCourses: Course[];
 
   /* --- local academic records --- */
   setProfile: (patch: Partial<Profile>) => void;
@@ -142,8 +158,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [restoring, setRestoring] = useState(() => readTokens() !== null && cachedSession() === null);
 
   const [period, setPeriod] = useState<AcademicPeriod | null>(null);
+  const [periodLoading, setPeriodLoading] = useState(true);
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [bulletinsLoading, setBulletinsLoading] = useState(true);
+  const [timetables, setTimetables] = useState<TimetableItem[]>([]);
+  const [timetableLoading, setTimetableLoading] = useState(true);
+  const [timetableError, setTimetableError] = useState('');
 
   useEffect(() => {
     try {
@@ -226,7 +246,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
     void (async () => {
       const result = await cecAcademicPeriod();
-      if (!cancelled && result.ok) setPeriod(result.data);
+      if (cancelled) return;
+      if (result.ok) setPeriod(result.data);
+      setPeriodLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -254,11 +276,55 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     void refreshBulletins();
   }, [refreshBulletins]);
 
+  /**
+   * The class schedule is published by staff, so the app reads it rather than
+   * owning it. A refusal (or an offline API) leaves the page honest: it reports
+   * that nothing could be read instead of showing remembered sample classes.
+   */
+  const refreshTimetables = useCallback(async () => {
+    setTimetableLoading(true);
+    const result = await fetchTimetables();
+    setTimetableLoading(false);
+    if (!result.ok) {
+      setTimetableError(result.message);
+      return;
+    }
+    setTimetableError('');
+    setTimetables(result.data);
+  }, []);
+
+  useEffect(() => {
+    void refreshTimetables();
+  }, [refreshTimetables]);
+
   /* ------------------------------- actions ----------------------------- */
 
   const store = useMemo<Store>(() => {
     const periodLabel = period ? `AY ${period.schoolYear} • ${period.semester}` : '';
     const shortYear = period ? `AY ${period.schoolYear}` : '';
+    // The student's own section decides which published document is theirs.
+    const myTimetable = pickTimetable(timetables, period, state.profile.section);
+    const mySlots = myTimetable ? toSlots(myTimetable.entries, myTimetable.section) : [];
+    // Same published meetings, shaped like the local course list so the enrolled
+    // courses page and the dashboard counters report the registrar's load.
+    const publishedCourses: Course[] = myTimetable
+      ? subjectsOf(myTimetable.entries).map((subject) => ({
+          id: `published-${subject.key}`,
+          code: subject.code || subject.title,
+          title: subject.title,
+          instructor: subject.instructors.join(', '),
+          section: myTimetable.section,
+          units: subject.units ?? 0,
+          hours:
+            Math.round(
+              subject.meetings.reduce((sum, meeting) => sum + (toMinutes(meeting.end) - toMinutes(meeting.start)) / 60, 0) *
+                10,
+            ) / 10,
+          kind: subject.kinds.join(' & '),
+          room: subject.rooms.join(', '),
+          schedule: subject.scheduleText,
+        }))
+      : [];
 
     return {
       ...state,
@@ -282,10 +348,19 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
       period,
       periodLabel,
+      periodLoading,
       shortYear,
       bulletins,
       bulletinsLoading,
       refreshBulletins,
+
+      timetables,
+      timetableLoading,
+      timetableError,
+      refreshTimetables,
+      myTimetable,
+      mySlots,
+      publishedCourses,
 
       setProfile: (patch) => setState((s) => ({ ...s, profile: { ...s.profile, ...patch } })),
 
@@ -359,6 +434,10 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     bulletins,
     bulletinsLoading,
     refreshBulletins,
+    timetables,
+    timetableLoading,
+    timetableError,
+    refreshTimetables,
     cancelRestore,
   ]);
 

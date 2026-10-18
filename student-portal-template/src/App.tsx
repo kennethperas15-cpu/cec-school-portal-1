@@ -22,7 +22,6 @@ import {
   CourseForm,
   GradeForm,
   ProfileForm,
-  ScheduleForm,
   TasksModal,
 } from './components/DataForms';
 import { useStore } from './store';
@@ -37,6 +36,7 @@ import {
   taskBreakdown,
   totalUnits,
 } from './lib/metrics';
+import { totalUnitsOf } from './lib/schedule';
 
 type ModalKey = BannerAction | 'profile' | 'tasks' | 'notifications';
 
@@ -123,19 +123,18 @@ export const App = () => {
   const q = norm(query.trim());
   const match = (...values: string[]) => !q || values.some((value) => norm(value).includes(q));
 
-  const allToday = classesToday(store.schedule);
+  const allToday = classesToday(store.mySlots.length ? store.mySlots : store.schedule);
   const visibleToday = useMemo(
     () => allToday.filter((slot) => match(slot.code, slot.title, slot.instructor, slot.room, slot.section)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store.schedule, q],
+    [store.mySlots, store.schedule, q],
   );
+  // The registrar's published load, when there is one, *is* the student's load.
+  const load = store.publishedCourses.length ? store.publishedCourses : store.courses;
   const visibleCourses = useMemo(
-    () =>
-      store.courses.filter((course) =>
-        match(course.code, course.title, course.instructor, course.section, course.kind),
-      ),
+    () => load.filter((course) => match(course.code, course.title, course.instructor, course.section, course.kind)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store.courses, q],
+    [load, q],
   );
   const visibleBenchmark = useMemo(
     () => benchmarkData(store.grades).filter((point) => match(point.code, point.course)),
@@ -144,7 +143,14 @@ export const App = () => {
   );
 
   const gpa = store.insights.gpa > 0 ? store.insights.gpa : null;
-  const units = totalUnits(store.courses);
+  /*
+   * The registrar's published load is the real one: when a timetable exists for
+   * this student's section, the dashboard counters read from it instead of the
+   * local record, so the dashboard and Class Schedule never disagree.
+   */
+  const publishedUnits = store.myTimetable ? totalUnitsOf(store.myTimetable.entries) : null;
+  const units = publishedUnits && publishedUnits.units > 0 ? publishedUnits.units : totalUnits(store.courses);
+  const courseCount = store.publishedCourses.length || store.courses.length;
   const attendance = attendanceSummary(store.attendance);
   const composite = compositeScore(store.grades);
   const tasks = openTasks(store.tasks);
@@ -186,6 +192,7 @@ export const App = () => {
       <WelcomeBanner
         profile={store.profile}
         ay={store.periodLabel}
+        periodLoading={store.periodLoading}
         lecturesToday={allToday.length}
         standing={store.insights.standing}
         onOpenProfile={() => setModal('profile')}
@@ -193,7 +200,7 @@ export const App = () => {
       />
 
       <StatCards
-        courseCount={store.courses.length}
+        courseCount={courseCount}
         units={units}
         gpa={gpa}
         gpaDelta={store.insights.gpaDelta}
@@ -201,14 +208,33 @@ export const App = () => {
         attendance={attendance}
         classesTodayCount={allToday.length}
         nextClassLabel={nextClassHint(allToday)}
+        hasLoad={load.length > 0}
         taskCount={tasks.length}
         taskSummary={taskSummary}
-        onAction={(action: StatAction) => setModal(action)}
+        onAction={(action: StatAction) => {
+          // The timetable is a page of its own now, not a local-entry form.
+          if (action === 'schedule') {
+            setActive('schedule');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          setModal(action);
+        }}
       />
 
       <div className="animate-fade-in grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          <TodaySchedule slots={visibleToday} onAdd={() => setModal('schedule')} onRemove={store.removeSchedule} />
+          <TodaySchedule
+            slots={visibleToday}
+            onRemove={store.removeSchedule}
+            onOpenSchedule={() => {
+              setActive('schedule');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            publishedBy={
+              store.mySlots.length ? store.myTimetable?.publishedByName || 'the registrar' : undefined
+            }
+          />
           <PerformanceBenchmark
             data={visibleBenchmark}
             standing={store.insights.standing}
@@ -224,6 +250,7 @@ export const App = () => {
           <CourseLoad
             courses={visibleCourses}
             grades={store.grades}
+            published={store.publishedCourses.length > 0}
             onAdd={() => setModal('course')}
             onRemove={store.removeCourse}
           />
@@ -241,7 +268,7 @@ export const App = () => {
 
   const views: Record<string, ReactNode> = {
     dashboard,
-    schedule: <ScheduleView onAdd={() => setModal('schedule')} />,
+    schedule: <ScheduleView />,
     courses: <CoursesView onAdd={() => setModal('course')} />,
     grades: <GradesView onAdd={() => setModal('grade')} />,
     attendance: <AttendanceView onAdd={() => setModal('attendance')} />,
@@ -262,6 +289,7 @@ export const App = () => {
         <Topbar
           profile={store.profile}
           periodLabel={store.periodLabel}
+          periodLoading={store.periodLoading}
           schoolId={store.user?.schoolId}
           query={query}
           onQueryChange={setQuery}
@@ -275,7 +303,7 @@ export const App = () => {
           {views[active] ?? dashboard}
 
           <footer className="flex flex-col items-center justify-between gap-3 border-t border-line pt-5 text-xs text-slate-400 sm:flex-row">
-            <p>Cebu Eastern College · Student Portal — academic records are stored in this browser only.</p>
+            <p>Cebu Eastern College · Student Portal — timetables are published by the registrar; grades and attendance you log stay in this browser.</p>
             <div className="flex items-center gap-1">
               <a
                 href={CEC_WEBSITE_URL}
@@ -295,7 +323,6 @@ export const App = () => {
         </main>
       </div>
 
-      <ScheduleForm open={modal === 'schedule'} onClose={close} />
       <GradeForm open={modal === 'grade'} onClose={close} />
       <AttendanceForm open={modal === 'attendance'} onClose={close} />
       <CourseForm open={modal === 'course'} onClose={close} />

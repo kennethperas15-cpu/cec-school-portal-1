@@ -22,6 +22,8 @@ type StatCardsProps = {
   attendance: AttendanceSummary;
   classesTodayCount: number;
   nextClassLabel: string;
+  /** True when the student has any class on file (published or local). */
+  hasLoad: boolean;
   taskCount: number;
   taskSummary: string;
   onAction: (action: StatAction) => void;
@@ -36,6 +38,7 @@ export const StatCards = ({
   attendance,
   classesTodayCount,
   nextClassLabel,
+  hasLoad,
   taskCount,
   taskSummary,
   onAction,
@@ -97,7 +100,7 @@ export const StatCards = ({
       value: `${classesTodayCount} Lectures`,
       sub: (
         <span className="font-medium text-slate-500">
-          {classesTodayCount ? nextClassLabel || 'On your timetable today' : 'Schedule is empty'}
+          {classesTodayCount ? nextClassLabel || 'On your timetable today' : hasLoad ? 'No classes today' : 'Schedule is empty'}
         </span>
       ),
       icon: Clock,

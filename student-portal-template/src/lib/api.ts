@@ -175,3 +175,14 @@ export const cecRaiseReceipt = (
  * across the school, so callers filter down to their own rows by owner.
  */
 export const cecReceipts = () => get<PortalItem[]>('/api/portal/items?portal=student&module=receipt');
+
+/* ------------------------------- Schedule -------------------------------- */
+
+/**
+ * Published class timetables — one row per section in one term, written by the
+ * registrar (Study Load Builder) or corrected by a faculty member from their own
+ * Class Schedule screen. `detail` is the JSON timetable document decoded in
+ * lib/schedule.ts; nothing here is generated client-side.
+ */
+export const cecScheduleItems = () =>
+  get<PortalItem[]>('/api/portal/items?portal=student&module=schedule');

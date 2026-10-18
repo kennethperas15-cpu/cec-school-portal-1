@@ -6,6 +6,8 @@ type TopbarProps = {
   profile: Profile;
   /** Live academic period from the CEC portal API, e.g. "AY 2026-2027 • 1st Semester". */
   periodLabel: string;
+  /** True until the portal answers with the academic period (or fails). */
+  periodLoading?: boolean;
   schoolId?: string;
   query: string;
   onQueryChange: (value: string) => void;
@@ -26,6 +28,7 @@ const initials = (name: string): string =>
 export const Topbar = ({
   profile,
   periodLabel,
+  periodLoading = false,
   schoolId,
   query,
   onQueryChange,
@@ -72,10 +75,10 @@ export const Topbar = ({
 
           <span
             className="hidden items-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-xs font-semibold text-slate-700 lg:inline-flex"
-            title={periodLabel || 'Academic period unavailable'}
+            title={periodLabel || (periodLoading ? 'Loading the academic period…' : 'Academic period unavailable')}
           >
             <Calendar className="h-4 w-4 text-slate-400" />
-            {periodLabel || 'Academic period unavailable'}
+            {periodLabel || (periodLoading ? 'Loading academic period…' : 'Academic period unavailable')}
           </span>
 
           <button
