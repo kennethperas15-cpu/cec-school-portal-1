@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Megaphone, RefreshCw, Search, Send, Undo2 } from 'lucide-react';
 import { describeApiError } from '../../../services/api';
-import { fetchAnnouncements, publishAnnouncement, type LiveAnnouncement } from '../../../services/announcements';
+import { fetchAnnouncements, publishAnnouncement, withdrawAnnouncement, type LiveAnnouncement } from '../../../services/announcements';
 import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, Notes, PageHeader, Panel, Table, Toolbar } from './kit';
 import { humanise, matches, unique, useRegistry } from './registry';
 
@@ -42,6 +42,8 @@ export const AnnouncementsPage = ({ onNotify }: { onNotify: (message: string) =>
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState({ title: '', content: '', audience: 'all', category: 'General' });
   const [publishing, setPublishing] = useState(false);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
 
   const categories = useMemo(() => unique((rows ?? []).map((row) => row.category)), [rows]);
   const audiences = useMemo(() => unique((rows ?? []).map((row) => row.audience)), [rows]);
@@ -82,6 +84,21 @@ export const AnnouncementsPage = ({ onNotify }: { onNotify: (message: string) =>
   };
 
   const latest = (rows ?? [])[0];
+
+  const withdraw = async (row: LiveAnnouncement) => {
+    const id = String(row.id);
+    setWithdrawing(id);
+    try {
+      await withdrawAnnouncement(id);
+      onNotify(`“${row.title}” withdrawn from the portals`);
+      setConfirming(null);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Withdrawing the bulletin'));
+    } finally {
+      setWithdrawing(null);
+    }
+  };
 
   return (
     <ConsolePage>
@@ -232,7 +249,7 @@ export const AnnouncementsPage = ({ onNotify }: { onNotify: (message: string) =>
             }
           />
         ) : (
-          <Table head={['Subject', 'Audience', 'Category', 'Published by', 'Published', 'Status']}>
+          <Table head={['Subject', 'Audience', 'Category', 'Published by', 'Published', 'Status', 'Action']}>
             {shown.map((row) => (
               <tr key={row.id}>
                 <td style={{ maxWidth: 460 }}>
@@ -249,6 +266,25 @@ export const AnnouncementsPage = ({ onNotify }: { onNotify: (message: string) =>
                 <td className="ac-muted">{row.published_at ? new Date(row.published_at).toLocaleString() : '—'}</td>
                 <td>
                   <Badge tone="ok">Published</Badge>
+                </td>
+                <td>
+                  <div className="ac-actions">
+                    {confirming === String(row.id) ? (
+                      <>
+                        <button type="button" className="ac-btn ac-btn--danger" disabled={withdrawing === String(row.id)} onClick={() => void withdraw(row)}>
+                          {withdrawing === String(row.id) ? 'Withdrawing…' : 'Confirm withdraw'}
+                        </button>
+                        <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setConfirming(null)} disabled={withdrawing === String(row.id)}>
+                          <Undo2 aria-hidden="true" />
+                          Keep
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="ac-btn ac-btn--danger" onClick={() => setConfirming(String(row.id))}>
+                        Withdraw bulletin
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

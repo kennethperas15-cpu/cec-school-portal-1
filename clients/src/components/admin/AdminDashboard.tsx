@@ -46,10 +46,11 @@ const NAVY = '#0B3D91';
 const BASE = import.meta.env.BASE_URL || '/';
 type Group = { id: string; label: string; icon: string; items: { label: string; route: string }[] };
 /**
- * The console's navigation. The registrar's twelve screens come first, flat and
- * ungrouped, exactly as the institutional design lays them out; the financial
- * desk sits below them because the design has no slot for it and the EDP office
- * lives in those four screens.
+ * The console's navigation, exactly as the institutional design lays it out: the
+ * registrar's twelve screens, flat, and nothing else. Screens the design does not
+ * list are still reachable from where they belong (the study load builder from
+ * Class Schedule, the financial desk from a student's own finance pages) but they
+ * are not navigation modules and do not appear here.
  */
 const GROUPS: Group[] = [
   {
@@ -71,35 +72,28 @@ const GROUPS: Group[] = [
       { label: 'Activity Logs', route: 'a_activity_logs' },
     ],
   },
-  {
-    id: 'finance',
-    label: 'FINANCIAL MGMT',
-    icon: '▦',
-    items: [
-      { label: 'Billing & Invoices', route: 'a_fin_billing' },
-      { label: 'Fee Structure', route: 'a_fin_fees' },
-      { label: 'Payment Monitoring', route: 'a_fin_payments' },
-      { label: 'Scholarships', route: 'a_fin_scholar' },
-    ],
-  },
-  {
-    id: 'tools',
-    label: 'PORTAL TOOLS',
-    icon: '⚙',
-    items: [
-      { label: 'Study Load Builder', route: 'a_acad_offerings' },
-      { label: 'Account Creation', route: 'a_auth_accounts' },
-      { label: 'Password Reset', route: 'a_auth_reset' },
-      { label: 'Document Verification', route: 'a_enroll_docs' },
-      { label: 'Status Monitoring', route: 'a_enroll_status' },
-      { label: 'Teacher Records', route: 'a_hr_records' },
-      { label: 'Load Assignment', route: 'a_hr_load' },
-      { label: 'Credentials', route: 'a_hr_cred' },
-      { label: 'Broadcast Messaging', route: 'a_comm_broadcast' },
-      { label: 'Backup & Restore', route: 'a_sys_backup' },
-      { label: 'Security', route: 'a_sys_security' },
-    ],
-  },
+];
+/**
+ * Screens the design leaves out of the navigation but that still hold real
+ * functionality: they stay reachable through the links that belong to them, so a
+ * registrar is never sent to a blank route.
+ */
+const OFF_NAV_SCREENS = [
+  'Study Load Builder',
+  'Document Verification',
+  'Status Monitoring',
+  'Account Creation',
+  'Password Reset',
+  'Teacher Records',
+  'Load Assignment',
+  'Credentials',
+  'Broadcast Messaging',
+  'Backup & Restore',
+  'Security',
+  'Billing & Invoices',
+  'Fee Structure',
+  'Payment Monitoring',
+  'Scholarships',
 ];
 const pill: React.CSSProperties = { border: '1px solid #e4ebf5', background: '#f8fbff', borderRadius: 999, padding: '6px 12px', fontSize: 12, color: '#5b6b82', fontWeight: 600 };
 type Rec3 = { id: string; name: string; role: string };
@@ -294,7 +288,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     });
   };
   const route = GROUPS.flatMap((g) => g.items).find((i) => i.label === active)?.route ?? 'a_dashboard';
-  const moduleItems = ['Dashboard', ...GROUPS.flatMap((g) => g.items.map((item) => item.label))];
+  const moduleItems = ['Dashboard', ...GROUPS.flatMap((g) => g.items.map((item) => item.label)), ...OFF_NAV_SCREENS];
   const navigate = (label: string) => setActive(moduleItems.includes(label) ? label : 'Dashboard');
   const searchRecords = [
     ...accounts.list.map((item) => ({ title: item.name, detail: `${item.id} • ${item.role}`, target: 'Account Creation' })),

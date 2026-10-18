@@ -25,7 +25,8 @@ const grades = (from: number, to: number): ProgramLevel[] =>
 
 type EnrollmentProgram = { name: string; levels: ProgramLevel[] };
 
-const PROGRAMS: EnrollmentProgram[] = [
+/** Shared with the registrar's register form, so both sides offer the same choices. */
+export const PROGRAMS: EnrollmentProgram[] = [
   { name: 'BSIT', levels: years(4) },
   { name: 'BSCS', levels: years(4) },
   { name: 'BEED', levels: years(4) },
@@ -37,7 +38,7 @@ const PROGRAMS: EnrollmentProgram[] = [
   { name: 'Elementary', levels: grades(1, 6) },
 ];
 
-const levelsOf = (program: string): ProgramLevel[] =>
+export const levelsOf = (program: string): ProgramLevel[] =>
   PROGRAMS.find((entry) => entry.name === program)?.levels ?? years(4);
 
 /** The chosen level as the applicant reads it, e.g. "Year 3" or "Grade 11". */

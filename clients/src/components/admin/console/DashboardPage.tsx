@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BookOpen, CalendarDays, CheckCheck, RefreshCw, ScrollText, Users, UserPlus, X } from 'lucide-react';
 import api, { describeApiError } from '../../../services/api';
 import { adminApi, formatStamp, fullName, type AdminConfigEntry, type AdminOverview } from '../../../services/admin';
-import { fetchAnnouncements, type LiveAnnouncement } from '../../../services/announcements';
-import { portalApi, type PortalEnrollment } from '../../../services/portal';
 import { useAcademicConfig } from '../../../services/academicConfig';
+import { portalApi, type PortalEnrollment } from '../../../services/portal';
+import { useAcademicRecords, type AttendanceRow, type GradeEntryRow } from '../../../services/records';
 import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, Notes, PageHeader, Panel, Table } from './kit';
 
 type AuditRow = {
@@ -23,31 +23,50 @@ type Props = { firstName?: string; onNotify: (message: string) => void; onNaviga
 /** `2,845` — the registry reads in thousands, so group the digits. */
 const num = (value: number | undefined | null): string => (typeof value === 'number' ? value.toLocaleString() : '—');
 
+/** `12 mins ago` — how the design's activity feed reads. */
+const relTime = (value: string): string => {
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return '—';
+  const minutes = Math.round((Date.now() - then) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+};
+
+/** The registrar's queue, described by how much is actually waiting. */
+const queueLoad = (pending: number): string => (pending === 0 ? 'Clear' : pending <= 5 ? 'Steady' : 'Backlogged');
+
 /**
- * The administration landing screen: what the registry holds, what is waiting on
- * the registrar, and what the portal has actually published. Every number is read
- * from the database or from a published portal record — nothing here is inferred
- * from the design's sample data, and a genuinely empty registry says so.
+ * The administration landing screen, laid out as the institutional design lays it
+ * out: the term strip, the registrar's immediate actions, the six registry
+ * figures, the enrollment queue, grade submission progress, the stored term
+ * parameters and the live audit feed. Every figure is read from the database or
+ * computed from published records — a panel with nothing in it says so.
  */
 export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
   const academic = useAcademicConfig();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [pending, setPending] = useState<PortalEnrollment[] | null>(null);
-  const [bulletins, setBulletins] = useState<LiveAnnouncement[] | null>(null);
   const [activity, setActivity] = useState<AuditRow[] | null>(null);
   const [config, setConfig] = useState<AdminConfigEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [asOf, setAsOf] = useState<string | null>(null);
+
+  const grades = useAcademicRecords<GradeEntryRow>('grades');
+  const attendance = useAcademicRecords<AttendanceRow>('attendance');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [registry, requests, notices, log, settings] = await Promise.allSettled([
+    const [registry, requests, log, settings] = await Promise.allSettled([
       adminApi.overview(),
       portalApi.enrollPending(),
-      fetchAnnouncements('all'),
       api.get('/audit-logs', { params: { limit: 6 } }),
       adminApi.config(),
     ]);
@@ -60,9 +79,9 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
       setError(describeApiError(registry.reason, 'Loading the institutional registry'));
     }
     setPending(requests.status === 'fulfilled' ? requests.value : null);
-    setBulletins(notices.status === 'fulfilled' ? notices.value.slice(0, 4) : null);
     setActivity(log.status === 'fulfilled' ? ((log.value.data?.data ?? []) as AuditRow[]) : null);
     setConfig(settings.status === 'fulfilled' ? settings.value.slice(0, 6) : null);
+    setAsOf(new Date().toISOString());
     setLoading(false);
   }, []);
 
@@ -86,6 +105,24 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
 
   const pendingCount = overview?.applicationsPending ?? 0;
 
+  /** Grade submission progress per program, from the records faculty published. */
+  const submissions = useMemo(() => {
+    const byProgram = new Map<string, { posted: number; students: Set<string> }>();
+    for (const record of grades.records) {
+      const key = record.program || 'Program not recorded';
+      const entry = byProgram.get(key) ?? { posted: 0, students: new Set<string>() };
+      entry.posted += record.entries.length;
+      entry.students.add(record.studentId);
+      byProgram.set(key, entry);
+    }
+    const rows = [...byProgram.entries()].map(([program, value]) => ({ program, posted: value.posted, students: value.students.size }));
+    const most = rows.reduce((top, row) => Math.max(top, row.posted), 0);
+    return rows.sort((a, b) => b.posted - a.posted).map((row) => ({ ...row, share: most ? Math.round((row.posted / most) * 100) : 0 }));
+  }, [grades.records]);
+
+  const sessions = attendance.records.reduce((total, record) => total + record.entries.length, 0);
+  const attended = attendance.records.reduce((total, record) => total + record.entries.filter((entry) => entry.status !== 'Absent').length, 0);
+
   return (
     <ConsolePage>
       <PageHeader
@@ -100,29 +137,38 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
         }
       />
 
+      <div className="ac-actions">
+        <Badge>
+          Active term • {academic.semester}, AY {academic.schoolYear}
+        </Badge>
+        <Badge tone={pendingCount ? 'warn' : 'ok'}>Queue load • {queueLoad(pendingCount)}</Badge>
+        <Badge tone="muted">Registry • {num(overview?.accounts)} accounts</Badge>
+        <span className="ac-muted">Read {asOf ? relTime(asOf) : '—'}</span>
+      </div>
+
       {error ? <ErrorNote message={error} onRetry={() => void load()} /> : null}
 
       <Panel title="Immediate actions" subtitle="The registry shortcuts an administrator reaches for first.">
         <div className="ac-actions">
           <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Student Management')}>
             <UserPlus aria-hidden="true" />
-            Student registry
+            Add Student
           </button>
           <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Teacher Management')}>
             <Users aria-hidden="true" />
-            Faculty roster
+            Add Teacher
           </button>
           <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Course Management')}>
             <BookOpen aria-hidden="true" />
-            Course catalog
+            Create Course
           </button>
           <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Class Schedule')}>
             <CalendarDays aria-hidden="true" />
-            Published timetables
+            Assign Schedule
           </button>
           <button type="button" className="ac-btn" onClick={() => onNavigate('Enrollment Management')}>
             <CheckCheck aria-hidden="true" />
-            Process enrollments{pendingCount ? ` • ${pendingCount} pending` : ''}
+            Process Enrollments{pendingCount ? ` • ${pendingCount} pending` : ''}
           </button>
         </div>
       </Panel>
@@ -133,31 +179,26 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
         </Panel>
       ) : (
         <div className="ac-kpis">
-          <Kpi
-            label="Students"
-            value={num(overview?.students)}
-            hint="active matriculation records"
-            tone={overview && overview.students === 0 ? 'empty' : 'default'}
-          />
-          <Kpi label="Faculty" value={num(overview?.teachers)} hint="active teaching staff" tone={overview && overview.teachers === 0 ? 'empty' : 'default'} />
+          <Kpi label="Total students" value={num(overview?.students)} hint="active matriculated" tone={overview && overview.students === 0 ? 'empty' : 'default'} />
+          <Kpi label="Faculty members" value={num(overview?.teachers)} hint="teaching accounts on record" tone={overview && overview.teachers === 0 ? 'empty' : 'default'} />
           <Kpi
             label="Course catalog"
             value={num(overview?.subjects)}
             hint={`${num(overview?.courses)} open offerings this term`}
             tone={overview && overview.subjects === 0 ? 'empty' : 'default'}
           />
-          <Kpi label="Class sections" value={num(overview?.sections)} hint={`${num(overview?.rooms)} rooms on file`} tone={overview && overview.sections === 0 ? 'empty' : 'default'} />
           <Kpi
-            label="Enrollment applications"
-            value={num(overview?.applicationsTotal)}
-            hint={`${num(overview?.applicationsApproved)} approved • ${num(overview?.applicationsRejected)} rejected`}
-            tone={overview && overview.applicationsTotal === 0 ? 'empty' : 'default'}
+            label="Enrollments"
+            value={num(overview?.applicationsApproved)}
+            hint="approved registrations"
+            tone={overview && overview.applicationsApproved === 0 ? 'empty' : 'default'}
           />
+          <Kpi label="Active classes" value={num(overview?.sections)} hint={`${num(overview?.schedules)} scheduled meetings`} tone={overview && overview.sections === 0 ? 'empty' : 'default'} />
           <Kpi
-            label="Awaiting decision"
-            value={num(overview?.applicationsPending)}
-            hint={pendingCount ? 'registrar action required' : 'nothing in the queue'}
-            tone={pendingCount ? 'attention' : 'empty'}
+            label="Attendance rate"
+            value={sessions ? `${Math.round((attended / sessions) * 1000) / 10}%` : '—'}
+            hint={sessions ? `from ${sessions} posted sessions` : 'no sessions posted yet'}
+            tone={sessions ? 'default' : 'empty'}
           />
         </div>
       )}
@@ -169,12 +210,12 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
       ) : null}
 
       <Panel
-        title="Enrollment requests awaiting a decision"
+        title="Pending enrollment requests"
         subtitle="Submitted from the public enrollment form. Approving issues the applicant's school account."
         actions={
           <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Enrollment Management')}>
             <ScrollText aria-hidden="true" />
-            Full applications register
+            View all requests
           </button>
         }
         flush
@@ -187,7 +228,7 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
             message="Every application submitted through the public form has been decided. New submissions appear here the moment they arrive."
           />
         ) : (
-          <Table head={['Applicant', 'Program & year', 'Submitted', 'Payment reference', 'Status', 'Decision']}>
+          <Table head={['Student profile', 'Program & year', 'Submitted', 'Payment reference', 'Status', 'Action']}>
             {pending.map((application) => (
               <tr key={application.id}>
                 <td>
@@ -205,27 +246,15 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
                 <td className="ac-muted">{formatStamp(application.created_at)}</td>
                 <td className="ac-mono">{application.payment_reference_no ?? '—'}</td>
                 <td>
-                  <Badge tone={application.status === 'pending' ? 'warn' : application.status === 'approved' ? 'ok' : 'muted'}>
-                    {application.status}
-                  </Badge>
+                  <Badge tone="warn">{application.status}</Badge>
                 </td>
                 <td>
                   <div className="ac-actions">
-                    <button
-                      type="button"
-                      className="ac-btn"
-                      disabled={busyId === application.id}
-                      onClick={() => void decide(application, 'approved')}
-                    >
+                    <button type="button" className="ac-btn" disabled={busyId === application.id} onClick={() => void decide(application, 'approved')}>
                       <CheckCheck aria-hidden="true" />
                       Approve
                     </button>
-                    <button
-                      type="button"
-                      className="ac-btn ac-btn--danger"
-                      disabled={busyId === application.id}
-                      onClick={() => void decide(application, 'rejected')}
-                    >
+                    <button type="button" className="ac-btn ac-btn--danger" disabled={busyId === application.id} onClick={() => void decide(application, 'rejected')}>
                       <X aria-hidden="true" />
                       Reject
                     </button>
@@ -238,28 +267,38 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
       </Panel>
 
       <div className="ac-grid-2">
-        <Panel title="Published to the portals" subtitle="Records the registrar and faculty have actually released to students.">
-          <dl className="ac-dl">
-            <dt>Published timetables</dt>
-            <dd>{num(overview?.publishedTimetables)}</dd>
-            <dt>Grade records posted</dt>
-            <dd>{num(overview?.postedGrades)}</dd>
-            <dt>Attendance records posted</dt>
-            <dd>{num(overview?.postedAttendance)}</dd>
-            <dt>Tuition receipts raised</dt>
-            <dd>{num(overview?.receipts)}</dd>
-            <dt>Accounts on file</dt>
-            <dd>
-              {num(overview?.accounts)} <span className="ac-muted">({num(overview?.accountsInactive)} deactivated)</span>
-            </dd>
-            <dt>Audit events recorded</dt>
-            <dd>{num(overview?.auditEvents)}</dd>
-          </dl>
+        <Panel title="Grade submission status" subtitle="Posted by program, from the records faculty published.">
+          {grades.loading ? (
+            <Loading label="Reading the posted grade records…" />
+          ) : grades.error ? (
+            <ErrorNote message={grades.error} onRetry={grades.refresh} />
+          ) : submissions.length === 0 ? (
+            <EmptyState
+              title="Nothing posted yet"
+              message="No faculty member has published marks for the active term, so there is no submission progress to report."
+            />
+          ) : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {submissions.map((row) => (
+                <div key={row.program} style={{ display: 'grid', gap: 6 }}>
+                  <span className="ac-actions" style={{ justifyContent: 'space-between' }}>
+                    <span className="ac-strong">{row.program}</span>
+                    <span className="ac-muted">
+                      {row.posted} entries • {row.students} student{row.students === 1 ? '' : 's'}
+                    </span>
+                  </span>
+                  <span className="ac-bar" style={{ minWidth: 0 }}>
+                    <span style={{ width: `${row.share}%` }} />
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </Panel>
 
         <Panel
-          title="Institutional configuration"
-          subtitle="Term parameters the whole portal reads from."
+          title="Term parameters"
+          subtitle="The stored configuration every portal reads for the active term."
           actions={
             <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Settings')}>
               Open settings
@@ -285,69 +324,42 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
         </Panel>
       </div>
 
-      <div className="ac-grid-2">
-        <Panel
-          title="Campus bulletins"
-          subtitle="Published announcements, newest first."
-          actions={
-            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Announcements')}>
-              Manage bulletins
-            </button>
-          }
-        >
-          {bulletins === null ? (
-            <ErrorNote message="Announcements could not be read." onRetry={() => void load()} />
-          ) : bulletins.length === 0 ? (
-            <EmptyState title="No bulletins published" message="Nothing has been announced yet. Published bulletins appear here and on every portal immediately." />
-          ) : (
-            <div className="ac-cell-stack">
-              {bulletins.map((bulletin) => (
-                <div key={bulletin.id} style={{ display: 'grid', gap: 4, paddingBottom: 12 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span className="ac-strong">{bulletin.title}</span>
-                    <Badge tone="muted">{bulletin.audience}</Badge>
-                  </div>
-                  <span className="ac-muted">{formatStamp(bulletin.published_at)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-
-        <Panel
-          title="Recent administrative activity"
-          subtitle="Every decision and publication is written to the audit trail."
-          actions={
-            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Activity Logs')}>
-              Full log
-            </button>
-          }
-        >
-          {activity === null ? (
-            <ErrorNote message="The audit trail could not be read." onRetry={() => void load()} />
-          ) : activity.length === 0 ? (
-            <EmptyState title="Nothing recorded yet" message="The audit trail fills as administrators, registrars and faculty act in the portal." />
-          ) : (
-            <div className="ac-cell-stack">
-              {activity.map((row) => (
-                <div key={row.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10 }}>
-                  <span className="ac-cell-stack">
-                    <span className="ac-strong">{row.action}</span>
-                    <span className="ac-muted">
-                      {row.entity_type ?? 'record'} {row.entity_id ? `• ${row.entity_id.slice(0, 18)}` : ''}
-                    </span>
+      <Panel
+        title="Live activity audit"
+        subtitle="Every decision and publication is written to the audit trail."
+        actions={
+          <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Activity Logs')}>
+            Full log
+          </button>
+        }
+      >
+        {activity === null ? (
+          <ErrorNote message="The audit trail could not be read." onRetry={() => void load()} />
+        ) : activity.length === 0 ? (
+          <EmptyState title="Nothing recorded yet" message="The audit trail fills as administrators, registrars and faculty act in the portal." />
+        ) : (
+          <div className="ac-cell-stack">
+            {activity.map((row) => (
+              <div key={row.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10 }}>
+                <span className="ac-cell-stack">
+                  <span className="ac-strong">{row.action}</span>
+                  <span className="ac-muted">
+                    {row.entity_type ?? 'record'}
+                    {row.entity_id ? ` • ${row.entity_id.slice(0, 18)}` : ''}
                   </span>
-                  <span className="ac-muted">{formatStamp(row.created_at)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-      </div>
+                </span>
+                <span className="ac-muted" title={formatStamp(row.created_at)}>
+                  {relTime(row.created_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
 
       <Notes>
-        <strong>Registrar note.</strong> This console reads the live institutional database. A panel that shows nothing is not a
-        failure — the table behind it is genuinely empty, and it fills the moment the academic office records something.
+        <strong>Registrar note.</strong> This console reads the live institutional database. A panel that shows nothing is not a failure —
+        the table behind it is genuinely empty, and it fills the moment the academic office records something.
       </Notes>
     </ConsolePage>
   );

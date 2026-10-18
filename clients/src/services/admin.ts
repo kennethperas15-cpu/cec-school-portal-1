@@ -173,6 +173,75 @@ export const adminApi = {
   accounts: (query: AdminQuery = {}) => list<AdminAccount>('/admin/accounts', query),
   departments: () => list<AdminDepartment>('/admin/departments'),
   config: () => list<AdminConfigEntry>('/admin/config'),
+
+  /**
+   * The registrar's writes (admin role only — the server checks it, not just the
+   * screen). Every one of these answers with the row it changed, and the server
+   * records who changed what in the audit trail.
+   */
+  registerStudent: async (input: {
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+    personalEmail: string;
+    phone?: string;
+    program: string;
+    yearLevel: number;
+    educationLevel?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    dateOfBirth?: string;
+    address?: string;
+  }): Promise<{ studentNumber: string; schoolEmail: string; temporaryPassword: string; firstName: string; lastName: string }> => {
+    const response = await api.post('/admin/students', input);
+    return response.data?.data;
+  },
+  updateStudent: async (
+    id: string,
+    patch: {
+      program?: string;
+      yearLevel?: number;
+      status?: string;
+      educationLevel?: string;
+      guardianName?: string;
+      guardianPhone?: string;
+      dateOfBirth?: string;
+      address?: string;
+      isActive?: boolean;
+    },
+  ) => (await api.put(`/admin/students/${id}`, patch)).data,
+  updateTeacher: async (
+    id: string,
+    patch: { specialization?: string; employmentStatus?: string; isActive?: boolean },
+  ) => (await api.put(`/admin/teachers/${id}`, patch)).data,
+  createCourse: async (input: {
+    code: string;
+    subjectName: string;
+    units?: number;
+    description?: string;
+    schoolYear: string;
+    semester: number;
+    status?: string;
+    teacherId?: string;
+  }): Promise<{ id: number }> => (await api.post('/admin/courses', input)).data?.data,
+  updateCourse: async (
+    id: number,
+    patch: { status?: string; teacherId?: string; subjectName?: string; units?: number },
+  ) => (await api.put(`/admin/courses/${id}`, patch)).data,
+  deleteCourse: async (id: number) => (await api.delete(`/admin/courses/${id}`)).data,
+  updateConfig: async (key: string, patch: { value: string; isPublic?: boolean }) =>
+    (await api.put(`/admin/config/${encodeURIComponent(key)}`, patch)).data,
+  updateAccount: async (id: string, isActive: boolean) => (await api.put(`/admin/accounts/${id}`, { isActive })).data,
+  /** Teacher and administrator accounts are provisioned by the staff route. */
+  createStaff: async (input: {
+    fullName: string;
+    personalEmail: string;
+    phone?: string;
+    staffId: string;
+    role: 'teacher' | 'admin';
+    department?: string;
+    position?: string;
+  }): Promise<{ schoolEmail?: string; temporaryPassword?: string }> => (await api.post('/auth/staff', input)).data?.data,
 };
 
 /** `2944985` — how the registrar reads a student number back. */

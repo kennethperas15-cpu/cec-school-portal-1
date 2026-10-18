@@ -188,6 +188,29 @@ router.post('/announcements', authmiddlewareMiddleware, requireRoles('admin'), a
   } catch (error) { next(error); }
 });
 
+// Withdraw a bulletin. The registrar publishes one audience at a time and has to
+// be able to take it back down; the audit trail keeps the removal.
+router.delete('/announcements/:id', authmiddlewareMiddleware, requireRoles('admin'), async (req, res, next) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    if (!/^\d+$/.test(id)) {
+      res.status(400).json({ success: false, message: 'A numeric announcement id is required' });
+      return;
+    }
+    const rows = await sql<{ id: number; title: string }>(
+      'SELECT id, title FROM announcements WHERE id = ? LIMIT 1',
+      { replacements: [id], type: QueryTypes.SELECT }
+    );
+    if (!rows.length) {
+      res.status(400).json({ success: false, message: 'No bulletin with that id' });
+      return;
+    }
+    await sql('DELETE FROM announcements WHERE id = ?', { replacements: [id], type: QueryTypes.DELETE });
+    await writeAuditLog(req, { action: 'Announcement withdrawn', targetType: 'Announcement', targetId: id, previousValue: rows[0] });
+    res.json({ success: true, message: `“${rows[0].title}” withdrawn`, data: { id: Number(id) } });
+  } catch (error) { next(error); }
+});
+
 // ---- Certificate of Enrollment requests ----
 router.post('/coe', authmiddlewareMiddleware, async (req, res, next) => {
   try {
