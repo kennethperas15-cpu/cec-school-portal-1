@@ -93,8 +93,12 @@ export const DashboardPage = ({ firstName, onNotify, onNavigate }: Props) => {
     const who = fullName(application);
     setBusyId(application.id);
     try {
-      await portalApi.enrollDecide(application.id, decision);
-      onNotify(`${who} — application ${decision}`);
+      const result = await portalApi.enrollDecide(application.id, decision);
+      onNotify(
+        decision === 'approved'
+          ? `${who} approved — ${result?.deliveryNote ?? (result?.emailSent ? 'credentials emailed' : 'account issued')}`
+          : `${who} — application rejected`,
+      );
       await load();
     } catch (failure) {
       onNotify(describeApiError(failure, 'Recording the decision'));

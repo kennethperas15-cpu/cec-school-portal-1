@@ -42,7 +42,6 @@ const accessTokenFor = (user: { id: string; role: string; email: string }) => jw
   env.jwtSecret,
   { expiresIn: env.accessTokenTtl as jwt.SignOptions['expiresIn'] }
 );
-
 const refreshSessionFor = async (userId: string) => {
   const refreshToken = crypto.randomBytes(48).toString('base64url');
   await sql(
@@ -50,6 +49,64 @@ const refreshSessionFor = async (userId: string) => {
     { replacements: [crypto.randomUUID(), userId, hashToken(refreshToken)], type: QueryTypes.INSERT }
   );
   return refreshToken;
+};
+
+/**
+ * The credentials email a student receives once their enrollment is approved:
+ * the school account, the assigned student ID and the temporary password, with
+ * the sign-in address and a reminder to change it.
+ *
+ * Delivery failures never roll back provisioning — the account exists either way,
+ * and the caller is told whether the mail went out so the registrar can hand the
+ * credentials over instead.
+ */
+export const sendAccountCredentials = async (input: {
+  to: string;
+  fullName: string;
+  schoolEmail: string;
+  schoolId?: string;
+  temporaryPassword: string;
+  roleLabel: string;
+}): Promise<{ sent: boolean; reason?: string }> => {
+  if (!input.to || !input.to.includes('@')) return { sent: false, reason: 'No email address is on file for the applicant' };
+  if (!mailer) return { sent: false, reason: 'Email delivery is not configured on this deployment' };
+
+  const signIn = (env.clientUrl.split(',')[0] ?? '').trim() || 'the CEC portal';
+  const lines = [
+    `Your CEC Portal ${input.roleLabel} account is ready.`,
+    '',
+    `Name: ${input.fullName}`,
+    `School email (this is your username): ${input.schoolEmail}`,
+    ...(input.schoolId ? [`Student ID: ${input.schoolId}`] : []),
+    `Temporary password: ${input.temporaryPassword}`,
+    '',
+    `Sign in at: ${signIn}`,
+    'Change this password after your first sign-in.',
+    '',
+    'Cebu Eastern College — Registrar Office',
+  ];
+  const html = `<p>Your CEC Portal ${input.roleLabel} account is ready.</p>
+<ul>
+  <li><strong>Name:</strong> ${input.fullName}</li>
+  <li><strong>School email (your username):</strong> ${input.schoolEmail}</li>
+  ${input.schoolId ? `<li><strong>Student ID:</strong> ${input.schoolId}</li>` : ''}
+  <li><strong>Temporary password:</strong> ${input.temporaryPassword}</li>
+</ul>
+<p>Sign in at <a href="${signIn}">${signIn}</a> and change this password after your first sign-in.</p>
+<p>Cebu Eastern College — Registrar Office</p>`;
+
+  try {
+    await mailer.sendMail({
+      from: env.emailFrom,
+      to: input.to,
+      subject: 'Your CEC Portal account and sign-in details',
+      text: lines.join('\n'),
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    return { sent: false, reason: error instanceof Error ? error.message : 'The mail server refused the message' };
+  }
 };
 
 export const authService = {
@@ -711,19 +768,11 @@ export const authService = {
     );
     if (!role.length) throw new Error('Student role is missing; run seed.sql');
 
-    // Without email delivery, issue an active account with a temporary
-    // password so approval still lands in users/students tables.
-    let temporaryPassword: string | null = null;
-    let tokenHash: string | null = null;
-    let token: string | null = null;
-    let passwordHash = 'ACTIVATION_PENDING';
-    if (!mailer) {
-      temporaryPassword = crypto.randomBytes(12).toString('base64url');
-      passwordHash = await bcrypt.hash(temporaryPassword, 12);
-    } else {
-      token = crypto.randomBytes(32).toString('hex');
-      tokenHash = hashToken(token);
-    }
+    // The account is issued active with a temporary password, so approval always
+    // lands in the users/students tables, and the applicant is then emailed their
+    // credentials: school account, student ID and password.
+    const temporaryPassword = crypto.randomBytes(9).toString('base64url');
+    const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
     let provisionedSchoolId: string | undefined;
     await sequelize.transaction(async (transaction) => {
@@ -732,13 +781,6 @@ export const authService = {
          VALUES (?, ?, ?, ?, ?, ?)`,
         { replacements: [userId, role[0].id, schoolEmail, passwordHash, application.first_name, application.last_name], transaction }
       );
-      if (tokenHash) {
-        await sql(
-          `INSERT INTO account_activation_tokens (user_id, token_hash, expires_at)
-           VALUES (?, ?, NOW() + INTERVAL '24 hours')`,
-          { replacements: [userId, tokenHash], transaction }
-        );
-      }
       await sql(
         `UPDATE enrollment_applications
          SET status = 'approved', user_id = ?, reviewed_at = NOW(),
@@ -774,18 +816,28 @@ export const authService = {
       }
     });
 
-    if (!mailer) {
-      return { personalEmail: application.email, schoolEmail, temporaryPassword, emailSent: false, schoolId: provisionedSchoolId };
-    }
-    const activationUrl = `${env.clientUrl}/activate?token=${token}`;
-    await mailer.sendMail({
-      from: env.emailFrom,
+    const roleLabel = application.requested_role === 'teacher' ? 'teacher' : application.requested_role === 'admin' ? 'administrator' : 'student';
+    const delivery = await sendAccountCredentials({
       to: application.email,
-      subject: 'CEC Portal account activation',
-      text: `Your enrollment was approved. Your school email is ${schoolEmail}. Activate your CEC Portal account within 24 hours: ${activationUrl}`,
-      html: `<p>Your enrollment was approved.</p><p>Your school email is <strong>${schoolEmail}</strong>.</p><p><a href="${activationUrl}">Activate your CEC Portal account</a></p><p>This link expires in 24 hours.</p>`
+      fullName: `${application.first_name} ${application.last_name}`.trim(),
+      schoolEmail,
+      schoolId: provisionedSchoolId,
+      temporaryPassword,
+      roleLabel,
     });
-    return { personalEmail: application.email, schoolEmail, emailSent: true };
+
+    return {
+      personalEmail: application.email,
+      schoolEmail,
+      schoolId: provisionedSchoolId,
+      emailSent: delivery.sent,
+      deliveryNote: delivery.sent
+        ? `Credentials emailed to ${application.email}`
+        : `${delivery.reason ?? 'Delivery failed'} — hand the temporary password over instead`,
+      // Only handed back when it could not be mailed, so the registrar can pass
+      // it on without the password travelling further than it has to.
+      ...(delivery.sent ? {} : { temporaryPassword }),
+    };
   },
 
   async activateAccount(token: string, password: string) {

@@ -22,6 +22,8 @@ export const SettingsPage = ({ onNotify }: { onNotify: (message: string) => void
   const [snapshot, setSnapshot] = useState<Snapshot>({ overview: null, config: null, database: null, error: null });
   const [loading, setLoading] = useState(true);
   const [term, setTerm] = useState('');
+  const [editing, setEditing] = useState<{ key: string; value: string; isPublic: boolean } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +53,25 @@ export const SettingsPage = ({ onNotify }: { onNotify: (message: string) => void
       shown.map((entry) => [entry.config_key, entry.config_value, entry.is_public ? 'public' : 'internal', entry.updated_at]),
     );
     onNotify(`Exported ${shown.length} configuration entr${shown.length === 1 ? 'y' : 'ies'}`);
+  };
+
+  const save = async () => {
+    if (!editing) return;
+    if (!editing.value.trim()) {
+      onNotify('A configuration value is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await adminApi.updateConfig(editing.key, { value: editing.value.trim(), isPublic: editing.isPublic });
+      onNotify(result?.message ?? `${editing.key} updated`);
+      setEditing(null);
+      await load();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Saving the configuration'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -144,10 +165,7 @@ export const SettingsPage = ({ onNotify }: { onNotify: (message: string) => void
             />
           </label>
           <div className="ac-actions" style={{ marginLeft: 'auto' }}>
-            <Badge tone="muted">
-              <Lock aria-hidden="true" style={{ width: 12, height: 12 }} />
-              Read-only
-            </Badge>
+            <span className="ac-muted">Changes are stored centrally and written to the audit trail.</span>
           </div>
         </Toolbar>
 
@@ -165,25 +183,69 @@ export const SettingsPage = ({ onNotify }: { onNotify: (message: string) => void
             }
           />
         ) : (
-          <Table head={['Key', 'Value', 'Visibility', 'Last updated']}>
+          <Table head={['Key', 'Value', 'Visibility', 'Last updated', 'Action']}>
             {shown.map((entry) => (
               <tr key={entry.config_key}>
                 <td className="ac-mono ac-strong">{entry.config_key}</td>
-                <td>{entry.config_value ?? '—'}</td>
                 <td>
-                  <Badge tone={entry.is_public ? 'ok' : 'muted'}>{entry.is_public ? 'Public' : 'Internal'}</Badge>
+                  {editing?.key === entry.config_key ? (
+                    <input
+                      className="ac-input"
+                      value={editing.value}
+                      onChange={(event) => setEditing({ ...editing, value: event.target.value })}
+                      aria-label={`New value for ${entry.config_key}`}
+                    />
+                  ) : (
+                    (entry.config_value ?? '—')
+                  )}
+                </td>
+                <td>
+                  {editing?.key === entry.config_key ? (
+                    <label className="ac-field" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={editing.isPublic}
+                        onChange={(event) => setEditing({ ...editing, isPublic: event.target.checked })}
+                        aria-label={`Public for ${entry.config_key}`}
+                      />
+                      <span>Public</span>
+                    </label>
+                  ) : (
+                    <Badge tone={entry.is_public ? 'ok' : 'muted'}>{entry.is_public ? 'Public' : 'Internal'}</Badge>
+                  )}
                 </td>
                 <td className="ac-muted">{formatStamp(entry.updated_at)}</td>
+                <td>
+                  <div className="ac-actions">
+                    {editing?.key === entry.config_key ? (
+                      <>
+                        <button type="button" className="ac-btn" onClick={() => void save()} disabled={saving}>
+                          {saving ? 'Saving…' : 'Save value'}
+                        </button>
+                        <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setEditing(null)} disabled={saving}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ac-btn ac-btn--ghost"
+                        onClick={() => setEditing({ key: entry.config_key, value: entry.config_value ?? '', isPublic: Boolean(entry.is_public) })}
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </Table>
         )}
       </Panel>
 
-      <Notes tone="warn">
-        <strong>Editing is not wired yet.</strong> These values are stored centrally and every portal reads them, but the API has no
-        endpoint that changes them, so this screen shows the configuration in force instead of offering a save button that would only
-        pretend to work.
+      <Notes>
+        <strong>What these keys drive.</strong> The active school year and semester in every portal header come from here, so a change
+        here is a change the whole school sees on its next page load. Each edit is written to the audit trail with its previous value.
       </Notes>
 
       <Notes>

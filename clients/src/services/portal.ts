@@ -91,7 +91,15 @@ export const portalApi = {
   },
   async enrollDecide(id: string, decision: 'approved' | 'rejected') {
     const r = await api.post(`/portal/enrollments/${id}/decide`, { decision });
-    return r.data?.data;
+    return r.data?.data as {
+      id: string;
+      status: string;
+      schoolEmail?: string;
+      schoolId?: string;
+      emailSent?: boolean;
+      deliveryNote?: string;
+      temporaryPassword?: string;
+    };
   },
   async items(portal?: string, mod?: string): Promise<PortalItem[]> {
     const r = await api.get('/portal/items', { params: { portal, module: mod } });

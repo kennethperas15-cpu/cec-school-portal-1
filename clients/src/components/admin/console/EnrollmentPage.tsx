@@ -32,6 +32,7 @@ export const EnrollmentPage = ({ onNotify }: { onNotify: (message: string) => vo
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [issued, setIssued] = useState<{ name: string; schoolEmail?: string; schoolId?: string; emailSent?: boolean; deliveryNote?: string; temporaryPassword?: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,7 +72,12 @@ export const EnrollmentPage = ({ onNotify }: { onNotify: (message: string) => vo
     const who = `${application.first_name} ${application.last_name}`.trim() || application.email;
     setBusy(application.id);
     try {
-      await portalApi.enrollDecide(application.id, decision);
+      const result = await portalApi.enrollDecide(application.id, decision);
+      if (decision === 'approved') {
+        // The applicant is emailed their account; when delivery is not possible
+        // the registrar is handed the password to pass on instead.
+        setIssued({ name: who, ...result });
+      }
       onNotify(`${who} — application ${decision}`);
       setConfirming(null);
       setExpanded(null);
@@ -128,6 +134,38 @@ export const EnrollmentPage = ({ onNotify }: { onNotify: (message: string) => vo
       />
 
       {error ? <ErrorNote message={error} onRetry={() => void load()} /> : null}
+
+      {issued ? (
+        <Notes>
+          <strong>{issued.name}'s account is issued.</strong>{' '}
+          {issued.emailSent ? (
+            <>
+              Credentials were emailed to the applicant — school email <span className="ac-mono">{issued.schoolEmail}</span>
+              {issued.schoolId ? (
+                <>
+                  , student ID <span className="ac-mono">{issued.schoolId}</span>
+                </>
+              ) : null}
+              .
+            </>
+          ) : (
+            <>
+              {issued.deliveryNote ?? 'Email delivery was not possible.'} School email <span className="ac-mono">{issued.schoolEmail}</span>
+              {issued.schoolId ? (
+                <>
+                  , student ID <span className="ac-mono">{issued.schoolId}</span>
+                </>
+              ) : null}
+              {issued.temporaryPassword ? (
+                <>
+                  , temporary password <span className="ac-mono">{issued.temporaryPassword}</span>
+                </>
+              ) : null}
+              .
+            </>
+          )}
+        </Notes>
+      ) : null}
 
       <div className="ac-kpis">
         <Kpi label="Applications received" value={byStatus === null ? '—' : everything.length.toLocaleString()} hint="all statuses on file" tone={byStatus && everything.length === 0 ? 'empty' : 'default'} />

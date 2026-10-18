@@ -1,20 +1,40 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Download, RefreshCw, Search } from 'lucide-react';
-import { adminApi, fullName, type AdminCourse } from '../../../services/admin';
-import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, PageHeader, Panel, Table, Toolbar } from './kit';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Download, Plus, RefreshCw, Search, Trash2, Undo2 } from 'lucide-react';
+import { describeApiError } from '../../../services/api';
+import { adminApi, fullName, type AdminCourse, type AdminTeacher } from '../../../services/admin';
+import { semesterNo, useAcademicConfig } from '../../../services/academicConfig';
+import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, Notes, PageHeader, Panel, Table, Toolbar } from './kit';
 import { downloadCsv, humanise, matches, unique, useRegistry } from './registry';
 
 /**
  * The course catalog as the database holds it: an offering for a term, tied to
- * the subject it teaches and the instructor assigned to it. Prerequisites and
- * demand figures live in the curriculum tables, which are empty — so they are
- * absent here rather than invented.
+ * the subject it teaches and the instructor assigned to it. Opening a course
+ * creates the subject when its code is new, closing it stops new enrollment, and
+ * a course with no scheduled meetings can be removed outright.
  */
 export const CoursesPage = ({ onNotify }: { onNotify: (message: string) => void }) => {
+  const academic = useAcademicConfig();
   const load = useCallback(() => adminApi.courses({ limit: 1000 }), []);
   const { rows, error, loading, reload } = useRegistry<AdminCourse>(load, 'Reading the course catalog');
   const [term, setTerm] = useState('');
   const [status, setStatus] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState({ code: '', subjectName: '', units: '3', description: '', status: 'open', teacherId: '' });
+  const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState<number | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [faculty, setFaculty] = useState<AdminTeacher[]>([]);
+
+  useEffect(() => {
+    let live = true;
+    adminApi
+      .teachers({ limit: 500 })
+      .then((rows) => {
+        if (live) setFaculty(rows);
+      })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, []);
 
   const statuses = useMemo(() => unique((rows ?? []).map((row) => row.status)), [rows]);
   const shown = useMemo(
@@ -48,6 +68,61 @@ export const CoursesPage = ({ onNotify }: { onNotify: (message: string) => void 
   const open = shown.filter((row) => row.status === 'open').length;
   const units = shown.reduce((total, row) => total + (Number(row.units) || 0), 0);
 
+  const create = async () => {
+    if (!draft.code.trim() || !draft.subjectName.trim()) {
+      onNotify('A course code and subject title are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = await adminApi.createCourse({
+        code: draft.code.trim(),
+        subjectName: draft.subjectName.trim(),
+        units: Number(draft.units) || 3,
+        description: draft.description.trim() || undefined,
+        schoolYear: academic.schoolYear,
+        semester: semesterNo(academic.semester),
+        status: draft.status,
+        teacherId: draft.teacherId || undefined,
+      });
+      onNotify(`${draft.code.trim()} opened for ${academic.schoolYear} (course ${created?.id ?? 'created'})`);
+      setDraft({ code: '', subjectName: '', units: '3', description: '', status: 'open', teacherId: '' });
+      setComposing(false);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Opening the course'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setCourseStatus = async (row: AdminCourse, next: string) => {
+    setBusy(row.id);
+    try {
+      await adminApi.updateCourse(row.id, { status: next });
+      onNotify(`${row.code} ${next === 'open' ? 'reopened' : next}`);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Changing the course status'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async (row: AdminCourse) => {
+    setBusy(row.id);
+    try {
+      const result = await adminApi.deleteCourse(row.id);
+      onNotify(result?.message ?? `${row.code} removed`);
+      setConfirming(null);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Removing the course'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <ConsolePage>
       <PageHeader
@@ -56,6 +131,10 @@ export const CoursesPage = ({ onNotify }: { onNotify: (message: string) => void 
         subtitle="Course offerings for the term, the subject each one teaches, and the instructor assigned to it."
         actions={
           <>
+            <button type="button" className="ac-btn" onClick={() => setComposing((value) => !value)}>
+              <Plus aria-hidden="true" />
+              {composing ? 'Close form' : 'Create Course'}
+            </button>
             <button type="button" className="ac-btn ac-btn--ghost" onClick={exportCsv} disabled={!shown.length}>
               <Download aria-hidden="true" />
               Export catalog
@@ -69,6 +148,57 @@ export const CoursesPage = ({ onNotify }: { onNotify: (message: string) => void 
       />
 
       {error ? <ErrorNote message={error} onRetry={() => void reload()} /> : null}
+
+      {composing ? (
+        <Panel title="Open a course" subtitle={`Added to the catalog for ${academic.schoolYear}, ${academic.semester}.`}>
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <label className="ac-field">
+              <span>Course code</span>
+              <input className="ac-input" value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value })} aria-label="Course code" placeholder="e.g. CS 302" />
+            </label>
+            <label className="ac-field">
+              <span>Subject title</span>
+              <input className="ac-input" value={draft.subjectName} onChange={(event) => setDraft({ ...draft, subjectName: event.target.value })} aria-label="Subject title" placeholder="e.g. Database Systems" />
+            </label>
+            <label className="ac-field">
+              <span>Units</span>
+              <input className="ac-input" value={draft.units} onChange={(event) => setDraft({ ...draft, units: event.target.value })} aria-label="Course units" inputMode="decimal" />
+            </label>
+            <label className="ac-field">
+              <span>Instructor</span>
+              <select className="ac-select" value={draft.teacherId} onChange={(event) => setDraft({ ...draft, teacherId: event.target.value })} aria-label="Course instructor">
+                <option value="">Unassigned</option>
+                {faculty.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {fullName(teacher)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ac-field">
+              <span>Status</span>
+              <select className="ac-select" value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })} aria-label="Course status">
+                <option value="open">Open for enrollment</option>
+                <option value="closed">Closed</option>
+              </select>
+            </label>
+            <label className="ac-field">
+              <span>Description</span>
+              <input className="ac-input" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} aria-label="Course description" />
+            </label>
+          </div>
+          <div className="ac-actions" style={{ marginTop: 14 }}>
+            <button type="button" className="ac-btn" onClick={() => void create()} disabled={saving}>
+              <Plus aria-hidden="true" />
+              {saving ? 'Opening…' : 'Open course'}
+            </button>
+            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setComposing(false)} disabled={saving}>
+              Cancel
+            </button>
+            <span className="ac-muted">A subject code that is already catalogued keeps its record and takes the new term.</span>
+          </div>
+        </Panel>
+      ) : null}
 
       <div className="ac-kpis">
         <Kpi label="Course offerings" value={rows === null ? '—' : rows.length.toLocaleString()} hint="courses on record" tone={rows && rows.length === 0 ? 'empty' : 'default'} />
@@ -118,7 +248,7 @@ export const CoursesPage = ({ onNotify }: { onNotify: (message: string) => void 
             }
           />
         ) : (
-          <Table head={['Course code', 'Subject', 'Units', 'Term', 'Instructor', 'Status']}>
+          <Table head={['Course code', 'Subject', 'Units', 'Term', 'Instructor', 'Status', 'Action']}>
             {shown.map((row) => (
               <tr key={row.id}>
                 <td className="ac-mono ac-strong">{row.code}</td>
@@ -139,6 +269,35 @@ export const CoursesPage = ({ onNotify }: { onNotify: (message: string) => void 
                 <td>{row.teacher_email ? fullName({ first_name: row.teacher_first_name, last_name: row.teacher_last_name }) : 'Unassigned'}</td>
                 <td>
                   <Badge tone={row.status === 'open' ? 'ok' : row.status === 'archived' ? 'muted' : 'warn'}>{humanise(row.status)}</Badge>
+                </td>
+                <td>
+                  <div className="ac-actions">
+                    <button
+                      type="button"
+                      className="ac-btn ac-btn--ghost"
+                      disabled={busy === row.id}
+                      onClick={() => void setCourseStatus(row, row.status === 'open' ? 'closed' : 'open')}
+                    >
+                      {humanise(row.status === 'open' ? 'Close' : 'Reopen')}
+                    </button>
+                    {confirming === row.id ? (
+                      <>
+                        <button type="button" className="ac-btn ac-btn--danger" disabled={busy === row.id} onClick={() => void remove(row)}>
+                          <Trash2 aria-hidden="true" />
+                          {busy === row.id ? 'Removing…' : 'Confirm remove'}
+                        </button>
+                        <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setConfirming(null)} disabled={busy === row.id}>
+                          <Undo2 aria-hidden="true" />
+                          Keep
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="ac-btn ac-btn--danger" onClick={() => setConfirming(row.id)}>
+                        <Trash2 aria-hidden="true" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

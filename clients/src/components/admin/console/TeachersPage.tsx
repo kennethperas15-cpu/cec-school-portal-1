@@ -1,12 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
-import { BadgeCheck, Download, RefreshCw, Search, Undo2 } from 'lucide-react';
+import { BadgeCheck, Download, RefreshCw, Search, Undo2, UserPlus } from 'lucide-react';
+import { describeApiError } from '../../../services/api';
 import { adminApi, formatStamp, fullName, type AdminTeacher } from '../../../services/admin';
-import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, PageHeader, Panel, Table, Toolbar } from './kit';
+import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, Notes, PageHeader, Panel, Table, Toolbar } from './kit';
 import { downloadCsv, humanise, matches, unique, useRegistry } from './registry';
 
 /**
  * The faculty roster. Employee numbers, departments and specializations are the
- * registrar's records — the portal shows them, it does not invent them.
+ * registrar's records — the portal shows them, it does not invent them. Adding a
+ * teacher provisions the account (bcrypt-hashed temporary password) through the
+ * staff route; correcting the record edits the faculty row itself.
  */
 export const TeachersPage = ({ onNotify }: { onNotify: (message: string) => void }) => {
   const load = useCallback(() => adminApi.teachers({ limit: 1000 }), []);
@@ -15,6 +18,11 @@ export const TeachersPage = ({ onNotify }: { onNotify: (message: string) => void
   const [department, setDepartment] = useState('');
   const [employment, setEmployment] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ fullName: '', personalEmail: '', phone: '', staffId: '', specialization: '', position: '' });
+  const [saving, setSaving] = useState(false);
+  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; specialization: string; employmentStatus: string; isActive: boolean } | null>(null);
 
   const departments = useMemo(() => unique((rows ?? []).map((row) => row.department_code)), [rows]);
   const statuses = useMemo(() => unique((rows ?? []).map((row) => row.employment_status)), [rows]);
@@ -31,6 +39,69 @@ export const TeachersPage = ({ onNotify }: { onNotify: (message: string) => void
   );
 
   const active = shown.filter((row) => row.is_active !== false).length;
+
+  const create = async () => {
+    const name = draft.fullName.trim();
+    const staffId = draft.staffId.trim();
+    if (!name || !staffId) {
+      onNotify('A full name and the assigned employee number are required');
+      return;
+    }
+    if (!/^3\d{6}$/.test(staffId)) {
+      onNotify('A teacher employee number is 7 digits and starts with 3');
+      return;
+    }
+    if (!draft.personalEmail.includes('@')) {
+      onNotify('A valid personal email address is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = await adminApi.createStaff({
+        fullName: name,
+        personalEmail: draft.personalEmail.trim(),
+        phone: draft.phone.trim() || undefined,
+        staffId,
+        role: 'teacher',
+        position: draft.position.trim() || undefined,
+      });
+      setIssued({ email: created?.schoolEmail ?? draft.personalEmail.trim(), password: created?.temporaryPassword ?? '' });
+      // The staff route provisions the account; the faculty row carries the
+      // specialization, so set it on the record it just created.
+      if (draft.specialization.trim()) {
+        const roster = await adminApi.teachers({ search: staffId, limit: 5 });
+        const record = roster[0];
+        if (record) await adminApi.updateTeacher(record.id, { specialization: draft.specialization.trim() });
+      }
+      onNotify(`${name} added to the faculty roster as ${staffId}`);
+      setDraft({ fullName: '', personalEmail: '', phone: '', staffId: '', specialization: '', position: '' });
+      setAdding(false);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Adding the faculty member'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await adminApi.updateTeacher(editing.id, {
+        specialization: editing.specialization,
+        employmentStatus: editing.employmentStatus,
+        isActive: editing.isActive,
+      });
+      onNotify('Faculty record updated');
+      setEditing(null);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Saving the faculty record'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const exportCsv = () => {
     downloadCsv(
@@ -59,6 +130,10 @@ export const TeachersPage = ({ onNotify }: { onNotify: (message: string) => void
         subtitle="The teaching staff on record, with the department, specialization and account each one signs in with."
         actions={
           <>
+            <button type="button" className="ac-btn" onClick={() => { setAdding((value) => !value); setIssued(null); }}>
+              <UserPlus aria-hidden="true" />
+              {adding ? 'Close form' : 'Add Teacher'}
+            </button>
             <button type="button" className="ac-btn ac-btn--ghost" onClick={exportCsv} disabled={!shown.length}>
               <Download aria-hidden="true" />
               Export roster
@@ -72,6 +147,67 @@ export const TeachersPage = ({ onNotify }: { onNotify: (message: string) => void
       />
 
       {error ? <ErrorNote message={error} onRetry={() => void reload()} /> : null}
+
+      {issued ? (
+        <Notes>
+          <strong>Account provisioned.</strong> Sign-in email <span className="ac-mono">{issued.email}</span>
+          {issued.password ? (
+            <>
+              , temporary password <span className="ac-mono">{issued.password}</span>
+            </>
+          ) : (
+            <>, with an activation link rather than a temporary password</>
+          )}
+          . Hand these over; the faculty member can sign in immediately.
+        </Notes>
+      ) : null}
+
+      {adding ? (
+        <Panel title="Add a faculty member" subtitle="Provisions the teaching account and records the employee number.">
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <label className="ac-field">
+              <span>Full name</span>
+              <input className="ac-input" value={draft.fullName} onChange={(event) => setDraft({ ...draft, fullName: event.target.value })} aria-label="Faculty full name" />
+            </label>
+            <label className="ac-field">
+              <span>Personal email</span>
+              <input className="ac-input" value={draft.personalEmail} onChange={(event) => setDraft({ ...draft, personalEmail: event.target.value })} aria-label="Faculty personal email" />
+            </label>
+            <label className="ac-field">
+              <span>Employee number (3xxxxxx)</span>
+              <input
+                className="ac-input"
+                value={draft.staffId}
+                onChange={(event) => setDraft({ ...draft, staffId: event.target.value.replace(/\D/g, '').slice(0, 7) })}
+                aria-label="Faculty employee number"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="ac-field">
+              <span>Contact number</span>
+              <input className="ac-input" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} aria-label="Faculty contact number" />
+            </label>
+            <label className="ac-field">
+              <span>Specialization</span>
+              <input className="ac-input" value={draft.specialization} onChange={(event) => setDraft({ ...draft, specialization: event.target.value })} aria-label="Faculty specialization" />
+            </label>
+            <label className="ac-field">
+              <span>Position</span>
+              <input className="ac-input" value={draft.position} onChange={(event) => setDraft({ ...draft, position: event.target.value })} aria-label="Faculty position" />
+            </label>
+          </div>
+          <div className="ac-actions" style={{ marginTop: 14 }}>
+            <button type="button" className="ac-btn" onClick={() => void create()} disabled={saving}>
+              <UserPlus aria-hidden="true" />
+              {saving ? 'Provisioning…' : 'Add and provision account'}
+            </button>
+            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setAdding(false)} disabled={saving}>
+              Cancel
+            </button>
+            <span className="ac-muted">The employee number is assigned by the registrar, never generated here.</span>
+          </div>
+        </Panel>
+      ) : null}
 
       <div className="ac-kpis">
         <Kpi label="Faculty on file" value={rows === null ? '—' : rows.length.toLocaleString()} hint="teaching staff records" tone={rows && rows.length === 0 ? 'empty' : 'default'} />
@@ -155,18 +291,73 @@ export const TeachersPage = ({ onNotify }: { onNotify: (message: string) => void
                 </td>
                 <td className="ac-muted">{formatStamp(row.last_login_at)}</td>
                 <td>
-                  <button
-                    type="button"
-                    className="ac-btn ac-btn--ghost"
-                    onClick={() => setOpenId(openId === row.id ? null : row.id)}
-                    aria-expanded={openId === row.id}
-                  >
-                    {openId === row.id ? <Undo2 aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}
-                    {openId === row.id ? 'Close' : 'Record'}
-                  </button>
+                  <div className="ac-actions">
+                    <button
+                      type="button"
+                      className="ac-btn ac-btn--ghost"
+                      onClick={() =>
+                        setEditing(
+                          editing?.id === row.id
+                            ? null
+                            : {
+                                id: row.id,
+                                specialization: row.specialization ?? '',
+                                employmentStatus: row.employment_status ?? 'active',
+                                isActive: row.is_active !== false,
+                              },
+                        )
+                      }
+                      aria-expanded={editing?.id === row.id}
+                    >
+                      {editing?.id === row.id ? <Undo2 aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}
+                      {editing?.id === row.id ? 'Close' : 'Edit'}
+                    </button>
+                    <button
+                      type="button"
+                      className="ac-btn ac-btn--ghost"
+                      onClick={() => setOpenId(openId === row.id ? null : row.id)}
+                      aria-expanded={openId === row.id}
+                    >
+                      {openId === row.id ? 'Hide record' : 'Record'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
+            {editing ? (
+              <tr>
+                <td colSpan={8} style={{ background: '#fbfdff' }}>
+                  <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                    <label className="ac-field">
+                      <span>Specialization</span>
+                      <input className="ac-input" value={editing.specialization} onChange={(event) => setEditing({ ...editing, specialization: event.target.value })} aria-label="Edit specialization" />
+                    </label>
+                    <label className="ac-field">
+                      <span>Employment</span>
+                      <select className="ac-select" value={editing.employmentStatus} onChange={(event) => setEditing({ ...editing, employmentStatus: event.target.value })} aria-label="Edit employment status">
+                        {['active', 'inactive', 'on_leave'].map((option) => (
+                          <option key={option} value={option}>
+                            {humanise(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="ac-field" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 18 }}>
+                      <input type="checkbox" checked={editing.isActive} onChange={(event) => setEditing({ ...editing, isActive: event.target.checked })} aria-label="Edit account active" />
+                      <span>Account can sign in</span>
+                    </label>
+                  </div>
+                  <div className="ac-actions" style={{ marginTop: 12 }}>
+                    <button type="button" className="ac-btn" onClick={() => void saveEdit()} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save record'}
+                    </button>
+                    <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setEditing(null)} disabled={saving}>
+                      Cancel
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ) : null}
             {openId && shown.some((row) => row.id === openId) ? (
               <tr>
                 <td colSpan={8} style={{ background: '#fbfdff' }}>

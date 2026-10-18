@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { QueryTypes } from 'sequelize';
 import { sql } from '../config/sql.js';
 import { sequelize } from '../config/database.js';
-import { authService } from '../services/auth.service.js';
+import { authService, sendAccountCredentials } from '../services/auth.service.js';
 import { writeAuditLog } from '../services/audit.service.js';
 import { authmiddlewareMiddleware } from '../middleware/auth.middleware.js';
 import { requireRoles } from '../middleware/rbac.middleware.js';
@@ -472,10 +472,31 @@ router.post('/students', async (req, res, next) => {
       newValue: { studentNumber, schoolEmail, personalEmail: email, program: programme, yearLevel: level },
     });
 
+    const delivery = await sendAccountCredentials({
+      to: email,
+      fullName: `${first} ${last}`.trim(),
+      schoolEmail,
+      schoolId: studentNumber,
+      temporaryPassword,
+      roleLabel: 'student',
+    });
+
     res.status(201).json({
       success: true,
-      data: { studentNumber, schoolEmail, temporaryPassword, firstName: first, lastName: last },
-      message: `${first} ${last} registered as ${studentNumber}`,
+      data: {
+        studentNumber,
+        schoolEmail,
+        firstName: first,
+        lastName: last,
+        emailSent: delivery.sent,
+        deliveryNote: delivery.sent
+          ? `Credentials emailed to ${email}`
+          : `${delivery.reason ?? 'Delivery failed'} — hand the temporary password over instead`,
+        ...(delivery.sent ? {} : { temporaryPassword }),
+      },
+      message: delivery.sent
+        ? `${first} ${last} registered as ${studentNumber}; credentials emailed to ${email}`
+        : `${first} ${last} registered as ${studentNumber}`,
     });
   } catch (error) {
     if (error instanceof Error && /reserve|already|missing/.test(error.message)) return badRequest(res, error.message);

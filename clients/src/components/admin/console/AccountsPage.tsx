@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Download, KeyRound, RefreshCw, Search, ShieldCheck, Undo2, UserCog } from 'lucide-react';
+import { Download, KeyRound, RefreshCw, Search, ShieldCheck, Undo2, UserCog, UserPlus } from 'lucide-react';
+import { describeApiError } from '../../../services/api';
 import { adminApi, formatStamp, fullName, type AdminAccount } from '../../../services/admin';
-import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, PageHeader, Panel, Table, Toolbar } from './kit';
+import { ChangePassword } from '../../shared/ChangePassword';
+import { Badge, ConsolePage, EmptyState, ErrorNote, Kpi, Loading, Notes, PageHeader, Panel, Table, Toolbar } from './kit';
 import { downloadCsv, humanise, matches, unique, useRegistry } from './registry';
 
-type Props = { onNotify: (message: string) => void; onNavigate: (label: string) => void };
+type Props = { onNotify: (message: string) => void; onNavigate: (label: string) => void; identifier: string };
 
 /** `Role name` from the roles table, with the fallback the console shows. */
 const roleOf = (account: AdminAccount): string => account.role_name ?? 'unassigned';
@@ -14,14 +16,25 @@ const roleOf = (account: AdminAccount): string => account.role_name ?? 'unassign
  * it. This is the same `users` table the sign-in route checks against — including
  * accounts that never enrolled anywhere, which is why it is a separate screen
  * from the student registry.
+ *
+ * Teacher and administrator accounts are provisioned here (the staff route hashes
+ * a temporary password); student accounts are issued from Student Management,
+ * where the school number is reserved. Any account can be switched off, and an
+ * administrator can change their own password.
  */
-export const AccountsPage = ({ onNotify, onNavigate }: Props) => {
+export const AccountsPage = ({ onNotify, onNavigate, identifier }: Props) => {
   const load = useCallback(() => adminApi.accounts({ limit: 1000 }), []);
   const { rows, error, loading, reload } = useRegistry<AdminAccount>(load, 'Reading the account directory');
   const [term, setTerm] = useState('');
   const [role, setRole] = useState('');
   const [state, setState] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ fullName: '', personalEmail: '', phone: '', staffId: '', role: 'teacher', position: '' });
+  const [saving, setSaving] = useState(false);
+  const [issued, setIssued] = useState<{ email: string; password: string; role: string } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const roles = useMemo(() => unique((rows ?? []).map((row) => row.role_name)), [rows]);
 
@@ -62,6 +75,52 @@ export const AccountsPage = ({ onNotify, onNavigate }: Props) => {
     onNotify(`Exported ${shown.length} account${shown.length === 1 ? '' : 's'}`);
   };
 
+  const create = async () => {
+    const name = draft.fullName.trim();
+    const staffId = draft.staffId.trim();
+    if (!name || !draft.personalEmail.includes('@')) {
+      onNotify('A full name and a valid email address are required');
+      return;
+    }
+    if (!/^[34]\d{6}$/.test(staffId)) {
+      onNotify(draft.role === 'admin' ? 'An administrator number is 7 digits and starts with 4' : 'A teacher number is 7 digits and starts with 3');
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = await adminApi.createStaff({
+        fullName: name,
+        personalEmail: draft.personalEmail.trim(),
+        phone: draft.phone.trim() || undefined,
+        staffId,
+        role: draft.role as 'teacher' | 'admin',
+        position: draft.position.trim() || undefined,
+      });
+      setIssued({ email: created?.schoolEmail ?? draft.personalEmail.trim(), password: created?.temporaryPassword ?? '', role: draft.role });
+      onNotify(`${name} provisioned as ${draft.role}`);
+      setDraft({ fullName: '', personalEmail: '', phone: '', staffId: '', role: 'teacher', position: '' });
+      setAdding(false);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Creating the account'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleAccount = async (row: AdminAccount) => {
+    setBusyId(row.id);
+    try {
+      const result = await adminApi.updateAccount(row.id, row.is_active === false);
+      onNotify(result?.message ?? `${row.email} updated`);
+      await reload();
+    } catch (failure) {
+      onNotify(describeApiError(failure, 'Changing the account state'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <ConsolePage>
       <PageHeader
@@ -70,6 +129,14 @@ export const AccountsPage = ({ onNotify, onNavigate }: Props) => {
         subtitle="Every account that can sign in to the portal, the role it carries, and the school number behind it."
         actions={
           <>
+            <button type="button" className="ac-btn" onClick={() => { setAdding((value) => !value); setIssued(null); }}>
+              <UserPlus aria-hidden="true" />
+              {adding ? 'Close form' : 'Add account'}
+            </button>
+            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setChangingPassword((value) => !value)}>
+              <KeyRound aria-hidden="true" />
+              {changingPassword ? 'Close password form' : 'Change my password'}
+            </button>
             <button type="button" className="ac-btn ac-btn--ghost" onClick={exportCsv} disabled={!shown.length}>
               <Download aria-hidden="true" />
               Export directory
@@ -83,6 +150,73 @@ export const AccountsPage = ({ onNotify, onNavigate }: Props) => {
       />
 
       {error ? <ErrorNote message={error} onRetry={() => void reload()} /> : null}
+
+      {issued ? (
+        <Notes>
+          <strong>{humanise(issued.role)} account provisioned.</strong> Sign-in email <span className="ac-mono">{issued.email}</span>
+          {issued.password ? (
+            <>
+              , temporary password <span className="ac-mono">{issued.password}</span>
+            </>
+          ) : null}
+          . Hand these over; the account can sign in immediately.
+        </Notes>
+      ) : null}
+
+      {adding ? (
+        <Panel title="Create an account" subtitle="For teachers and administrators. Student accounts are issued from Student Management, where the school number is reserved.">
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <label className="ac-field">
+              <span>Full name</span>
+              <input className="ac-input" value={draft.fullName} onChange={(event) => setDraft({ ...draft, fullName: event.target.value })} aria-label="New account full name" />
+            </label>
+            <label className="ac-field">
+              <span>Personal email</span>
+              <input className="ac-input" value={draft.personalEmail} onChange={(event) => setDraft({ ...draft, personalEmail: event.target.value })} aria-label="New account email" />
+            </label>
+            <label className="ac-field">
+              <span>Role</span>
+              <select className="ac-select" value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value, staffId: '' })} aria-label="New account role">
+                <option value="teacher">Teacher (3xxxxxx)</option>
+                <option value="admin">Administrator (4xxxxxx)</option>
+              </select>
+            </label>
+            <label className="ac-field">
+              <span>Employee number</span>
+              <input
+                className="ac-input"
+                value={draft.staffId}
+                onChange={(event) => setDraft({ ...draft, staffId: event.target.value.replace(/\D/g, '').slice(0, 7) })}
+                aria-label="New account employee number"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="ac-field">
+              <span>Contact number</span>
+              <input className="ac-input" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} aria-label="New account phone" />
+            </label>
+            <label className="ac-field">
+              <span>Position</span>
+              <input className="ac-input" value={draft.position} onChange={(event) => setDraft({ ...draft, position: event.target.value })} aria-label="New account position" />
+            </label>
+          </div>
+          <div className="ac-actions" style={{ marginTop: 14 }}>
+            <button type="button" className="ac-btn" onClick={() => void create()} disabled={saving}>
+              <UserPlus aria-hidden="true" />
+              {saving ? 'Provisioning…' : 'Create account'}
+            </button>
+            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => setAdding(false)} disabled={saving}>
+              Cancel
+            </button>
+          </div>
+        </Panel>
+      ) : null}
+
+      {changingPassword ? (
+        <Panel title="Change my password" subtitle="Your own sign-in password, changed from this device.">
+          <ChangePassword identifier={identifier} onNotify={onNotify} />
+        </Panel>
+      ) : null}
 
       <div className="ac-kpis">
         <Kpi label="Accounts provisioned" value={rows === null ? '—' : rows.length.toLocaleString()} hint="sign-in identities" tone={rows && rows.length === 0 ? 'empty' : 'default'} />
@@ -133,14 +267,7 @@ export const AccountsPage = ({ onNotify, onNavigate }: Props) => {
             </select>
           </label>
           <div className="ac-actions" style={{ marginLeft: 'auto' }}>
-            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Account Creation')}>
-              <UserCog aria-hidden="true" />
-              Create an account
-            </button>
-            <button type="button" className="ac-btn ac-btn--ghost" onClick={() => onNavigate('Password Reset')}>
-              <KeyRound aria-hidden="true" />
-              Password reset
-            </button>
+            <span className="ac-muted">Switching an account off blocks sign-in immediately and is recorded in the audit trail.</span>
           </div>
         </Toolbar>
 
@@ -185,15 +312,25 @@ export const AccountsPage = ({ onNotify, onNavigate }: Props) => {
                   </td>
                   <td className="ac-muted">{formatStamp(row.last_login_at)}</td>
                   <td>
-                    <button
-                      type="button"
-                      className="ac-btn ac-btn--ghost"
-                      onClick={() => setOpenId(openId === row.id ? null : row.id)}
-                      aria-expanded={openId === row.id}
-                    >
-                      {openId === row.id ? <Undo2 aria-hidden="true" /> : <UserCog aria-hidden="true" />}
-                      {openId === row.id ? 'Close' : 'Record'}
-                    </button>
+                    <div className="ac-actions">
+                      <button
+                        type="button"
+                        className="ac-btn ac-btn--ghost"
+                        disabled={busyId === row.id}
+                        onClick={() => void toggleAccount(row)}
+                      >
+                        {row.is_active === false ? 'Activate' : 'Deactivate'}
+                      </button>
+                      <button
+                        type="button"
+                        className="ac-btn ac-btn--ghost"
+                        onClick={() => setOpenId(openId === row.id ? null : row.id)}
+                        aria-expanded={openId === row.id}
+                      >
+                        {openId === row.id ? <Undo2 aria-hidden="true" /> : <UserCog aria-hidden="true" />}
+                        {openId === row.id ? 'Hide record' : 'Record'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
