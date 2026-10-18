@@ -57,14 +57,20 @@ API base `/api`. Roles: S student · T teacher · A admin.
 - **Attendance Records**: filterable view of recorded entries.
 
 ## 4. Grading (T)
-- **Grade Encoding**: percent (75–100) or point (1.00–5.00) entry, auto
-  average → PH point + PASSED/FAILED, scale legend, lock/unlock sheets.
-- **Computation / Finalization / Exams**: GWA math, sheet locking, exam CRUD.
-  Writes `cec:t_grades_v2` (starts empty — no demo students).
+- **Grade Encoding**: assign roster students to a subject/section; encode
+  prelim, midterm, and final percentages; save each student's record to
+  `cec:t_grades_v2`. The student portal reads matching records by school ID
+  (or name) and computes the Philippine grade-point equivalent.
 
 ## 5. Attendance (T)
-- Daily marking (Present/Late/Absent per student), history, summaries;
-  feeds the student attendance view and dashboard metric.
+- **Class Roster**: add, edit, search, and remove student assignments in
+  `cec:t_roster_v2`.
+- **Attendance Tracker**: mark each rostered student Present, Absent, Late,
+  or Excused by subject and date; duplicate sessions require confirmation.
+  Saved rows in `cec:t_attend_v2` feed the student attendance view.
+- Teacher roster, grades, and attendance are browser-local records shared by
+  the portal apps on the same browser/origin; they are not yet synced to the
+  server database.
 
 ## 6. LMS
 - T: materials upload, assignment creation/checking queue, announcements,

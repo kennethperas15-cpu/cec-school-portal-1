@@ -591,6 +591,16 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('home');
   const [collapsed, setCollapsed] = useState(false);
+  const [, setTeacherRecordsRevision] = useState(0);
+  useEffect(() => {
+    const refreshTeacherRecords = (event: StorageEvent) => {
+      if (event.key && ['cec:t_grades_v2', 'cec:t_attend_v2'].includes(event.key)) {
+        setTeacherRecordsRevision((revision) => revision + 1);
+      }
+    };
+    window.addEventListener('storage', refreshTeacherRecords);
+    return () => window.removeEventListener('storage', refreshTeacherRecords);
+  }, []);
   // Mobile: start shut, auto-close after each navigation so content is usable
   useEffect(() => {
     try {
