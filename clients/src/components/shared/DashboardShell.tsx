@@ -6,15 +6,25 @@ import { AlertPopup } from './AlertPopup';
 import { DashboardCommandMenu } from './DashboardCommandMenu';
 import { NotificationCenter } from './NotificationCenter';
 import {
+  Award,
   BookOpen,
   CalendarCheck,
   CalendarDays,
   ChevronDown,
   ClipboardList,
+  CreditCard,
+  GraduationCap,
+  History,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShieldCheck,
   Users,
+  Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,6 +37,29 @@ const TEACHER_NAV_ICONS: Record<string, LucideIcon> = {
   'Grade Encoding': BookOpen,
   'Attendance Tracker': CalendarCheck,
   Classroom: ClipboardList,
+};
+/**
+ * The administration console's own navigation — the registrar's twelve screens,
+ * then the financial desk below them. One icon per label keeps the flat list
+ * scannable without a group header per section.
+ */
+const ADMIN_NAV_ICONS: Record<string, LucideIcon> = {
+  Dashboard: LayoutDashboard,
+  'Student Management': GraduationCap,
+  'Teacher Management': Users,
+  'Course Management': BookOpen,
+  'Class Schedule': CalendarDays,
+  'Enrollment Management': ClipboardList,
+  'Grades Management': ScrollText,
+  'Attendance Management': CalendarCheck,
+  'User Accounts': ShieldCheck,
+  Announcements: Megaphone,
+  Settings: Settings,
+  'Activity Logs': History,
+  'Billing & Invoices': Receipt,
+  'Fee Structure': Wallet,
+  'Payment Monitoring': CreditCard,
+  Scholarships: Award,
 };
 
 export type ShellGroup = {
@@ -146,7 +179,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
         </div>
       </header>
       <div style={{ display: 'flex' }}>
-        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: role === 'teacher' || role === 'admin' ? 240 : 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{role === 'admin' && <><div className="dashboard-sidebar-brand"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Administrator Portal</span></div></div><div className="dashboard-sidebar-status">Active Administrator • AY {academicConfig.schoolYear}</div></>}{role === 'teacher' ? <><div className="dashboard-sidebar-brand"><div className="dashboard-sidebar-brand-identity"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Teacher Portal</span></div></div><button type="button" className="teacher-sidebar-close" onClick={() => setCollapsed(true)} aria-label="Close navigation"><X aria-hidden="true" /></button></div><div className="dashboard-sidebar-status">Active Teacher • {academicConfig.schoolYear}</div><nav className="teacher-shell-nav"><p className="teacher-shell-nav-label">Academic Menu</p>{groups.flatMap((group) => group.items).map((item) => { const Icon = TEACHER_NAV_ICONS[item.label] ?? LayoutDashboard; return <button type="button" aria-current={active === item.label ? 'page' : undefined} className={`teacher-shell-nav-item${active === item.label ? ' is-active' : ''}`} key={item.label} onClick={() => onNavigate(item.label)}><Icon aria-hidden="true" />{item.label}</button>; })}<div className="teacher-shell-nav-system"><p className="teacher-shell-nav-label">System</p><button type="button" className="teacher-shell-nav-item" onClick={onLogout}><LogOut aria-hidden="true" />Logout</button></div></nav></> : groups.map((g) => { const open = expanded === g.id; return (<div className={`dashboard-nav-group ${open ? 'is-open' : ''}`} key={g.id} style={{ border: '1px solid #e8ecf3', borderRadius: 12, padding: 8 }}><button onClick={() => onExpand(open ? '' : g.id)} style={{ width: '100%', display: 'flex', gap: 10, border: 0, background: 'transparent', padding: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}><span>{g.icon}</span><span style={{ flex: 1, textAlign: 'left' }}>{g.label}</span><span>{open ? '⌄' : '›'}</span></button>{open && <div style={{ display: 'grid', gap: 4 }}>{g.items.map((it) => <button className={`dashboard-nav-item${active === it.label ? ' is-active' : ''}`} key={it.label} onClick={() => onNavigate(it.label)} style={{ textAlign: 'left', border: 0, borderRadius: 8, padding: '11px 14px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 400 }}>{it.label}</button>)}</div>}</div>); })}{role !== 'teacher' && <div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><span key={photoVersion}><PhotoAvatar userId={photoUserId} name={userName} size={34} /></span><div><div style={{ fontWeight: 700, fontSize: 13 }}>{userName}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{userIdLine}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{role}</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div>}</aside>)}
+        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: role === 'teacher' || role === 'admin' ? 240 : 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{role === 'admin' && <><div className="dashboard-sidebar-brand"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Administrator Portal</span></div></div><div className="dashboard-sidebar-status">Active Administrator • AY {academicConfig.schoolYear}</div></>}{role === 'teacher' ? <><div className="dashboard-sidebar-brand"><div className="dashboard-sidebar-brand-identity"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Teacher Portal</span></div></div><button type="button" className="teacher-sidebar-close" onClick={() => setCollapsed(true)} aria-label="Close navigation"><X aria-hidden="true" /></button></div><div className="dashboard-sidebar-status">Active Teacher • {academicConfig.schoolYear}</div><nav className="teacher-shell-nav"><p className="teacher-shell-nav-label">Academic Menu</p>{groups.flatMap((group) => group.items).map((item) => { const Icon = TEACHER_NAV_ICONS[item.label] ?? LayoutDashboard; return <button type="button" aria-current={active === item.label ? 'page' : undefined} className={`teacher-shell-nav-item${active === item.label ? ' is-active' : ''}`} key={item.label} onClick={() => onNavigate(item.label)}><Icon aria-hidden="true" />{item.label}</button>; })}<div className="teacher-shell-nav-system"><p className="teacher-shell-nav-label">System</p><button type="button" className="teacher-shell-nav-item" onClick={onLogout}><LogOut aria-hidden="true" />Logout</button></div></nav></> : <nav className="dashboard-admin-nav">{groups.map((g) => (<div key={g.id} style={{ display: 'grid', gap: 4, marginTop: g.label ? 14 : 0 }}>{g.label ? <p className="dashboard-admin-nav-label">{g.label}</p> : null}{g.items.map((it) => { const Icon = ADMIN_NAV_ICONS[it.label] ?? LayoutDashboard; return (<button type="button" className={`dashboard-nav-item${active === it.label ? ' is-active' : ''}`} key={it.label} onClick={() => onNavigate(it.label)} aria-current={active === it.label ? 'page' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 0, borderRadius: 10, padding: '10px 12px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 500, fontSize: 13, fontFamily: 'inherit' }}><Icon aria-hidden="true" width={16} height={16} />{it.label}</button>); })}</div>))}<button type="button" className="dashboard-nav-item" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 0, borderRadius: 10, padding: '10px 12px', marginTop: 12, background: 'transparent', color: '#4a5872', cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' }}><LogOut aria-hidden="true" width={16} height={16} />Logout</button></nav>}{role !== 'teacher' && <div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><span key={photoVersion}><PhotoAvatar userId={photoUserId} name={userName} size={34} /></span><div><div style={{ fontWeight: 700, fontSize: 13 }}>{userName}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{userIdLine}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{role}</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div>}</aside>)}
         <main className="dashboard-main" style={{ flex: 1, padding: 24, minWidth: 0 }}>{children}</main>
       </div>
       {popup && <AlertPopup title={popup.title} message={popup.message} lines={popup.lines} onClose={onClosePopup} />}
