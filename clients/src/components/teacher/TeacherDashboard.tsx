@@ -180,16 +180,17 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     const totalBandCount = gradeBands.reduce((sum, band) => sum + band.count, 0);
     return (
       <div className="teacher-page teacher-home">
-        <header className="teacher-home-heading">
-          <div>
-            <p className="teacher-eyebrow"><span />{academicConfig.semester} {academicConfig.schoolYear} • {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-            <h1>{greeting}, {name}</h1>
-            <p>Here is your teaching overview. Class totals and records update from your portal data.</p>
+        <header className="teacher-home-hero">
+          <div className="teacher-home-hero-copy">
+            <span className="teacher-home-period">{academicConfig.semester} • AY {academicConfig.schoolYear}</span>
+            <h1>{greeting}, {name}!</h1>
+            <p>Keep track of your classes, student progress, and today’s teaching priorities.</p>
+            <span className="teacher-home-date">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
           </div>
-          <div className="teacher-home-actions">
-            <button type="button" className="teacher-button teacher-button-primary" onClick={() => navigate('Attendance Tracker')}>Take attendance</button>
-            <button type="button" className="teacher-button" onClick={() => navigate('Grade Encoding')}>Encode grades</button>
-            <button type="button" className="teacher-button" onClick={() => navigate('Class Roster')}>View class roster</button>
+          <div className="teacher-home-actions" aria-label="Quick actions">
+            <button type="button" onClick={() => navigate('Attendance Tracker')}><span aria-hidden="true">◷</span>Take attendance</button>
+            <button type="button" onClick={() => navigate('Grade Encoding')}><span aria-hidden="true">✓</span>Encode grades</button>
+            <button type="button" onClick={() => navigate('Class Roster')}><span aria-hidden="true">☷</span>View class roster</button>
           </div>
         </header>
         <section className="teacher-stat-grid" aria-label="Teaching overview">
@@ -197,6 +198,7 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           <article className="teacher-stat-card"><span>Classes / sections</span><strong>{courses.length}</strong><small>Unique assigned subjects</small></article>
           <article className="teacher-stat-card"><span>Attendance today</span><strong>{attendanceToday.length ? `${Math.round((attendanceToday.filter((record) => record.status === 'Present').length / attendanceToday.length) * 100)}%` : '—'}</strong><small>{attendanceToday.length ? `${attendanceToday.length} records for ${today}` : 'No records yet today'}</small></article>
           <article className="teacher-stat-card"><span>Grades entered</span><strong>{completedGrades.length}</strong><small>Students with at least one term mark</small></article>
+          <article className="teacher-stat-card"><span>Grade average</span><strong>{averageGrade === null ? '—' : `${averageGrade}%`}</strong><small>{averageGrade === null ? 'No posted marks yet' : 'Across recorded term marks'}</small></article>
         </section>
         <section className="teacher-panel teacher-home-panel">
           <div className="teacher-panel-heading">
