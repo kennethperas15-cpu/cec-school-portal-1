@@ -37,6 +37,7 @@ import {
   totalUnits,
 } from './lib/metrics';
 import { totalUnitsOf } from './lib/schedule';
+import { courseAttendance, courseMarks, summarizeAttendance, summarizeGrades } from './lib/records';
 
 type ModalKey = BannerAction | 'profile' | 'tasks' | 'notifications';
 
@@ -151,7 +152,15 @@ export const App = () => {
   const publishedUnits = store.myTimetable ? totalUnitsOf(store.myTimetable.entries) : null;
   const units = publishedUnits && publishedUnits.units > 0 ? publishedUnits.units : totalUnits(store.courses);
   const courseCount = store.publishedCourses.length || store.courses.length;
-  const attendance = attendanceSummary(store.attendance);
+  /*
+   * Official records win when they exist: the dashboard counters report the
+   * instructors' posted marks and attendance, not this browser's own log.
+   */
+  const officialMarks = courseMarks(store.gradeRecords, load);
+  const gradeSummary = summarizeGrades(officialMarks, load);
+  const officialAttendanceSummary = summarizeAttendance(courseAttendance(store.attendanceDocs, load));
+  const attendanceSource = store.hasOfficialRecords ? store.officialAttendance : store.attendance;
+  const attendance = attendanceSummary(attendanceSource);
   const composite = compositeScore(store.grades);
   const tasks = openTasks(store.tasks);
   const taskSummary = taskBreakdown(store.tasks).join(' • ');
@@ -206,6 +215,12 @@ export const App = () => {
         gpaDelta={store.insights.gpaDelta}
         rankLabel={store.insights.rankLabel}
         attendance={attendance}
+        officialGrades={
+          gradeSummary.average === null
+            ? null
+            : { average: gradeSummary.average, letter: gradeSummary.letter, subjects: gradeSummary.evaluated }
+        }
+        officialAttendance={officialAttendanceSummary.total ? officialAttendanceSummary : null}
         classesTodayCount={allToday.length}
         nextClassLabel={nextClassHint(allToday)}
         hasLoad={load.length > 0}
@@ -215,6 +230,17 @@ export const App = () => {
           // The timetable is a page of its own now, not a local-entry form.
           if (action === 'schedule') {
             setActive('schedule');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          // Posted records are the faculty's; the card opens the official page.
+          if (action === 'grade' && gradeSummary.average !== null) {
+            setActive('grades');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          if (action === 'attendance' && officialAttendanceSummary.total) {
+            setActive('attendance');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
           }
@@ -270,8 +296,8 @@ export const App = () => {
     dashboard,
     schedule: <ScheduleView />,
     courses: <CoursesView onAdd={() => setModal('course')} />,
-    grades: <GradesView onAdd={() => setModal('grade')} />,
-    attendance: <AttendanceView onAdd={() => setModal('attendance')} />,
+    grades: <GradesView />,
+    attendance: <AttendanceView />,
     settings: <SettingsView onEditProfile={() => setModal('profile')} />,
   };
 
@@ -303,7 +329,7 @@ export const App = () => {
           {views[active] ?? dashboard}
 
           <footer className="flex flex-col items-center justify-between gap-3 border-t border-line pt-5 text-xs text-slate-400 sm:flex-row">
-            <p>Cebu Eastern College · Student Portal — timetables are published by the registrar; grades and attendance you log stay in this browser.</p>
+            <p>Cebu Eastern College · Student Portal — timetables are published by the registrar; grades and attendance are posted by your instructors.</p>
             <div className="flex items-center gap-1">
               <a
                 href={CEC_WEBSITE_URL}

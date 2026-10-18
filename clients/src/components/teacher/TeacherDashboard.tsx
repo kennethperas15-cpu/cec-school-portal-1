@@ -4,6 +4,12 @@ import { AttendanceTracker, type TeacherAttendance } from './AttendanceTracker/A
 import { ClassRoster, type TeacherStudent } from './ClassRoster/ClassRoster';
 import { GradeEncode, type TeacherGrade } from './GradeEncode/GradeEncode';
 import { useAcademicConfig } from '../../services/academicConfig';
+import {
+  groupByStudent,
+  publishStudentRecords,
+  subjectCodeOf,
+  type AcademicRecordModule,
+} from '../../services/records';
 import { ClassroomBridge } from '../shared/ClassroomBridge';
 import { FacultyTimetable } from './FacultyTimetable';
 import './teacher-portal.css';
@@ -102,17 +108,83 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     if (persistRecords(ROSTER_KEY, next)) setRoster(next);
     else onNotify('Could not save the class roster. Check browser storage and try again.');
   };
-  const persistGrades = (next: TeacherGrade[]) => {
-    if (persistRecords(GRADES_KEY, next)) {
-      setGrades(next);
-      onNotify('Grades saved. Students can now view their posted grades.');
-    } else onNotify('Could not save grades. Check browser storage and try again.');
+
+  /**
+   * Posts one document per student to the portal, so a mark encoded here shows
+   * up on that student's own Grades / Attendance page wherever they sign in.
+   *
+   * Only the students whose records changed in this save are sent: the sheets
+   * are saved whole, but a 40-student class must not mean 40 calls when one row
+   * changed. The server keys the upsert on (module, this faculty member, school
+   * ID, term), so re-saving edits the same record instead of duplicating it.
+   */
+  const publishRecords = async (
+    module: AcademicRecordModule,
+    changed: { studentId: string; studentName: string; entries: unknown[] }[],
+  ) => {
+    if (!changed.length) return;
+    const label = module === 'grades' ? 'Grade' : 'Attendance';
+    try {
+      const outcome = await publishStudentRecords({
+        module,
+        schoolYear: academicConfig.schoolYear,
+        semester: academicConfig.semester,
+        students: changed,
+      });
+      const parts: string[] = [];
+      if (outcome.posted) {
+        parts.push(`${outcome.posted} student record${outcome.posted === 1 ? '' : 's'} published to the portal`);
+      }
+      if (outcome.skipped.length) {
+        parts.push(`not published for ${outcome.skipped.join(', ')} — no seven-digit school ID on the roster`);
+      }
+      if (outcome.failed.length) parts.push(`${outcome.failed.length} failed (${outcome.failed[0]})`);
+      if (parts.length) onNotify(`${label}: ${parts.join(' • ')}`);
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : `${label} records could not be published to the portal.`);
+    }
   };
+
+  const persistGrades = (next: TeacherGrade[]) => {
+    if (!persistRecords(GRADES_KEY, next)) {
+      onNotify('Could not save grades. Check browser storage and try again.');
+      return;
+    }
+    const before = groupByStudent(grades, (row) => row.studentId || row.student);
+    const after = groupByStudent(next, (row) => row.studentId || row.student);
+    setGrades(next);
+    const changed = [...after.entries()]
+      .filter(([key, rows]) => JSON.stringify(before.get(key) ?? []) !== JSON.stringify(rows))
+      .map(([key, rows]) => ({
+        studentId: key,
+        studentName: rows[0]?.student ?? '',
+        entries: rows.map((row) => ({
+          code: subjectCodeOf(row.course),
+          course: row.course,
+          prelim: row.prelim,
+          midterm: row.midterm,
+          final: row.final,
+        })),
+      }));
+    void publishRecords('grades', changed);
+  };
+
   const persistAttendance = (next: TeacherAttendance[]) => {
-    if (persistRecords(ATTENDANCE_KEY, next)) {
-      setAttendance(next);
-      onNotify('Attendance saved. Students can now view their attendance records.');
-    } else onNotify('Could not save attendance. Check browser storage and try again.');
+    if (!persistRecords(ATTENDANCE_KEY, next)) {
+      onNotify('Could not save attendance. Check browser storage and try again.');
+      return;
+    }
+    const before = groupByStudent(attendance, (row) => row.studentId || row.student);
+    const after = groupByStudent(next, (row) => row.studentId || row.student);
+    setAttendance(next);
+    const changed = [...after.entries()]
+      .filter(([key, rows]) => JSON.stringify(before.get(key) ?? []) !== JSON.stringify(rows))
+      .map(([key, rows]) => ({
+        studentId: key,
+        studentName: rows[0]?.student ?? '',
+        entries: rows.map((row) => ({ date: row.date, course: row.section ?? '', status: row.status })),
+      }));
+    void publishRecords('attendance', changed);
   };
 
   const courses = useMemo(

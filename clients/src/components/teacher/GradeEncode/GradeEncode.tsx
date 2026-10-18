@@ -127,7 +127,7 @@ export function GradeEncode({ roster, grades, onSave }: Props) {
           </form>
         )}
       </section>
-      <section className="teacher-note" role="note"><strong>Student view:</strong> grades are shared through this browser’s portal records. Students can see their average and Philippine point equivalent in Grades / Report Card.</section>
+      <section className="teacher-note" role="note"><strong>Student view:</strong> saving publishes these marks to the matching student account, where the average, letter equivalent and source instructor appear on their own Grades page. Blank periods stay unposted, and a student without a school ID on the roster cannot be published.</section>
     </div>
   );
 }

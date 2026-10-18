@@ -13,6 +13,9 @@ import type { AttendanceSummary } from '../lib/metrics';
 
 export type StatAction = 'schedule' | 'grade' | 'attendance' | 'course' | 'tasks';
 
+/** The posted marks the faculty published — the dashboard reports these first. */
+export type OfficialGrades = { average: number; letter: string; subjects: number };
+
 type StatCardsProps = {
   courseCount: number;
   units: number;
@@ -20,6 +23,9 @@ type StatCardsProps = {
   gpaDelta: number;
   rankLabel: string;
   attendance: AttendanceSummary;
+  /** Posted by the instructors, when there are any: shown instead of the local log. */
+  officialGrades?: OfficialGrades | null;
+  officialAttendance?: AttendanceSummary | null;
   classesTodayCount: number;
   nextClassLabel: string;
   /** True when the student has any class on file (published or local). */
@@ -36,6 +42,8 @@ export const StatCards = ({
   gpaDelta,
   rankLabel,
   attendance,
+  officialGrades = null,
+  officialAttendance = null,
   classesTodayCount,
   nextClassLabel,
   hasLoad,
@@ -43,6 +51,7 @@ export const StatCards = ({
   taskSummary,
   onAction,
 }: StatCardsProps) => {
+  const attendanceFigures = officialAttendance?.total ? officialAttendance : attendance;
   const cards: {
     key: string;
     label: string;
@@ -61,32 +70,39 @@ export const StatCards = ({
     },
     {
       key: 'gpa',
-      label: 'Current Cumulative GPA',
-      value: `${gpa === null ? '--' : gpa.toFixed(2)} /4.00`,
-      sub:
-        gpa === null ? (
-          <span className="text-slate-400">No grade data recorded yet</span>
-        ) : (
-          <span className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {gpaDelta >= 0 ? '+' : ''}
-              {gpaDelta.toFixed(2)}
-            </span>
-            {rankLabel && <span className="text-slate-400">•</span>}
-            {rankLabel && <span className="font-medium text-slate-500">{rankLabel} Rank</span>}
+      label: officialGrades ? 'Posted Term Average' : 'Current Cumulative GPA',
+      value:
+        officialGrades
+          ? `${officialGrades.average.toFixed(1)}% ${officialGrades.letter}`
+          : `${gpa === null ? '--' : gpa.toFixed(2)} /4.00`,
+      sub: officialGrades ? (
+        <span className="font-medium text-[#2563EB]">
+          {officialGrades.subjects} subject{officialGrades.subjects === 1 ? '' : 's'} with posted marks
+        </span>
+      ) : gpa === null ? (
+        <span className="text-slate-400">No grade data recorded yet</span>
+      ) : (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+            <TrendingUp className="h-3.5 w-3.5" />
+            {gpaDelta >= 0 ? '+' : ''}
+            {gpaDelta.toFixed(2)}
           </span>
-        ),
+          {rankLabel && <span className="text-slate-400">•</span>}
+          {rankLabel && <span className="font-medium text-slate-500">{rankLabel} Rank</span>}
+        </span>
+      ),
       icon: BarChart3,
       action: 'grade',
     },
     {
       key: 'attendance',
-      label: 'Attendance Rate',
-      value: `${attendance.rate.toFixed(1)}%`,
-      sub: attendance.total ? (
+      label: officialAttendance?.total ? 'Posted Attendance Rate' : 'Attendance Rate',
+      value: `${attendanceFigures.rate.toFixed(1)}%`,
+      sub: attendanceFigures.total ? (
         <span className="font-medium text-slate-500">
-          {attendance.absent} Unexcused • {attendance.absent === 0 ? 'Optimal' : 'Monitor'}
+          {attendanceFigures.present}/{attendanceFigures.total} sessions •{' '}
+          {attendanceFigures.absent === 0 ? 'No unexcused absence' : `${attendanceFigures.absent} unexcused`}
         </span>
       ) : (
         <span className="text-slate-400">No sessions logged</span>

@@ -40,6 +40,13 @@ import {
 } from './lib/session';
 import { relativeTime, toMinutes } from './lib/metrics';
 import { fetchTimetables, pickTimetable, subjectsOf, toSlots, type TimetableItem } from './lib/schedule';
+import {
+  asAttendanceRecords,
+  fetchAttendanceDocs,
+  fetchGradeRecords,
+  type AttendanceDoc,
+  type GradeRecord,
+} from './lib/records';
 
 const STORAGE_KEY = 'student-portal-template:v4';
 
@@ -83,6 +90,19 @@ type Store = AppState & {
   mySlots: ScheduleSlot[];
   /** The published subjects of that section, shaped like the local course list. */
   publishedCourses: Course[];
+
+  /* --- official academic records, posted by the faculty --- */
+  /** The signed-in student's posted grades, newest document first. */
+  gradeRecords: GradeRecord[];
+  /** The signed-in student's posted attendance, newest document first. */
+  attendanceDocs: AttendanceDoc[];
+  recordsLoading: boolean;
+  recordsError: string;
+  refreshRecords: () => Promise<void>;
+  /** True once any official record exists — the pages then report it, not the local log. */
+  hasOfficialRecords: boolean;
+  /** The official attendance in the dashboard's own shape, for shared widgets. */
+  officialAttendance: AttendanceRecord[];
 
   /* --- local academic records --- */
   setProfile: (patch: Partial<Profile>) => void;
@@ -164,6 +184,10 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [timetables, setTimetables] = useState<TimetableItem[]>([]);
   const [timetableLoading, setTimetableLoading] = useState(true);
   const [timetableError, setTimetableError] = useState('');
+  const [gradeRecords, setGradeRecords] = useState<GradeRecord[]>([]);
+  const [attendanceDocs, setAttendanceDocs] = useState<AttendanceDoc[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [recordsError, setRecordsError] = useState('');
 
   useEffect(() => {
     try {
@@ -297,6 +321,34 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     void refreshTimetables();
   }, [refreshTimetables]);
 
+  /**
+   * Official grades and attendance are the faculty's records, not this browser's.
+   * They are read with the shared access token, and the server returns only the
+   * documents posted under this student's own school ID. Signed out there is
+   * nothing to read, so the pages fall back to their honest empty state.
+   */
+  const refreshRecords = useCallback(async () => {
+    const token = readTokens()?.accessToken;
+    if (!token) {
+      setGradeRecords([]);
+      setAttendanceDocs([]);
+      setRecordsError('');
+      setRecordsLoading(false);
+      return;
+    }
+    setRecordsLoading(true);
+    const [grades, attendance] = await Promise.all([fetchGradeRecords(token), fetchAttendanceDocs(token)]);
+    setRecordsLoading(false);
+    if (grades.ok) setGradeRecords(grades.data);
+    if (attendance.ok) setAttendanceDocs(attendance.data);
+    const failure = !grades.ok ? grades.message : !attendance.ok ? attendance.message : '';
+    setRecordsError(failure);
+  }, []);
+
+  useEffect(() => {
+    void refreshRecords();
+  }, [refreshRecords, session]);
+
   /* ------------------------------- actions ----------------------------- */
 
   const store = useMemo<Store>(() => {
@@ -361,6 +413,14 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       myTimetable,
       mySlots,
       publishedCourses,
+
+      gradeRecords,
+      attendanceDocs,
+      recordsLoading,
+      recordsError,
+      refreshRecords,
+      hasOfficialRecords: gradeRecords.length > 0 || attendanceDocs.length > 0,
+      officialAttendance: asAttendanceRecords(attendanceDocs),
 
       setProfile: (patch) => setState((s) => ({ ...s, profile: { ...s.profile, ...patch } })),
 
@@ -438,6 +498,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     timetableLoading,
     timetableError,
     refreshTimetables,
+    gradeRecords,
+    attendanceDocs,
+    recordsLoading,
+    recordsError,
+    refreshRecords,
     cancelRestore,
   ]);
 

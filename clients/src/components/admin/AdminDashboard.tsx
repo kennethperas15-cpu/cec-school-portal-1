@@ -29,6 +29,8 @@ import { openEditDialog } from '../shared/EditDialog';
 import { DashboardShell } from '../shared/DashboardShell';
 import { semesterNo, useAcademicConfig } from '../../services/academicConfig';
 import type { DashboardSection } from '../shared/RoleDashboardHome';
+import { AcademicRecords } from './AcademicRecords';
+import { box, btn, card, ghost, inp } from './adminUi';
 
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string; schoolId?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 const NAVY = '#0B3D91';
@@ -37,19 +39,13 @@ type Group = { id: string; label: string; icon: string; items: { label: string; 
 const GROUPS: Group[] = [
   { id: 'home', label: 'DASHBOARD', icon: '⌂', items: [{ label: 'Dashboard', route: 'a_dashboard' }] },
   { id: 'account', label: 'ACCOUNT MGMT', icon: '◈', items: [{ label: 'RBAC Management', route: 'a_auth_rbac' }, { label: 'Account Creation', route: 'a_auth_accounts' }, { label: 'Password Reset', route: 'a_auth_reset' }] },
-  { id: 'enroll', label: 'ENROLLMENT MGMT', icon: '▤', items: [{ label: 'Enrollment Approval', route: 'a_enroll_approval' }, { label: 'Document Verification', route: 'a_enroll_docs' }, { label: 'Study Load Builder', route: 'a_acad_offerings' }, { label: 'Status Monitoring', route: 'a_enroll_status' }] },
+  { id: 'enroll', label: 'ENROLLMENT MGMT', icon: '▤', items: [{ label: 'Enrollment Approval', route: 'a_enroll_approval' }, { label: 'Document Verification', route: 'a_enroll_docs' }, { label: 'Study Load Builder', route: 'a_acad_offerings' }, { label: 'Academic Records', route: 'a_acad_records' }, { label: 'Status Monitoring', route: 'a_enroll_status' }] },
   { id: 'finance', label: 'FINANCIAL MGMT', icon: '▦', items: [{ label: 'Billing & Invoices', route: 'a_fin_billing' }, { label: 'Fee Structure', route: 'a_fin_fees' }, { label: 'Payment Monitoring', route: 'a_fin_payments' }, { label: 'Scholarships', route: 'a_fin_scholar' }] },
   { id: 'hr', label: 'HR / FACULTY', icon: '⍾', items: [{ label: 'Teacher Records', route: 'a_hr_records' }, { label: 'Load Assignment', route: 'a_hr_load' }, { label: 'Credentials', route: 'a_hr_cred' }] },
   { id: 'comm', label: 'COMMUNICATION', icon: '✉', items: [{ label: 'Broadcast Messaging', route: 'a_comm_broadcast' }, { label: 'System Announcements', route: 'a_comm_announce' }] },
   { id: 'system', label: 'SYSTEM ADMIN', icon: '⚙', items: [{ label: 'System Config', route: 'a_sys_config' }, { label: 'Audit Log', route: 'a_sys_audit' }, { label: 'Backup & Restore', route: 'a_sys_backup' }, { label: 'Security', route: 'a_sys_security' }] },
 ];
 const pill: React.CSSProperties = { border: '1px solid #e4ebf5', background: '#f8fbff', borderRadius: 999, padding: '6px 12px', fontSize: 12, color: '#5b6b82', fontWeight: 600 };
-const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8eef7', borderRadius: 20, boxShadow: '0 12px 34px rgba(15,31,56,.05)', padding: 28, maxWidth: 1120, margin: '0 auto' };
-const box: React.CSSProperties = { border: '1px solid #eef2f8', borderRadius: 14, padding: 18, marginTop: 14, background: '#fbfcfe' };
-const btn: React.CSSProperties = { background: 'linear-gradient(135deg, #0B3D91, #123f7d)', color: '#fff', border: 0, borderRadius: 12, padding: '10px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 10px 22px rgba(11,61,145,.22)' };
-const ghost: React.CSSProperties = { border: '1px solid #e2e7ef', background: '#fff', borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#33415c' };
-const inp: React.CSSProperties = { border: '1.5px solid #e4ebf5', borderRadius: 12, padding: '10px 13px', fontSize: 13, width: '100%', background: '#f7f9fc', color: '#0f1f38' };
-
 type Rec3 = { id: string; name: string; role: string };
 type Col3 = { list: Rec3[]; create: (x: { id?: string; name: string; role: string }) => void; update: (id: string, p: Partial<Rec3>) => void; remove: (id: string) => void };
 
@@ -796,8 +792,8 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
           </div>
         </div>{footer}</section>);
     }
-    if (active === 'Load Assignment') return <AdminTable title="Load Assignment" col={loads} colA="Faculty" colB="Units • Sections" phA="e.g. Faculty name" phB="e.g. 9 units" onNotify={onNotify} footer={footer} />;
-    if (active === 'Credentials') return <AdminTable title="Faculty Credentials" col={creds} colA="Credential" colB="Validity" phA="e.g. PRC License" phB="Valid until 2028-01-01" onNotify={onNotify} footer={footer} />;
+    if (active === 'Academic Records') return <AcademicRecords onNotify={onNotify} footer={footer} />;
+    if (active === 'Load Assignment') return <AdminTable title="Load Assignment" col={loads} colA="Faculty" colB="Units • Sections" phA="e.g. Faculty name" phB="e.g. 9 units" onNotify={onNotify} footer={footer} />;    if (active === 'Credentials') return <AdminTable title="Faculty Credentials" col={creds} colA="Credential" colB="Validity" phA="e.g. PRC License" phB="Valid until 2028-01-01" onNotify={onNotify} footer={footer} />;
     if (active === 'Password Reset') {
       return (<section style={card}><h1 style={{ margin: 0, fontSize: 22 }}>Password Reset</h1><div style={{ ...box }}><ChangePassword identifier={currentUser?.email || myPhotoId} onNotify={onNotify} /></div><form style={{ display: 'flex', gap: 8, marginTop: 14, maxWidth: 560 }} onSubmit={async (e) => { e.preventDefault(); const who = resetWho.trim(); if (!who) return; try { const r = await api.post('/auth/forgot-password', { identifier: who }); onNotify(r.data?.message ?? `Recovery request recorded for "${who}"`); pushNotification(['student', 'teacher'], { title: 'Password reset requested', detail: 'A registrar or administrator requested a password reset for your account.', category: 'System', target: 'Password Recovery' }); } catch { onNotify('Could not submit the reset — check the connection'); } setResetWho(''); }}><input style={inp} placeholder="Name, ID or email" value={resetWho} onChange={(e) => setResetWho(e.target.value)} aria-label="Account to reset" /><button style={btn} type="submit">Send reset</button></form><div style={box}>{accounts.list.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eef1f6', fontSize: 14 }}><span><strong>{a.name}</strong> • {a.id}</span><button style={ghost} onClick={async () => { try { const r = await api.post('/auth/forgot-password', { identifier: a.id || a.name }); onNotify(r.data?.message ?? `Recovery request recorded for ${a.name}`); } catch { onNotify('Could not submit — check the connection'); } }}>Reset</button></div>)}</div>{footer}</section>);
     }

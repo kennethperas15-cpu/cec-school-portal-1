@@ -186,3 +186,17 @@ export const cecReceipts = () => get<PortalItem[]>('/api/portal/items?portal=stu
  */
 export const cecScheduleItems = () =>
   get<PortalItem[]>('/api/portal/items?portal=student&module=schedule');
+
+/* ---------------------------- Academic records ---------------------------- */
+
+/**
+ * The signed-in student's own posted grades and attendance. Unlike the schedule
+ * shelf above, these routes are authenticated and scoped on the server: with the
+ * access token, the answer holds only the documents that carry this student's
+ * seven-digit school ID. Without one it holds nothing.
+ */
+export const cecGradeRecords = (token?: string) =>
+  get<PortalItem[]>('/api/portal/records/grades', token);
+
+export const cecAttendanceRecords = (token?: string) =>
+  get<PortalItem[]>('/api/portal/records/attendance', token);

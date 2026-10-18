@@ -346,7 +346,11 @@ export const ScheduleView = () => {
           )}
 
           <CoursesTable item={record} entries={entries} />
-          <CampusPanel entries={entries} todayEntries={todayEntries} attendance={store.attendance} />
+          <CampusPanel
+            entries={entries}
+            todayEntries={todayEntries}
+            attendance={store.officialAttendance.length ? store.officialAttendance : store.attendance}
+          />
 
           {record.note && (
             <section className="card p-4 text-[12px] font-medium text-slate-500">

@@ -76,7 +76,7 @@ export function AttendanceTracker({ roster, attendance, onSave }: Props) {
 
   return (
     <div className="teacher-page">
-      <header className="teacher-page-heading"><div><p className="teacher-eyebrow">ACADEMIC RECORDS</p><h1>Attendance Tracker</h1><p>Take attendance by subject and date. Saved records appear in student attendance views.</p></div></header>
+      <header className="teacher-page-heading"><div><p className="teacher-eyebrow">ACADEMIC RECORDS</p><h1>Attendance Tracker</h1><p>Take attendance by subject and date. Saving publishes each session to the matching student account, joined there to the registrar’s published timetable.</p></div></header>
       <section className="teacher-panel">
         <div className="teacher-panel-heading teacher-roster-heading">
           <div><h2>Class session</h2><p>Set the session, mark each student, then save the full attendance record.</p></div>

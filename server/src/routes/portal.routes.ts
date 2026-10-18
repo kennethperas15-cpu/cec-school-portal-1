@@ -398,4 +398,198 @@ router.delete('/items/:id', authmiddlewareMiddleware, requireRoles('admin', 'tea
   } catch (error) { next(error); }
 });
 
+/* ---------------------------------------------------------------------------
+ * Academic records — the official grades and attendance a faculty member posts.
+ *
+ * These are deliberately NOT part of the public /items shelf above: a grade is
+ * personal data. Every route here is authenticated and scoped to the caller — a
+ * teacher reads and manages only their own submissions, a student reads only the
+ * documents carrying their seven-digit school ID, and the registrar (admin) sees
+ * the whole school. One document per (module, teacher, student, term), so
+ * publishing twice edits the same record instead of stacking duplicates.
+ * ------------------------------------------------------------------------- */
+
+/** Route segment -> the `portal_items.module` it stores under. */
+const RECORD_MODULES: Record<string, { module: string; label: string }> = {
+  grades: { module: 'grade', label: 'Grades' },
+  attendance: { module: 'attendance', label: 'Attendance' },
+};
+
+/** Academic records hold one row per student, so a wider page than /items. */
+const RECORD_PAGE_SIZE = 500;
+const RECORD_ENTRY_LIMIT = 500;
+
+const asString = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+/** Term comparison that tolerates en dashes and odd spacing. */
+const fold = (value: string): string =>
+  value.toLowerCase().replace(/[\u2010-\u2015\u2212-]+/g, '-').replace(/\s+/g, ' ').trim();
+
+/** The signed-in account's seven-digit school number, when it has one. */
+const schoolNumberOf = async (userId: string): Promise<string> => {
+  const rows = await sql<{ student_number: string | null; employee_number: string | null }>(
+    `SELECT s.student_number, t.employee_number
+       FROM users u
+       LEFT JOIN students s ON s.user_id = u.id
+       LEFT JOIN teachers t ON t.user_id = u.id
+      WHERE u.id = ? LIMIT 1`,
+    { replacements: [userId], type: QueryTypes.SELECT }
+  );
+  return rows[0]?.student_number ?? rows[0]?.employee_number ?? '';
+};
+
+/** Display name behind the bearer token, kept for the record's provenance. */
+const displayNameOf = async (userId: string): Promise<string> => {
+  const rows = await sql<{ first_name: string; last_name: string }>(
+    `SELECT first_name, last_name FROM users WHERE id = ? LIMIT 1`,
+    { replacements: [userId], type: QueryTypes.SELECT }
+  );
+  return rows.length ? `${rows[0].first_name} ${rows[0].last_name}`.replace(/\s+/g, ' ').trim() : '';
+};
+
+router.get('/records/:module', authmiddlewareMiddleware, async (req, res, next) => {
+  try {
+    const key = String(req.params.module ?? '');
+    const target = RECORD_MODULES[key];
+    if (!target) { res.status(400).json({ success: false, message: 'Unknown academic record module' }); return; }
+    const role = req.user?.role ?? '';
+    const where = ['portal = ?', 'module = ?'];
+    const replacements: string[] = ['student', target.module];
+    if (role === 'teacher') {
+      // A faculty member sees exactly what they posted.
+      where.push('owner = ?');
+      replacements.push(req.user?.email ?? '');
+    } else if (role !== 'admin') {
+      // A student sees exactly their own document, matched on the school ID the
+      // record was posted under. No ID on the account means nothing to read —
+      // never somebody else's marks.
+      const schoolNumber = await schoolNumberOf(req.user?.id ?? '');
+      if (!schoolNumber) { res.json({ success: true, data: [] }); return; }
+      where.push('title LIKE ?');
+      replacements.push(`${target.label} · ${schoolNumber} %`);
+    }
+    const rows = await sql(
+      `SELECT id, portal, module, title, detail, status, owner, created_at, updated_at
+         FROM portal_items WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ${RECORD_PAGE_SIZE}`,
+      { replacements, type: QueryTypes.SELECT }
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) { next(error); }
+});
+
+router.post('/records/:module', authmiddlewareMiddleware, requireRoles('admin', 'teacher'), async (req, res, next) => {
+  try {
+    const key = String(req.params.module ?? '');
+    const target = RECORD_MODULES[key];
+    if (!target) { res.status(400).json({ success: false, message: 'Unknown academic record module' }); return; }
+
+    const body = req.body as {
+      schoolYear?: unknown; semester?: unknown; studentId?: unknown; studentName?: unknown;
+      section?: unknown; program?: unknown; entries?: unknown;
+    };
+    const schoolYear = asString(body.schoolYear);
+    const semester = asString(body.semester);
+    const studentId = asString(body.studentId);
+    const studentName = asString(body.studentName);
+    if (!schoolYear || !semester) {
+      res.status(400).json({ success: false, message: 'The school year and semester are required' });
+      return;
+    }
+    // The school ID is the only safe join key: a record posted without one could
+    // never be shown to the right student, so it is refused instead.
+    if (!/^2\d{6}$/.test(studentId)) {
+      res.status(400).json({ success: false, message: "A student's seven-digit school ID (2xxxxxx) is required" });
+      return;
+    }
+    const entries = Array.isArray(body.entries) ? body.entries.slice(0, RECORD_ENTRY_LIMIT) : [];
+
+    const postedBy = req.user?.email ?? '';
+    const postedByName = (await displayNameOf(req.user?.id ?? '')) || postedBy;
+    const now = new Date().toISOString();
+
+    const candidates = await sql<{ id: string; detail: string | null }>(
+      `SELECT id, detail FROM portal_items
+        WHERE portal = 'student' AND module = ? AND owner = ? AND title LIKE ?`,
+      { replacements: [target.module, postedBy, `${target.label} · ${studentId} %`], type: QueryTypes.SELECT }
+    );
+    let existing: { id: string; postedAt?: string } | null = null;
+    for (const row of candidates) {
+      try {
+        const parsed = JSON.parse(row.detail ?? '') as { v?: number; schoolYear?: string; semester?: string; postedAt?: string };
+        if (parsed.v === 1 && fold(parsed.schoolYear ?? '') === fold(schoolYear) && fold(parsed.semester ?? '') === fold(semester)) {
+          existing = { id: row.id, postedAt: parsed.postedAt };
+          break;
+        }
+      } catch { /* an older or damaged row simply is not the one being updated */ }
+    }
+
+    const doc: Record<string, unknown> = {
+      v: 1,
+      schoolYear,
+      semester,
+      studentId,
+      studentName,
+      section: asString(body.section),
+      program: asString(body.program),
+      entries,
+      postedBy,
+      postedByName,
+      postedAt: existing?.postedAt || now,
+    };
+    if (existing) {
+      doc.updatedAt = now;
+      doc.updatedByName = postedByName;
+    }
+    const title = `${target.label} · ${studentId}${studentName ? ` ${studentName}` : ''}`.slice(0, 255);
+    const detail = JSON.stringify(doc);
+
+    if (existing) {
+      await sql(
+        `UPDATE portal_items SET title = ?, detail = ?, status = 'Posted', updated_at = NOW() WHERE id = ?`,
+        { replacements: [title, detail, existing.id], type: QueryTypes.UPDATE }
+      );
+      await writeAuditLog(req, {
+        action: 'Academic record updated', targetType: 'AcademicRecord', targetId: existing.id,
+        newValue: { module: target.module, studentId, schoolYear, semester, entries: entries.length },
+      });
+      res.json({ success: true, data: { id: existing.id, created: false } });
+      return;
+    }
+
+    const id = crypto.randomUUID();
+    await sql(
+      `INSERT INTO portal_items (id, portal, module, title, detail, status, owner)
+       VALUES (?, 'student', ?, ?, ?, 'Posted', ?)`,
+      { replacements: [id, target.module, title, detail, postedBy], type: QueryTypes.INSERT }
+    );
+    await writeAuditLog(req, {
+      action: 'Academic record posted', targetType: 'AcademicRecord', targetId: id,
+      newValue: { module: target.module, studentId, schoolYear, semester, entries: entries.length },
+    });
+    res.status(201).json({ success: true, data: { id, created: true } });
+  } catch (error) { next(error); }
+});
+
+router.delete('/records/:module/:id', authmiddlewareMiddleware, requireRoles('admin', 'teacher'), async (req, res, next) => {
+  try {
+    const key = String(req.params.module ?? '');
+    const target = RECORD_MODULES[key];
+    if (!target) { res.status(400).json({ success: false, message: 'Unknown academic record module' }); return; }
+    const id = String(req.params.id ?? '');
+    const rows = await sql<{ owner: string | null }>(
+      `SELECT owner FROM portal_items WHERE id = ? AND module = ? LIMIT 1`,
+      { replacements: [id, target.module], type: QueryTypes.SELECT }
+    );
+    if (!rows.length) { res.status(404).json({ success: false, message: 'Academic record not found' }); return; }
+    const mine = fold(rows[0].owner ?? '') === fold(req.user?.email ?? '');
+    if (req.user?.role !== 'admin' && !mine) {
+      res.status(403).json({ success: false, message: 'Only the faculty member who posted this record, or the registrar, can retract it' });
+      return;
+    }
+    await sql(`DELETE FROM portal_items WHERE id = ?`, { replacements: [id], type: QueryTypes.UPDATE });
+    await writeAuditLog(req, { action: 'Academic record retracted', targetType: 'AcademicRecord', targetId: id });
+    res.json({ success: true, data: { id } });
+  } catch (error) { next(error); }
+});
+
 export default router;
