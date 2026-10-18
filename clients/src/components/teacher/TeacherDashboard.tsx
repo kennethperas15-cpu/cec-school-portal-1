@@ -18,7 +18,7 @@ import { DashboardShell } from '../shared/DashboardShell';
 import { CommWidget } from '../shared/CommWidget';
 import { useAcademicConfig } from '../../services/academicConfig';
 import type { DashboardSection } from '../shared/RoleDashboardHome';
-
+const hos = import.meta.env.VITE_HOST || 'localhost';
 type Props = { currentUser: { firstName: string; lastName: string; role: string; id?: string; email?: string; schoolId?: string; program?: string } | null; onNotify: (t: string) => void; onLogout: () => void; };
 const NAVY = '#0B3D91';
 const BASE = import.meta.env.BASE_URL || '/';
