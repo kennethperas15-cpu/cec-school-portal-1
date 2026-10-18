@@ -749,8 +749,16 @@
 .role-dashboard-teacher .dashboard-sidebar-brand {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 0 8px 18px;
+}
+
+.role-dashboard-teacher .dashboard-sidebar-brand-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
 }
 
 .role-dashboard-teacher .dashboard-sidebar-brand img {
@@ -777,6 +785,29 @@
 .role-dashboard-teacher .dashboard-sidebar-brand span {
   color: #94a3b8;
   font-size: 10px;
+}
+
+.role-dashboard-teacher .teacher-sidebar-close {
+  display: none;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.role-dashboard-teacher .teacher-sidebar-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.role-dashboard-teacher .teacher-sidebar-close svg {
+  width: 16px;
+  height: 16px;
 }
 
 .role-dashboard-teacher .dashboard-sidebar-status {
@@ -878,6 +909,24 @@
   display: none;
 }
 
+.role-dashboard-teacher.is-sidebar-collapsed .dashboard-topbar-brand > button {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 9px !important;
+  background: #f8fafc !important;
+  color: #475569;
+  cursor: pointer;
+}
+
+.role-dashboard-teacher .dashboard-topbar-brand > button svg {
+  width: 17px;
+  height: 17px;
+}
+
 .role-dashboard-teacher .dashboard-topbar-brand > img,
 .role-dashboard-teacher .dashboard-topbar-brand > div,
 .role-dashboard-teacher .dashboard-role-badge {
@@ -913,6 +962,122 @@
 
 .role-dashboard-teacher .dashboard-actions {
   gap: 10px !important;
+}
+
+.role-dashboard-teacher .teacher-profile-menu {
+  position: relative;
+}
+
+.role-dashboard-teacher .teacher-profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 8px 4px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  text-align: left;
+  cursor: pointer;
+  transition: background .16s;
+}
+
+.role-dashboard-teacher .teacher-profile-trigger:hover,
+.role-dashboard-teacher .teacher-profile-trigger[aria-expanded="true"] {
+  background: #f1f5f9;
+}
+
+.role-dashboard-teacher .teacher-profile-copy {
+  display: grid;
+  max-width: 150px;
+  gap: 3px;
+}
+
+.role-dashboard-teacher .teacher-profile-copy strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-dashboard-teacher .teacher-profile-copy small {
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-dashboard-teacher .teacher-profile-trigger > svg {
+  width: 15px;
+  height: 15px;
+  color: #94a3b8;
+}
+
+.role-dashboard-teacher .teacher-profile-popover {
+  animation: teacher-profile-enter .14s ease-out;
+}
+
+@keyframes teacher-profile-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.role-dashboard-teacher .teacher-profile-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  width: 240px;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(15, 35, 64, .14);
+}
+
+.role-dashboard-teacher .teacher-profile-popover-heading {
+  display: grid;
+  gap: 4px;
+  overflow: hidden;
+  padding: 9px 10px 12px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.role-dashboard-teacher .teacher-profile-popover-heading strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-dashboard-teacher .teacher-profile-popover-heading span {
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-dashboard-teacher .teacher-profile-popover > button {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.role-dashboard-teacher .teacher-profile-popover > button:hover {
+  background: #f1f5f9;
 }
 
 .role-dashboard-teacher .command-trigger {
@@ -1252,6 +1417,10 @@
     box-shadow: 16px 0 40px rgba(14, 35, 62, .16) !important;
   }
 
+  .role-dashboard-teacher .teacher-sidebar-close {
+    display: inline-grid;
+  }
+
   .role-dashboard-teacher .dashboard-sidebar-backdrop {
     position: fixed;
     inset: 0;
@@ -1270,7 +1439,8 @@
     flex: 0 0 38px;
   }
 
-  .role-dashboard-teacher .dashboard-topbar-brand > button {
+  .role-dashboard-teacher .dashboard-topbar-brand > button,
+  .role-dashboard-teacher.is-sidebar-collapsed .dashboard-topbar-brand > button {
     display: inline-grid;
     place-items: center;
     border-color: #e2e8f0 !important;
@@ -1285,7 +1455,7 @@
   }
 
   .role-dashboard-teacher .dashboard-academic-period,
-  .role-dashboard-teacher .dashboard-topbar-user-copy {
+  .role-dashboard-teacher .teacher-profile-copy {
     display: none;
   }
 
