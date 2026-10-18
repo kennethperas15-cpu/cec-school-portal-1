@@ -76,6 +76,11 @@ export const portalApi = {
     const r = await api.get('/portal/enrollments', { params: { status: 'pending', schoolYear: term?.schoolYear, semester: term?.semester } });
     return r.data?.data ?? [];
   },
+  /** The registrar's register: applications of one status, newest first. */
+  async enrollByStatus(status: 'pending' | 'approved' | 'rejected', term?: { schoolYear?: string; semester?: number }): Promise<PortalEnrollment[]> {
+    const r = await api.get('/portal/enrollments', { params: { status, schoolYear: term?.schoolYear, semester: term?.semester } });
+    return r.data?.data ?? [];
+  },
   async enrollCreate(input: { fullName: string; personalEmail: string; phone: string; program: string; yearLevel: number; requestedRole?: string; schoolYear?: string; semester?: number }) {
     const r = await api.post('/portal/enrollments', input);
     return r.data?.data as { id: string; status: string };
