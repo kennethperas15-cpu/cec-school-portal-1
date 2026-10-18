@@ -183,3 +183,49 @@ button{font-family:inherit}.course-button{border-left:0;border-right:0;border-bo
 /* Scroll reveal - content fades in as user scrolls */
 .landing-scroll-section{opacity:0}.landing-scroll-section--visible{opacity:1;transition:opacity 0.7s ease}
 @media(max-width:700px){.landing-about-grid{grid-template-columns:1fr}.landing-programs-grid{grid-template-columns:1fr}.landing-trophies-grid{grid-template-columns:1fr}}
+
+.role-dashboard-admin:not(.is-sidebar-collapsed) .dashboard-sidebar{position:fixed!important;inset:0 auto 0 0;z-index:6;width:240px!important;min-height:100vh!important;gap:0!important;overflow-y:auto;padding:20px 12px!important;border-right:1px solid #e2e8f0!important;background:#fff!important;box-shadow:none!important}
+.role-dashboard-admin .dashboard-sidebar-brand{display:flex;align-items:center;gap:10px;padding:0 8px 18px}
+.role-dashboard-admin .dashboard-sidebar-brand img{width:40px;height:40px;flex:0 0 40px;object-fit:contain}
+.role-dashboard-admin .dashboard-sidebar-brand div{display:grid;min-width:0;gap:3px}
+.role-dashboard-admin .dashboard-sidebar-brand strong{overflow:hidden;color:#172b47;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.role-dashboard-admin .dashboard-sidebar-brand span{color:#94a3b8;font-size:10px}
+.role-dashboard-admin .dashboard-sidebar-status{display:flex;align-items:center;min-height:32px;padding:0 10px;border-radius:8px;background:#eef2f7;color:#475569;font-size:10px;font-weight:650;white-space:nowrap}
+.role-dashboard-admin .dashboard-nav-group{margin-top:20px;border:0!important;border-radius:0!important;padding:0!important;background:transparent!important;box-shadow:none!important}
+.role-dashboard-admin .dashboard-nav-group>button{padding:0 12px 10px!important;color:#94a3b8!important;font-size:11px!important;font-weight:700!important;letter-spacing:.12em;text-transform:uppercase}
+.role-dashboard-admin .dashboard-nav-group>button>span:first-child,.role-dashboard-admin .dashboard-nav-group>button>span:last-child{display:none}
+.role-dashboard-admin .dashboard-nav-group>button>span:nth-child(2){text-align:left}
+.role-dashboard-admin .dashboard-nav-group>div{gap:4px!important}
+.role-dashboard-admin .dashboard-nav-group>div>button{min-height:40px;padding:9px 12px!important;border-radius:8px!important;color:#64748b!important;font-size:13px!important;font-weight:500!important;transition:background .16s,color .16s}
+.role-dashboard-admin .dashboard-nav-group>div>button:hover{transform:none!important;background:#f1f5f9!important;color:#172b47!important}
+.role-dashboard-admin .dashboard-nav-item.is-active{background:#1b365d!important;color:#fff!important;font-weight:600!important}
+.role-dashboard-admin .dashboard-sidebar>div:last-child{margin-top:auto!important;padding:12px 8px 4px!important;border-color:#e8edf3!important}
+.role-dashboard-admin .dashboard-sidebar>div:last-child>div{overflow:hidden}
+.role-dashboard-admin .dashboard-sidebar>div:last-child>div>div:first-child{overflow:hidden;color:#334155;text-overflow:ellipsis;white-space:nowrap}
+.role-dashboard-admin .dashboard-sidebar>div:last-child>button{display:none!important}
+.role-dashboard-admin .dashboard-topbar{height:64px!important;margin-left:240px;padding:0 24px!important;border-color:#e2e8f0!important;background:#fff!important;box-shadow:0 1px 2px rgba(15,35,64,.035)!important}
+.role-dashboard-admin .dashboard-topbar-brand{min-width:0!important;flex:0 0 38px;gap:0!important}
+.role-dashboard-admin .dashboard-topbar-brand>img,.role-dashboard-admin .dashboard-topbar-brand>div,.role-dashboard-admin .dashboard-role-badge{display:none}
+.role-dashboard-admin .dashboard-topbar-brand>button{border-color:#e2e8f0!important;border-radius:9px!important;background:#f8fafc!important;color:#475569}
+.role-dashboard-admin .dashboard-route-crumb{color:#475569!important;font-size:13px!important;font-weight:600}
+.role-dashboard-admin .dashboard-academic-period{display:inline-flex;align-items:center;min-height:32px;padding:0 11px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;color:#475569;font-size:11px;font-weight:600;white-space:nowrap}
+.role-dashboard-admin .dashboard-actions{gap:10px!important}
+.role-dashboard-admin .dashboard-topbar-user{display:flex;align-items:center;gap:9px}
+.role-dashboard-admin .dashboard-topbar-user-copy{display:grid;max-width:150px;gap:3px}
+.role-dashboard-admin .dashboard-topbar-user-copy strong{overflow:hidden;color:#334155;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.role-dashboard-admin .dashboard-topbar-user-copy small{overflow:hidden;color:#94a3b8;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.role-dashboard-admin .command-trigger{height:38px;border-color:#e2e8f0;border-radius:999px;background:#f1f5f9;box-shadow:none}
+.role-dashboard-admin .command-trigger:hover{background:#fff}
+.role-dashboard-admin .dashboard-alert-button,.role-dashboard-admin .dashboard-actions .theme-toggle,.role-dashboard-admin .dashboard-logout{width:38px;height:38px;border-color:#e2e8f0;border-radius:50%;background:#fff}
+.role-dashboard-admin .dashboard-main{width:100%;min-width:0;margin-left:240px;padding:28px!important}
+.role-dashboard-admin.is-sidebar-collapsed .dashboard-topbar,.role-dashboard-admin.is-sidebar-collapsed .dashboard-main{margin-left:0}
+.role-dashboard-admin .dashboard-sidebar-backdrop{display:none}
+@media(max-width:799px){
+  .role-dashboard-admin:not(.is-sidebar-collapsed) .dashboard-sidebar{z-index:8;width:min(280px,88vw)!important;min-height:100vh!important;box-shadow:16px 0 40px rgba(14,35,62,.16)!important}
+  .role-dashboard-admin .dashboard-sidebar-backdrop{position:fixed;inset:0;z-index:7;display:block;border:0;background:rgba(15,23,42,.4)}
+  .role-dashboard-admin .dashboard-topbar{margin-left:0;padding:0 14px!important}
+  .role-dashboard-admin .dashboard-topbar-brand{flex:0 0 38px}
+  .role-dashboard-admin .dashboard-main{margin-left:0;padding:18px 12px!important}
+  .role-dashboard-admin .dashboard-academic-period{display:none}
+  .role-dashboard-admin .dashboard-topbar-user-copy{display:none}
+}
