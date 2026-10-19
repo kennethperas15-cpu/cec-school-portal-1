@@ -124,6 +124,15 @@ before and after.
 The study load builder — the screen that builds a section's week and publishes it
 to the portals — is reached from **Class Schedule**.
 
+**Class Schedule** is the master timetable, in the institutional layout: the
+metric strip counts the sections and meetings that are actually published, the
+week grid draws each section's meetings by delivery type, the heat map counts the
+bookings in every slot, and the collision detector compares every published
+meeting against every other to find a room or an instructor booked twice at the
+same hour. Nothing on it is asserted: the figures come from the same documents
+the three portals read, and an empty screen says nothing is published instead of
+showing sample rows.
+
 ---
 
 ## How the systems share data

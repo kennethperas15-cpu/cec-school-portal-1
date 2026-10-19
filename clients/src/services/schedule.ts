@@ -402,3 +402,48 @@ export const findConflicts = (entries: ScheduleEntry[]): string[] => {
   }
   return problems;
 };
+
+/** A room that is booked twice, or one instructor in two rooms, on the same hour. */
+export type ConflictFinding = {
+  kind: 'room' | 'faculty';
+  day: string;
+  start: string;
+  end: string;
+  /** the room number or the instructor the two meetings collide on */
+  shared: string;
+  /** "BSCS 3-A · CS 302" — where each side of the collision sits */
+  left: string;
+  right: string;
+};
+
+/**
+ * The institutional audit: every published meeting compared against every other,
+ * across sections. `findConflicts` answers "is this one section's own week
+ * coherent"; this answers "can the school actually run these at once" — the same
+ * room, or the same instructor, in two places at the same time. Computed from the
+ * published documents, never asserted.
+ */
+export const findInstitutionalConflicts = (
+  sections: { section: string; entries: ScheduleEntry[] }[],
+): ConflictFinding[] => {
+  const meetings = sections.flatMap((timetable) => timetable.entries.map((entry) => ({ section: timetable.section, entry })));
+  const findings: ConflictFinding[] = [];
+  const label = (meeting: (typeof meetings)[number]) =>
+    `${meeting.section} · ${meeting.entry.code || meeting.entry.title || 'class'}`;
+  for (let i = 0; i < meetings.length; i += 1) {
+    for (let j = i + 1; j < meetings.length; j += 1) {
+      const a = meetings[i];
+      const b = meetings[j];
+      if (a.entry.day !== b.entry.day) continue;
+      if (!(a.entry.start < b.entry.end && b.entry.start < a.entry.end)) continue;
+      const window = { day: a.entry.day, start: a.entry.start, end: a.entry.end };
+      if (normText(a.entry.room) && normText(a.entry.room) === normText(b.entry.room)) {
+        findings.push({ kind: 'room', ...window, shared: a.entry.room, left: label(a), right: label(b) });
+      }
+      if (normText(a.entry.instructor) && normText(a.entry.instructor) === normText(b.entry.instructor)) {
+        findings.push({ kind: 'faculty', ...window, shared: a.entry.instructor, left: label(a), right: label(b) });
+      }
+    }
+  }
+  return findings;
+};
