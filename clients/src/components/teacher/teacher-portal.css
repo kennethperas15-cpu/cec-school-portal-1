@@ -922,10 +922,6 @@
 }
 
 .role-dashboard-teacher .dashboard-topbar-brand > button {
-  display: none;
-}
-
-.role-dashboard-teacher.is-sidebar-collapsed .dashboard-topbar-brand > button {
   display: inline-grid;
   width: 38px;
   height: 38px;
@@ -943,10 +939,19 @@
   height: 17px;
 }
 
-.role-dashboard-teacher .dashboard-topbar-brand > img,
-.role-dashboard-teacher .dashboard-topbar-brand > div,
+.role-dashboard-teacher .dashboard-topbar-brand > img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.role-dashboard-teacher .dashboard-topbar-brand > div {
+  display: block;
+  min-width: 170px;
+}
+
 .role-dashboard-teacher .dashboard-role-badge {
-  display: none;
+  display: inline-flex;
 }
 
 .role-dashboard-teacher .dashboard-route-crumb {
@@ -1420,17 +1425,24 @@
   }
 
   .role-dashboard-teacher .dashboard-topbar-brand {
+    min-width: 38px !important;
     flex: 0 0 38px;
+    gap: 0 !important;
   }
 
-  .role-dashboard-teacher .dashboard-topbar-brand > button,
-  .role-dashboard-teacher.is-sidebar-collapsed .dashboard-topbar-brand > button {
+  .role-dashboard-teacher .dashboard-topbar-brand > button {
     display: inline-grid;
     place-items: center;
     border-color: #e2e8f0 !important;
     border-radius: 9px !important;
     background: #f8fafc !important;
     color: #475569;
+  }
+
+  .role-dashboard-teacher .dashboard-topbar-brand > img,
+  .role-dashboard-teacher .dashboard-topbar-brand > div,
+  .role-dashboard-teacher .dashboard-role-badge {
+    display: none;
   }
 
   .role-dashboard-teacher .dashboard-main {
@@ -1499,6 +1511,7 @@
 .role-dashboard-teacher .dashboard-topbar {
   box-sizing: border-box;
   width: calc(100% - 240px);
+  margin-left: 240px;
   height: 60px !important;
   border-color: #e2e8f0 !important;
   gap: 16px !important;
@@ -1576,102 +1589,9 @@
 }
 
 .role-dashboard-teacher .dashboard-sidebar {
-  position: sticky;
-  top: 0;
-  box-sizing: border-box;
-  height: 100vh;
-  min-height: 100vh !important;
   padding: 20px 12px !important;
   border-color: #e2e8f0 !important;
   box-shadow: none !important;
-}
-
-.role-dashboard-teacher .teacher-sidebar-close {
-  display: inline-grid;
-  place-items: center;
-}
-
-.role-dashboard-teacher .teacher-sidebar-tools {
-  display: grid;
-  gap: 12px;
-  padding: 10px 4px 14px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.role-dashboard-teacher .teacher-sidebar-account {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.role-dashboard-teacher .teacher-sidebar-account > span {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.role-dashboard-teacher .teacher-sidebar-account strong,
-.role-dashboard-teacher .teacher-sidebar-account small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.role-dashboard-teacher .teacher-sidebar-account strong {
-  color: #172b47;
-  font-size: 13px;
-}
-
-.role-dashboard-teacher .teacher-sidebar-account small {
-  color: #64748b;
-  font-size: 11px;
-}
-
-.role-dashboard-teacher .teacher-sidebar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.role-dashboard-teacher .teacher-sidebar-actions > div:first-child {
-  min-width: 0;
-  flex: 1;
-}
-
-.role-dashboard-teacher .teacher-sidebar-actions .command-trigger {
-  width: 100%;
-  justify-content: flex-start;
-  overflow: hidden;
-}
-
-.role-dashboard-teacher .teacher-sidebar-theme {
-  min-height: 36px;
-  padding: 6px 9px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff;
-  color: #475569;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.role-dashboard-teacher .teacher-sidebar-open {
-  position: fixed;
-  z-index: 6;
-  bottom: 20px;
-  left: 20px;
-  display: grid;
-  width: 46px;
-  height: 46px;
-  place-items: center;
-  border: 0;
-  border-radius: 14px;
-  background: #0b3d91;
-  color: #fff;
-  box-shadow: 0 8px 22px rgba(11, 61, 145, .28);
-  cursor: pointer;
 }
 
 .role-dashboard-teacher .dashboard-sidebar-status {
@@ -1690,6 +1610,7 @@
 
 .role-dashboard-teacher.is-sidebar-collapsed .dashboard-topbar {
   width: 100%;
+  margin-left: 0;
 }
 
 .role-dashboard-teacher.is-sidebar-collapsed .dashboard-main {
