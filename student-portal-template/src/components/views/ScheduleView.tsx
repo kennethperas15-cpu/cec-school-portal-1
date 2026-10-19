@@ -96,14 +96,32 @@ export const ScheduleView = () => {
 
   const terms = useMemo(() => {
     const published = termOptions(timetables);
-    if (!ownLoad) return published;
-    const already = published.some(
-      (term) => lock(term.schoolYear) === lock(ownLoad.schoolYear) && lock(term.semester) === lock(ownLoad.semester),
-    );
-    return already
-      ? published
-      : [{ schoolYear: ownLoad.schoolYear, semester: ownLoad.semester, label: termLabel(ownLoad) }, ...published];
-  }, [timetables, ownLoad]);
+    if (ownLoad) {
+      const already = published.some(
+        (term) => lock(term.schoolYear) === lock(ownLoad.schoolYear) && lock(term.semester) === lock(ownLoad.semester),
+      );
+      return already
+        ? published
+        : [{ schoolYear: ownLoad.schoolYear, semester: ownLoad.semester, label: termLabel(ownLoad) }, ...published];
+    }
+    /* An enrolled load with no week set still belongs to the live term. */
+    if (selfCourses.length && period) {
+      const already = published.some(
+        (term) => lock(term.schoolYear) === lock(period.schoolYear) && lock(term.semester) === lock(period.semester),
+      );
+      if (!already) {
+        return [
+          {
+            schoolYear: period.schoolYear,
+            semester: period.semester,
+            label: store.periodLabel || `${period.semester} ${period.schoolYear}`,
+          },
+          ...published,
+        ];
+      }
+    }
+    return published;
+  }, [timetables, ownLoad, selfCourses, period, store.periodLabel]);
 
   /* The live academic period wins unless the student picked another term. */
   const activeTerm = useMemo(() => {
@@ -125,8 +143,10 @@ export const ScheduleView = () => {
     () =>
       ownLoad
         ? [{ section: ownLoad.section, program: ownLoad.program, entries: ownLoad.entries.length }]
-        : sectionOptions(timetables, activeTerm),
-    [timetables, activeTerm, ownLoad],
+        : selfCourses.length
+          ? [{ section: profile.section || 'My enrollment', program: profile.program || '', entries: 0 }]
+          : sectionOptions(timetables, activeTerm),
+    [timetables, activeTerm, ownLoad, selfCourses, profile.section, profile.program],
   );
 
   /** Default to the student's own section; the picker covers a blank profile. */
@@ -134,8 +154,9 @@ export const ScheduleView = () => {
     if (sectionChoice) return sectionChoice;
     const mine = profile.section ? lock(profile.section) : '';
     const match = sections.find((section) => lock(section.section) === mine);
-    return match?.section ?? '';
-  }, [sectionChoice, sections, profile.section]);
+    if (match) return match.section;
+    return selfCourses.length ? (sections[0]?.section ?? '') : '';
+  }, [sectionChoice, sections, profile.section, selfCourses.length]);
 
   const record: TimetableItem | null = useMemo(
     () => ownLoad ?? pickTimetable(timetables, activeTerm, activeSection),
@@ -159,6 +180,12 @@ export const ScheduleView = () => {
   const conflicts = useMemo(() => findConflicts(entries), [entries]);
   const units = useMemo(() => totalUnitsOf(entries), [entries]);
   const subjects = useMemo(() => subjectsOf(entries), [entries]);
+  /** The load carries its units before any week is set. */
+  const enrolledUnits = useMemo(
+    () => selfCourses.reduce((total, course) => total + (Number(course.units) || 0), 0),
+    [selfCourses],
+  );
+  const shownUnits = units.units > 0 ? units.units : enrolledUnits;
 
   const today = (DAYS as readonly string[]).includes(todayName()) ? (todayName() as Day) : null;
   const todayEntries = today ? meetingsFor(entries, today) : [];
@@ -175,8 +202,9 @@ export const ScheduleView = () => {
           <span className="icon-chip h-7 w-7 bg-[#eaedff] text-[#00236f]">
             <Lock className="h-3.5 w-3.5" />
           </span>
-          Official schedules are locked and verified by the University Registrar. Modifications require Add/Drop
-          clearance.
+          {selfCourses.length
+            ? 'Your classes come from the schedules the registrar’s office opened. Drop a course from Enrolled Courses; the change is recorded.'
+            : 'Official schedules are locked and verified by the University Registrar. Modifications require Add/Drop clearance.'}
         </p>
         <p className="text-[11px] font-semibold text-slate-400">
           {syncedAt ? `Last synchronized: ${relativeTime(syncedAt)}` : 'Waiting for the first publication'}
@@ -213,10 +241,10 @@ export const ScheduleView = () => {
           <div className="flex flex-col items-end gap-2">
             <span className="rounded-2xl bg-[#eaedff] px-3.5 py-2 text-right">
               <span className="block text-lg font-bold leading-none text-[#00236f]">
-                {units.missing && !units.known ? '—' : units.units.toFixed(1)}
+                {shownUnits > 0 ? shownUnits.toFixed(1) : '—'}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wide text-[#0058be]">
-                {units.missing ? 'Units published' : 'Enrolled units'}
+                {shownUnits > 0 ? 'Enrolled units' : 'Units published'}
               </span>
             </span>
             <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -258,7 +286,8 @@ export const ScheduleView = () => {
             {sections.map((section) => (
               <option key={section.section} value={section.section}>
                 {section.section}
-                {section.program ? ` — ${section.program}` : ''} ({section.entries})
+                {section.program ? ` — ${section.program}` : ''}
+                {section.entries ? ` (${section.entries})` : ''}
               </option>
             ))}
           </select>
