@@ -141,10 +141,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           <div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>{role.toUpperCase()} PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div>
         </div>
         <span className="dashboard-role-badge" style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>{role.toUpperCase()}</span>
-        {routeCrumb && <span className="dashboard-route-crumb" style={{ color: '#8a94a6', fontSize: 13 }}>{routeCrumb}</span>}
-        {(role === 'admin' || role === 'teacher') && <span className="dashboard-academic-period">{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
+        {routeCrumb && role !== 'teacher' && <span className="dashboard-route-crumb" style={{ color: '#8a94a6', fontSize: 13 }}>{routeCrumb}</span>}
+        {role === 'teacher' && <div className="teacher-topbar-search"><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} /></div>}
+        {(role === 'admin' || role === 'teacher') && <span className="dashboard-academic-period">{role === 'teacher' && <CalendarDays aria-hidden="true" />}{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
         <div className="dashboard-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} />
+          {role !== 'teacher' && <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} />}
           <NotificationCenter role={role} onNavigate={onNavigate} />
           {role === 'teacher' ? (
             <div className="teacher-profile-menu" ref={profileMenuRef}>
