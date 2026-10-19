@@ -110,7 +110,7 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
               <p className="text-sm font-semibold text-slate-700">Nothing is on your load yet.</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">
                 {availableCourses.length
-                  ? 'Pick a course schedule above — it joins your study load straight away, and the registrar sees the same record.'
+                  ? 'Pick a course schedule above — it joins your study load straight away and is filed against your student number.'
                   : store.profile.section
                     ? `Nothing is open for ${store.profile.section} right now, and the registrar has not published a load for it either.`
                     : 'The registrar publishes each section’s official load, and the courses the school opens for the term appear above as they are opened.'}
@@ -294,7 +294,7 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
 
       <p className="text-[11px] font-medium leading-relaxed text-slate-400">
         {loadIsSelfEnrolled
-          ? `These are the subjects you enrolled in yourself${catalogTerm ? ` for ${catalogTerm.label}` : ''}. Dropping one takes it off your load, and the registrar's office reads the same record.`
+          ? `These are the subjects you enrolled in yourself${catalogTerm ? ` for ${catalogTerm.label}` : ''}. Dropping one takes it off your load; the school keeps the record under your student number.`
           : published
             ? `Course enrollment reflects the registrar's published load for ${myTimetable?.section ?? 'your section'}${
                 myTimetable ? ` (${termLabel(myTimetable)})` : ''
