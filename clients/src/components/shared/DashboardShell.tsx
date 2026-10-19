@@ -118,19 +118,22 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           <button type="button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? 'Open navigation' : 'Close navigation'} aria-expanded={!collapsed}>
             <Menu aria-hidden="true" />
           </button>
-          <img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} />
-          <div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>{role.toUpperCase()} PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div>
+          {role !== 'teacher' && <>
+            <img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College crest" width={38} height={38} />
+            <div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>{role.toUpperCase()} PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div>
+          </>}
         </div>
         <span className="dashboard-role-badge" style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>{role.toUpperCase()}</span>
         {routeCrumb && <span className="dashboard-route-crumb" style={{ color: '#8a94a6', fontSize: 13 }}>{routeCrumb}</span>}
-        {role === 'teacher' && <div className="teacher-topbar-search"><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} triggerLabel="Search students, classes, grades..." /></div>}
-        {(role === 'admin' || role === 'teacher') && <span className="dashboard-academic-period">{role === 'teacher' && <CalendarDays aria-hidden="true" />}{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
+        {role === 'admin' && <span className="dashboard-academic-period">{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
         <div className="dashboard-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} />
-          <NotificationCenter role={role} onNavigate={onNavigate} />
-          <button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button>
+          {role !== 'teacher' && <>
+            <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} />
+            <NotificationCenter role={role} onNavigate={onNavigate} />
+            <button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button>
+          </>}
           <span key={photoVersion}><PhotoAvatar userId={photoUserId} name={userName} size={36} /></span>
-          <button type="button" className="dashboard-logout" onClick={onLogout} aria-label="Log out" title="Log out"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>
+          {role !== 'teacher' && <button type="button" className="dashboard-logout" onClick={onLogout} aria-label="Log out" title="Log out"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>}
         </div>
       </header>
       <div style={{ display: 'flex' }}>
