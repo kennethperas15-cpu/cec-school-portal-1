@@ -71,6 +71,32 @@ Credential email needs `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` an
 `EMAIL_FROM` set where the API runs. Without them approval still works; the
 password is returned to the registrar instead of being mailed.
 
+## Picking courses from the registrar's offerings
+
+Opening a course is the registrar's decision, so a student does not wait on a
+second approval to take it:
+
+1. In **Course Management** the registrar opens the course for the term and, when
+   the week is settled, sets its **weekly meetings** (day, start time, end time,
+   room). Times are the school's own clock. A course with no meeting is still
+   offered — students see *Schedule to be announced*.
+2. The student's **Enrolled Courses** screen lists the courses open in the live
+   term with the schedule each one runs (`GET /portal/course-catalog`, student
+   role only), and marks the ones the student already holds.
+3. Clicking *Enroll in this schedule* (`POST /portal/course-catalog/enroll`) writes
+   the `enrollments` row for the term and the `enrollment_items` row for the course
+   (status `approved`), and the audit trail records `Course enrolled` against the
+   course code. Repeating the call changes nothing.
+4. That course then *is* part of the student's class schedule: the week is built
+   from the course meetings and marked as the student's own load ("published by
+   you"). The registrar's published section timetable stays the fallback for a
+   student enrolled by the office.
+5. *Drop* (`DELETE /portal/course-catalog/enroll/:courseId`) removes the item and,
+   when the load empties, the enrollment row; the audit trail records
+   `Course dropped`.
+6. Closing a course hides it from the catalog but keeps the students already in it;
+   removing a course still requires clearing its meetings first.
+
 ---
 
 ## What each role can do
@@ -185,6 +211,9 @@ the Pages build calls the Render API directly (see `clients/.env.production`).
 
 ## Known gaps
 
+* The console does not show a per-course enrollment count yet: a student's picks
+  live in `enrollments`/`enrollment_items` and in the audit trail, not on the
+  Course Management row.
 * The `departments` table is empty, so faculty cannot be assigned to a department
   yet, and buildings/rooms are free text rather than a register.
 * The financial screens are not part of the administration console: the EDP office

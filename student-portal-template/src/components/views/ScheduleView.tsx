@@ -78,14 +78,31 @@ const ListByDay = ({ entries, today }: { entries: ScheduleEntry[]; today: Day | 
 
 export const ScheduleView = () => {
   const store = useStore();
-  const { timetables, period, profile, timetableLoading, timetableError } = store;
+  const { timetables, period, profile, timetableLoading, timetableError, myTimetable, loadIsSelfEnrolled } = store;
 
   const [sectionChoice, setSectionChoice] = useState('');
   const [termChoice, setTermChoice] = useState('');
   const [mode, setMode] = useState('all');
   const [view, setView] = useState<ViewMode>('weekly');
 
-  const terms = useMemo(() => termOptions(timetables), [timetables]);
+  /**
+   * A student who enrolled in courses through the portal holds their own load —
+   * those courses, with the meetings they run — so that is the record here. The
+   * registrar's published timetable for a section is the alternative for a
+   * student who was enrolled by the office instead.
+   */
+  const ownLoad = loadIsSelfEnrolled ? myTimetable : null;
+
+  const terms = useMemo(() => {
+    const published = termOptions(timetables);
+    if (!ownLoad) return published;
+    const already = published.some(
+      (term) => lock(term.schoolYear) === lock(ownLoad.schoolYear) && lock(term.semester) === lock(ownLoad.semester),
+    );
+    return already
+      ? published
+      : [{ schoolYear: ownLoad.schoolYear, semester: ownLoad.semester, label: termLabel(ownLoad) }, ...published];
+  }, [timetables, ownLoad]);
 
   /* The live academic period wins unless the student picked another term. */
   const activeTerm = useMemo(() => {
@@ -103,7 +120,13 @@ export const ScheduleView = () => {
     return terms[0] ?? null;
   }, [termChoice, terms, period]);
 
-  const sections = useMemo(() => sectionOptions(timetables, activeTerm), [timetables, activeTerm]);
+  const sections = useMemo(
+    () =>
+      ownLoad
+        ? [{ section: ownLoad.section, program: ownLoad.program, entries: ownLoad.entries.length }]
+        : sectionOptions(timetables, activeTerm),
+    [timetables, activeTerm, ownLoad],
+  );
 
   /** Default to the student's own section; the picker covers a blank profile. */
   const activeSection = useMemo(() => {
@@ -114,8 +137,8 @@ export const ScheduleView = () => {
   }, [sectionChoice, sections, profile.section]);
 
   const record: TimetableItem | null = useMemo(
-    () => pickTimetable(timetables, activeTerm, activeSection),
-    [timetables, activeTerm, activeSection],
+    () => ownLoad ?? pickTimetable(timetables, activeTerm, activeSection),
+    [ownLoad, timetables, activeTerm, activeSection],
   );
 
   const modes = useMemo(
@@ -170,7 +193,11 @@ export const ScheduleView = () => {
             </h1>
             <p className="mt-1.5 text-[13px] font-medium text-slate-500">
               {record
-                ? `Published timetable for ${termLabel(record)} • Section ${record.section}`
+                ? loadIsSelfEnrolled
+                  ? `Your own enrolled load for ${termLabel(record)} • ${record.entries.length} meeting${
+                      record.entries.length === 1 ? '' : 's'
+                    } a week`
+                  : `Published timetable for ${termLabel(record)} • Section ${record.section}`
                 : 'Your timetable is published by the registrar — nothing has been published for you yet.'}
             </p>
             {store.user?.schoolId && (

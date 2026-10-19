@@ -187,6 +187,55 @@ export const cecReceipts = () => get<PortalItem[]>('/api/portal/items?portal=stu
 export const cecScheduleItems = () =>
   get<PortalItem[]>('/api/portal/items?portal=student&module=schedule');
 
+/* ------------------------- Course offerings (enrollment) ------------------- */
+
+/** One weekly meeting of an offering, exactly as the registrar entered it. */
+export type CatalogMeeting = { day: string; dayOfWeek: number; start: string; end: string; room: string };
+
+/**
+ * A course the school has opened for the live term. `enrolled` says whether the
+ * signed-in student already holds it, so one answer drives both halves of the
+ * enrollment page: what they may pick and what they hold.
+ */
+export type CatalogCourse = {
+  id: number;
+  code: string;
+  title: string;
+  subjectCode: string;
+  units: number | null;
+  description: string | null;
+  instructor: string;
+  status: string;
+  /** Still open for enrollment — a closed course can be held but not picked. */
+  open: boolean;
+  meetings: CatalogMeeting[];
+  enrolled: boolean;
+};
+
+export type CourseCatalog = {
+  term: { schoolYear: string; semester: number; label: string };
+  courses: CatalogCourse[];
+};
+
+/**
+ * The offerings the registrar opened for the live term, each with the weekly
+ * meetings it runs — the course schedules a student picks from. Authenticated:
+ * the answer also marks which of them this student already holds.
+ */
+export const cecCourseCatalog = (token: string) => get<CourseCatalog>('/api/portal/course-catalog', token);
+
+/** Take one of those offerings; the server records a real enrollment for it. */
+export const cecEnrollCourse = (token: string, courseId: number) =>
+  post<{ courseId: number; enrolled: boolean }>('/api/portal/course-catalog/enroll', { courseId }, token);
+
+/** Drop one of them again. */
+export const cecDropCourse = (token: string, courseId: number) =>
+  request<{ courseId: number; enrolled: boolean }>(
+    `/api/portal/course-catalog/enroll/${courseId}`,
+    { method: 'DELETE' },
+    token,
+  );
+
 /* ---------------------------- Academic records ---------------------------- */
 
 /**

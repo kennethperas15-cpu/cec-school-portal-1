@@ -72,6 +72,9 @@ export type AdminTeacher = {
   department_name: string | null;
 };
 
+/** One weekly meeting of a course: the day (1 = Monday … 6 = Saturday), the times and the room. */
+export type AdminMeeting = { dayOfWeek: number; startTime: string; endTime: string; room: string };
+
 export type AdminCourse = {
   id: number;
   code: string;
@@ -86,6 +89,8 @@ export type AdminCourse = {
   teacher_first_name: string | null;
   teacher_last_name: string | null;
   teacher_email: string | null;
+  /** The weekly meetings students see next to this course; empty when none are set. */
+  meetings: AdminMeeting[];
 };
 
 export type AdminSection = { id: number; name: string; school_year: string | null; year_level: number | null };
@@ -223,10 +228,18 @@ export const adminApi = {
     semester: number;
     status?: string;
     teacherId?: string;
+    /** A weekly meeting as the registrar enters it; `[]` clears the schedule. */
+    meetings?: { dayOfWeek: number; startTime: string; endTime: string; room?: string }[];
   }): Promise<{ id: number }> => (await api.post('/admin/courses', input)).data?.data,
   updateCourse: async (
     id: number,
-    patch: { status?: string; teacherId?: string; subjectName?: string; units?: number },
+    patch: {
+      status?: string;
+      teacherId?: string;
+      subjectName?: string;
+      units?: number;
+      meetings?: { dayOfWeek: number; startTime: string; endTime: string; room?: string }[];
+    },
   ) => (await api.put(`/admin/courses/${id}`, patch)).data,
   deleteCourse: async (id: number) => (await api.delete(`/admin/courses/${id}`)).data,
   updateConfig: async (key: string, patch: { value: string; isPublic?: boolean }) =>

@@ -12,21 +12,28 @@ import type {
   AttendanceRecord,
   Bulletin,
   Course,
+  Day,
   GradeEntry,
   Profile,
   ScheduleSlot,
   Task,
 } from './types';
+import { DAYS } from './types';
 import { EMPTY_APP_STATE, type AppState } from './data/state';
 import {
   cecAcademicPeriod,
   cecAnnouncements,
+  cecCourseCatalog,
+  cecDropCourse,
+  cecEnrollCourse,
   cecLogout,
   cecMe,
   cecRefresh,
   type AcademicPeriod,
+  type CatalogCourse,
   type CecSession,
   type CecUser,
+  type CourseCatalog,
 } from './lib/api';
 import {
   clearCachedUser,
@@ -39,7 +46,16 @@ import {
   writeTokens,
 } from './lib/session';
 import { relativeTime, toMinutes } from './lib/metrics';
-import { fetchTimetables, pickTimetable, subjectsOf, toSlots, type TimetableItem } from './lib/schedule';
+import {
+  fetchTimetables,
+  hoursForMeetings,
+  meetingText,
+  pickTimetable,
+  subjectsOf,
+  toSlots,
+  type ScheduleEntry,
+  type TimetableItem,
+} from './lib/schedule';
 import {
   asAttendanceRecords,
   fetchAttendanceDocs,
@@ -103,6 +119,24 @@ type Store = AppState & {
   hasOfficialRecords: boolean;
   /** The official attendance in the dashboard's own shape, for shared widgets. */
   officialAttendance: AttendanceRecord[];
+
+  /* --- course offerings, and the load the student builds from them --- */
+  /** Every offering for the live term, with whether this student holds it. */
+  catalog: CatalogCourse[];
+  catalogTerm: CourseCatalog['term'] | null;
+  catalogLoading: boolean;
+  catalogError: string;
+  refreshCatalog: () => Promise<void>;
+  /** Offerings still open to this student and not yet taken. */
+  availableCourses: CatalogCourse[];
+  /** The subjects the student enrolled in themselves, in the course-list shape. */
+  selfCourses: Course[];
+  /** True when the load shown is the student's own enrollment, not a section's. */
+  loadIsSelfEnrolled: boolean;
+  /** The course id being enrolled in or dropped right now. */
+  enrollingId: number | null;
+  enrollCourse: (courseId: number) => Promise<void>;
+  dropCourse: (courseId: number) => Promise<void>;
 
   /* --- local academic records --- */
   setProfile: (patch: Partial<Profile>) => void;
@@ -188,6 +222,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [attendanceDocs, setAttendanceDocs] = useState<AttendanceDoc[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [recordsError, setRecordsError] = useState('');
+  const [catalog, setCatalog] = useState<CatalogCourse[]>([]);
+  const [catalogTerm, setCatalogTerm] = useState<CourseCatalog['term'] | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
+  const [enrollingId, setEnrollingId] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -349,13 +388,128 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     void refreshRecords();
   }, [refreshRecords, session]);
 
+  /**
+   * The courses the school has opened for the live term — the offerings a student
+   * builds their load from. Read with the shared access token, so the same answer
+   * says which of them this student already holds. Signed out there is nothing to
+   * read, and the page says so rather than showing an invented catalog.
+   */
+  const refreshCatalog = useCallback(async () => {
+    const token = readTokens()?.accessToken;
+    if (!token) {
+      setCatalog([]);
+      setCatalogTerm(null);
+      setCatalogError('');
+      setCatalogLoading(false);
+      return;
+    }
+    setCatalogLoading(true);
+    const result = await cecCourseCatalog(token);
+    setCatalogLoading(false);
+    if (!result.ok) {
+      setCatalogError(result.message);
+      return;
+    }
+    setCatalogError('');
+    setCatalog(result.data.courses);
+    setCatalogTerm(result.data.term);
+  }, []);
+
+  useEffect(() => {
+    void refreshCatalog();
+  }, [refreshCatalog, session]);
+
+  /** Taking a course, and putting it back, are both the student's own act. */
+  const enrollCourse = useCallback(
+    async (courseId: number) => {
+      const token = readTokens()?.accessToken;
+      if (!token) return;
+      setEnrollingId(courseId);
+      const result = await cecEnrollCourse(token, courseId);
+      setEnrollingId(null);
+      if (!result.ok) {
+        notify(result.message, 'error');
+        return;
+      }
+      notify('Course added to your study load');
+      await refreshCatalog();
+    },
+    [notify, refreshCatalog],
+  );
+
+  const dropCourse = useCallback(
+    async (courseId: number) => {
+      const token = readTokens()?.accessToken;
+      if (!token) return;
+      setEnrollingId(courseId);
+      const result = await cecDropCourse(token, courseId);
+      setEnrollingId(null);
+      if (!result.ok) {
+        notify(result.message, 'error');
+        return;
+      }
+      notify('Course dropped from your study load', 'info');
+      await refreshCatalog();
+    },
+    [notify, refreshCatalog],
+  );
+
   /* ------------------------------- actions ----------------------------- */
 
   const store = useMemo<Store>(() => {
     const periodLabel = period ? `AY ${period.schoolYear} • ${period.semester}` : '';
     const shortYear = period ? `AY ${period.schoolYear}` : '';
-    // The student's own section decides which published document is theirs.
-    const myTimetable = pickTimetable(timetables, period, state.profile.section);
+
+    /**
+     * The student's own enrollment comes first: the courses they picked in the
+     * portal, with the meetings those courses run. Only when they hold none does
+     * the registrar's published timetable for their section drive the load.
+     */
+    const enrolledCatalog = catalog.filter((course) => course.enrolled);
+    const selfCourses: Course[] = enrolledCatalog.map((course) => ({
+      id: `enrolled-${course.id}`,
+      code: course.code,
+      title: course.title,
+      instructor: course.instructor,
+      section: state.profile.section,
+      units: course.units ?? 0,
+      hours: hoursForMeetings(course.meetings),
+      kind: '',
+      room: [...new Set(course.meetings.map((meeting) => meeting.room).filter(Boolean))].join(', '),
+      schedule: meetingText(course.meetings.map((meeting) => ({ ...meeting, day: meeting.day as Day }))),
+    }));
+    const selfEntries: ScheduleEntry[] = enrolledCatalog.flatMap((course) =>
+      course.meetings
+        .filter((meeting) => (DAYS as readonly string[]).includes(meeting.day))
+        .map((meeting, index) => ({
+          id: `enrolled-${course.id}-${index}`,
+          code: course.code,
+          title: course.title,
+          units: course.units,
+          kind: '',
+          day: meeting.day as Day,
+          start: meeting.start,
+          end: meeting.end,
+          room: meeting.room,
+          instructor: course.instructor,
+        })),
+    );
+    const sectionTimetable = pickTimetable(timetables, period, state.profile.section);
+    const myTimetable: TimetableItem | null =
+      selfEntries.length && period
+        ? {
+            schoolYear: period.schoolYear,
+            semester: period.semester,
+            section: state.profile.section || 'My enrollment',
+            program: state.profile.program || '',
+            note: '',
+            entries: selfEntries,
+            publishedBy: '',
+            publishedByName: 'you',
+            publishedAt: '',
+            itemId: 'self-enrollment',
+          }
+        : sectionTimetable;
     const mySlots = myTimetable ? toSlots(myTimetable.entries, myTimetable.section) : [];
     // Same published meetings, shaped like the local course list so the enrolled
     // courses page and the dashboard counters report the registrar's load.
@@ -421,6 +575,18 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       refreshRecords,
       hasOfficialRecords: gradeRecords.length > 0 || attendanceDocs.length > 0,
       officialAttendance: asAttendanceRecords(attendanceDocs),
+
+      catalog,
+      catalogTerm,
+      catalogLoading,
+      catalogError,
+      refreshCatalog,
+      availableCourses: catalog.filter((course) => course.open && !course.enrolled),
+      selfCourses,
+      loadIsSelfEnrolled: selfEntries.length > 0,
+      enrollingId,
+      enrollCourse,
+      dropCourse,
 
       setProfile: (patch) => setState((s) => ({ ...s, profile: { ...s.profile, ...patch } })),
 
@@ -503,6 +669,14 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     recordsLoading,
     recordsError,
     refreshRecords,
+    catalog,
+    catalogTerm,
+    catalogLoading,
+    catalogError,
+    refreshCatalog,
+    enrollingId,
+    enrollCourse,
+    dropCourse,
     cancelRestore,
   ]);
 

@@ -231,7 +231,7 @@ export type SubjectRow = {
 
 const shortDay = (day: Day): string => day.slice(0, 3);
 
-const groupMeetings = (meetings: ScheduleEntry[]): string => {
+const groupMeetings = (meetings: { day: Day; start: string; end: string }[]): string => {
   const groups = new Map<string, Day[]>();
   for (const meeting of meetings) {
     const key = `${meeting.start}-${meeting.end}`;
@@ -246,6 +246,13 @@ const groupMeetings = (meetings: ScheduleEntry[]): string => {
     })
     .join('  |  ');
 };
+
+/** The same grouping, for meetings that are not a published document (own load). */
+export const meetingText = (meetings: { day: Day; start: string; end: string }[]): string => groupMeetings(meetings);
+
+/** Weekly contact hours across a set of meetings. */
+export const hoursForMeetings = (meetings: { start: string; end: string }[]): number =>
+  Math.round(meetings.reduce((sum, meeting) => sum + (toMinutes(meeting.end) - toMinutes(meeting.start)) / 60, 0) * 10) / 10;
 
 /** One row per subject, the way the registrar's course list reads. */
 export const subjectsOf = (entries: ScheduleEntry[]): SubjectRow[] => {

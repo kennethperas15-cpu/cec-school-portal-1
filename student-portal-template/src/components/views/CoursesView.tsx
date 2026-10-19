@@ -1,32 +1,62 @@
-import { BookOpenCheck, Building2, CalendarRange, GraduationCap, Layers, Loader2, Printer, RefreshCw, Search, UserRound } from 'lucide-react';
+import { BookOpenCheck, Building2, CalendarPlus, CalendarRange, GraduationCap, Layers, Loader2, Printer, RefreshCw, Search, Trash2, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useStore } from '../../store';
 import { relativeTime } from '../../lib/metrics';
 import { key, courseAttendance, courseMarks, type CourseAttendance, type CourseMarks } from '../../lib/records';
-import { weekHours, termLabel } from '../../lib/schedule';
+import { meetingText, weekHours, termLabel } from '../../lib/schedule';
+import type { CatalogCourse } from '../../lib/api';
+import type { Day } from '../../types';
 
 /**
  * Enrolled Courses & Academic Curriculum.
  *
- * The matriculation record is the registrar's published load for this student's
- * section — the same document the Class Schedule page renders. Each subject then
- * carries the faculty member's posted marks and attendance where they exist, and
- * says so plainly when they do not. Nothing is pre-seeded.
+ * Two halves, both real. The first is what the school has opened for the live
+ * term — the registrar's offerings, each with the weekly meetings it runs — and
+ * a student takes one by clicking it, which records an enrollment on the server.
+ * The second is the load that follows: the student's own enrolled subjects, each
+ * carrying the faculty member's posted marks and attendance where they exist, and
+ * saying so plainly when they do not. A student who enrolled through the
+ * registrar instead still sees the published load for their section, and nothing
+ * is pre-seeded either way.
  */
 
 const CARD_KINDS = ['Lecture', 'Laboratory', 'Studio', 'Seminar', 'Online'];
 
 const tokensOf = (kind: string): string[] => (kind ?? '').split(/&|,|\//).map((part) => part.trim()).filter(Boolean);
 
+/** "Mon / Wed • 08:00 AM – 09:00 AM • Ground Floor 204" for one offering. */
+const slotsOf = (course: CatalogCourse): string => {
+  if (!course.meetings.length) return 'Schedule to be announced';
+  const times = meetingText(course.meetings.map((meeting) => ({ ...meeting, day: meeting.day as Day })));
+  const rooms = [...new Set(course.meetings.map((meeting) => meeting.room).filter(Boolean))].join(', ');
+  return rooms ? `${times} • ${rooms}` : times;
+};
+
 export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
   const store = useStore();
-  const { publishedCourses, gradeRecords, attendanceDocs, timetableLoading, recordsLoading, myTimetable } = store;
+  const {
+    publishedCourses,
+    gradeRecords,
+    attendanceDocs,
+    timetableLoading,
+    recordsLoading,
+    myTimetable,
+    selfCourses,
+    availableCourses,
+    catalogTerm,
+    catalogLoading,
+    catalogError,
+    enrollingId,
+    loadIsSelfEnrolled,
+  } = store;
 
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState('all');
 
   const published = publishedCourses.length > 0;
-  const courses = published ? publishedCourses : store.courses;
+  // The student's own enrollment wins; the registrar's published load is the fallback.
+  const courses = selfCourses.length ? selfCourses : published ? publishedCourses : store.courses;
+  const offered = useMemo(() => new Map(store.catalog.map((course) => [key(course.code), course])), [store.catalog]);
 
   const marks = useMemo(() => courseMarks(gradeRecords, courses), [gradeRecords, courses]);
   const attendance = useMemo(() => courseAttendance(attendanceDocs, courses), [attendanceDocs, courses]);
@@ -58,24 +88,32 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
 
   const syncedAt = myTimetable?.updatedAt ?? myTimetable?.publishedAt ?? '';
 
-  if (!published && !courses.length) {
+  if (!courses.length) {
     return (
       <div className="space-y-5">
-        <Header published={false} />
+        <Header published={false} self={loadIsSelfEnrolled} />
+        <Available
+          courses={availableCourses}
+          term={catalogTerm?.label}
+          loading={catalogLoading}
+          error={catalogError}
+          busyId={enrollingId}
+          onEnroll={(id) => void store.enrollCourse(id)}
+          onRefresh={() => void store.refreshCatalog()}
+        />
         <section className="card p-6">
           <div className="dashed-empty">
             <span className="icon-chip bg-[#eaedff] text-[#00236f]">
               <BookOpenCheck className="h-5 w-5" />
             </span>
             <div className="max-w-md text-center">
-              <p className="text-sm font-semibold text-slate-700">
-                {store.profile.section
-                  ? `Nothing is published for ${store.profile.section} yet.`
-                  : 'Your enrolled subjects appear here once the registrar publishes your load.'}
-              </p>
+              <p className="text-sm font-semibold text-slate-700">Nothing is on your load yet.</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                The registrar's office publishes each section's official matriculation record. Keep your program, year and
-                section up to date in Settings, or record a course locally while you wait.
+                {availableCourses.length
+                  ? 'Pick a course schedule above — it joins your study load straight away, and the registrar sees the same record.'
+                  : store.profile.section
+                    ? `Nothing is open for ${store.profile.section} right now, and the registrar has not published a load for it either.`
+                    : 'The registrar publishes each section’s official load, and the courses the school opens for the term appear above as they are opened.'}
               </p>
             </div>
             <button type="button" className="btn-soft" onClick={onAdd}>
@@ -89,7 +127,17 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
 
   return (
     <div className="space-y-5">
-      <Header published={published} />
+      <Header published={published} self={loadIsSelfEnrolled} />
+
+      <Available
+        courses={availableCourses}
+        term={catalogTerm?.label}
+        loading={catalogLoading}
+        error={catalogError}
+        busyId={enrollingId}
+        onEnroll={(id) => void store.enrollCourse(id)}
+        onRefresh={() => void store.refreshCatalog()}
+      />
 
       {/* Active enrollment strip */}
       <section className="card p-5">
@@ -182,6 +230,7 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
         {visible.map((course) => {
           const mark = marksByCode.get(key(course.code));
           const log = attendanceByCode.get(key(course.code));
+          const offering = offered.get(key(course.code));
           return (
             <article key={course.id} className="card p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -192,11 +241,26 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
                     <span className="chip border border-line bg-white text-slate-500">
                       {course.units ? `${course.units.toFixed(1)} units` : 'Units not published'}
                     </span>
+                    {offering?.enrolled ? <span className="chip bg-[#e8f7f4] text-[#0f5f56]">Enrolled by you</span> : null}
                   </div>
                 </div>
-                <span className="icon-chip h-9 w-9 bg-[#eaedff] text-[#00236f]">
-                  <GraduationCap className="h-4 w-4" />
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="icon-chip h-9 w-9 bg-[#eaedff] text-[#00236f]">
+                    <GraduationCap className="h-4 w-4" />
+                  </span>
+                  {offering?.enrolled ? (
+                    <button
+                      type="button"
+                      className="btn-ghost px-2.5 py-1 text-[11px]"
+                      disabled={enrollingId === offering.id}
+                      onClick={() => void store.dropCourse(offering.id)}
+                      aria-label={`Drop ${course.code}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {enrollingId === offering.id ? 'Dropping…' : 'Drop'}
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
               <h3 className="mt-3 text-[15px] font-bold leading-snug text-slate-800">{course.title || course.code}</h3>
@@ -229,11 +293,13 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
       </div>
 
       <p className="text-[11px] font-medium leading-relaxed text-slate-400">
-        {published
-          ? `Course enrollment reflects the registrar's published load for ${myTimetable?.section ?? 'your section'}${
-              myTimetable ? ` (${termLabel(myTimetable)})` : ''
-            }. Grades and attendance are posted by your instructors; raise any discrepancy with the registrar's office.`
-          : 'These courses are recorded locally in this browser. The registrar has not published an official load for your section yet.'}
+        {loadIsSelfEnrolled
+          ? `These are the subjects you enrolled in yourself${catalogTerm ? ` for ${catalogTerm.label}` : ''}. Dropping one takes it off your load, and the registrar's office reads the same record.`
+          : published
+            ? `Course enrollment reflects the registrar's published load for ${myTimetable?.section ?? 'your section'}${
+                myTimetable ? ` (${termLabel(myTimetable)})` : ''
+              }. Grades and attendance are posted by your instructors; raise any discrepancy with the registrar's office.`
+            : 'These courses are recorded locally in this browser. The registrar has not published an official load for your section yet.'}
       </p>
     </div>
   );
@@ -241,7 +307,98 @@ export const CoursesView = ({ onAdd }: { onAdd: () => void }) => {
 
 /* ------------------------------- sub-pieces ------------------------------- */
 
-const Header = ({ published }: { published: boolean }) => (
+/**
+ * The courses the registrar has opened for the live term, with the schedule each
+ * one runs. Taking one records a real enrollment — there is no waiting list and
+ * no invented approval step, because opening the course was the registrar's
+ * decision in the first place.
+ */
+const Available = ({
+  courses,
+  term,
+  loading,
+  error,
+  busyId,
+  onEnroll,
+  onRefresh,
+}: {
+  courses: CatalogCourse[];
+  term?: string;
+  loading: boolean;
+  error: string;
+  busyId: number | null;
+  onEnroll: (courseId: number) => void;
+  onRefresh: () => void;
+}) => (
+  <section className="card p-5">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <span className="chip bg-[#e8f2ff] text-[#0b4a8f]">
+          <CalendarPlus className="h-3.5 w-3.5" />
+          Open for enrollment
+        </span>
+        <h2 className="mt-2 font-serif text-xl font-semibold tracking-tight text-slate-900">Course schedules you can take</h2>
+        <p className="mt-1 text-[12px] font-medium text-slate-500">
+          {term ? `Opened by the registrar's office for ${term}.` : 'Opened by the registrar’s office for this term.'} Click the
+          schedule you want — it joins your study load immediately.
+        </p>
+      </div>
+      <button type="button" className="btn-soft px-3 py-2" onClick={onRefresh} aria-label="Reload the open courses">
+        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+      </button>
+    </div>
+
+    {error ? <p className="mt-3 text-[12px] font-semibold text-slate-500">{error}</p> : null}
+
+    {courses.length === 0 ? (
+      <p className="mt-4 text-[12px] font-medium text-slate-400">
+        {loading
+          ? 'Reading the courses the school has opened…'
+          : 'Nothing is open for enrollment right now. Offerings appear here as the registrar’s office opens them.'}
+      </p>
+    ) : (
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {courses.map((course) => (
+          <article key={course.id} className="rounded-2xl border border-line bg-[#fbfdff] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="font-serif text-lg font-bold tracking-tight text-slate-900">{course.code}</p>
+                <h3 className="text-[13px] font-semibold leading-snug text-slate-700">{course.title}</h3>
+              </div>
+              <span className="chip border border-line bg-white text-slate-500">
+                {course.units ? `${course.units.toFixed(1)} units` : 'Units not set'}
+              </span>
+            </div>
+
+            <p className="mt-2 flex items-start gap-1.5 text-[12px] font-medium text-slate-500">
+              <CalendarRange className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span>{slotsOf(course)}</span>
+            </p>
+            <p className="mt-1 flex items-center gap-1.5 text-[12px] font-medium text-slate-500">
+              <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span>{course.instructor || 'Instructor to be announced'}</span>
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn-primary px-3 py-2 text-[12px]"
+                disabled={busyId === course.id}
+                onClick={() => onEnroll(course.id)}
+                aria-label={`Enroll in ${course.code}`}
+              >
+                {busyId === course.id ? 'Enrolling…' : 'Enroll in this schedule'}
+              </button>
+              {course.description ? <span className="text-[11px] font-medium text-slate-400">{course.description}</span> : null}
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+  </section>
+);
+
+const Header = ({ published, self }: { published: boolean; self: boolean }) => (
   <section className="card p-5">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
@@ -250,9 +407,11 @@ const Header = ({ published }: { published: boolean }) => (
           Enrolled Courses &amp; Academic Curriculum
         </h1>
         <p className="mt-1.5 text-[13px] font-medium text-slate-500">
-          {published
-            ? 'Official matriculation record • published by the registrar’s office'
-            : 'Your own record in this browser • the registrar has not published your load yet'}
+          {self
+            ? 'Your own enrolled load • recorded from the courses the school opened'
+            : published
+              ? 'Official matriculation record • published by the registrar’s office'
+              : 'Your own record in this browser • the registrar has not published your load yet'}
         </p>
       </div>
       <button type="button" className="btn-soft" onClick={() => window.print()}>

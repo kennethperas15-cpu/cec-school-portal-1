@@ -42,6 +42,69 @@ const safeCount = async (statement: string, warnings: string[], replacements: un
   }
 };
 
+/* ---------------------------------------------------------------------------
+ * Weekly meetings.
+ *
+ * A course's schedule is the set of weekly meetings the registrar enters with
+ * it: one `schedules` row per day, numbered the ISO way (1 = Monday … 6 =
+ * Saturday), pointing at a `rooms` row created on first use so the same
+ * "Tech Hall 204" is shared by every course that meets there. Students pick
+ * their load from these offerings, so the meetings are what the portal shows
+ * them next to each subject.
+ * ------------------------------------------------------------------------- */
+
+type Meeting = { dayOfWeek: number; startTime: string; endTime: string; room: string };
+
+/** Reads meetings off a request body: `[]` clears them, undefined leaves them. */
+const readMeetings = (value: unknown): { meetings: Meeting[] } | { error: string } => {
+  if (!Array.isArray(value)) return { error: 'Meetings must be a list of weekly meetings' };
+  if (value.length > 12) return { error: 'A course can hold at most 12 weekly meetings' };
+  const meetings: Meeting[] = [];
+  for (const raw of value as Record<string, unknown>[]) {
+    const day = Number(raw?.dayOfWeek);
+    if (!Number.isInteger(day) || day < 1 || day > 6) return { error: 'A meeting day must be Monday to Saturday' };
+    const startTime = text(raw?.startTime);
+    const endTime = text(raw?.endTime);
+    if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+      return { error: 'Meeting times must read as HH:MM' };
+    }
+    if (startTime >= endTime) return { error: 'A meeting must end after it starts' };
+    const room = text(raw?.room);
+    if (room.length > 60) return { error: 'A room name can hold at most 60 characters' };
+    meetings.push({ dayOfWeek: day, startTime, endTime, room });
+  }
+  return { meetings };
+};
+
+/** The room row for a name, created the first time it is scheduled. */
+const roomIdFor = async (room: string): Promise<number | null> => {
+  if (!room) return null;
+  const found = await sql<{ id: number }>(
+    'SELECT id FROM rooms WHERE room_number = ? ORDER BY id ASC LIMIT 1',
+    { replacements: [room], type: QueryTypes.SELECT },
+  );
+  if (found.length) return found[0].id;
+  const [created] = await sql<{ id: number }>(
+    'INSERT INTO rooms (building, room_number) VALUES (NULL, ?) RETURNING id',
+    { replacements: [room], type: QueryTypes.SELECT },
+  );
+  return created?.id ?? null;
+};
+
+/** Replaces a course's weekly meetings with exactly the ones supplied. */
+const replaceMeetings = async (courseId: number | string, meetings: Meeting[]): Promise<void> => {
+  await sql('DELETE FROM schedules WHERE course_id = ?', { replacements: [courseId], type: QueryTypes.DELETE });
+  for (const meeting of meetings) {
+    await sql(
+      'INSERT INTO schedules (course_id, room_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
+      {
+        replacements: [courseId, await roomIdFor(meeting.room), meeting.dayOfWeek, meeting.startTime, meeting.endTime],
+        type: QueryTypes.INSERT,
+      },
+    );
+  }
+};
+
 /** Counts the shell and the dashboard cards report. */
 router.get('/overview', async (_req, res, next) => {
   try {
@@ -222,7 +285,17 @@ router.get('/courses', async (req, res, next) => {
     const rows = await sql(
       `SELECT c.id, c.code, c.school_year, c.semester, c.status,
               sub.code AS subject_code, sub.name AS subject_name, sub.units, sub.description,
-              t.id AS teacher_id, tu.first_name AS teacher_first_name, tu.last_name AS teacher_last_name, tu.email AS teacher_email
+              t.id AS teacher_id, tu.first_name AS teacher_first_name, tu.last_name AS teacher_last_name, tu.email AS teacher_email,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                         'dayOfWeek', sc.day_of_week,
+                         'startTime', to_char(sc.start_time, 'HH24:MI'),
+                         'endTime', to_char(sc.end_time, 'HH24:MI'),
+                         'room', COALESCE(r.room_number, '')
+                       ) ORDER BY sc.day_of_week ASC, sc.start_time ASC)
+                  FROM schedules sc LEFT JOIN rooms r ON r.id = sc.room_id
+                 WHERE sc.course_id = c.id
+              ), '[]'::json) AS meetings
          FROM courses c
          LEFT JOIN subjects sub ON sub.id = c.subject_id
          LEFT JOIN teachers t ON t.id = c.teacher_id
@@ -630,10 +703,12 @@ router.put('/teachers/:id', async (req, res, next) => {
  *
  * A course is a subject offered in a term, so the subject is created when its
  * code is new and reused when it is not — the unique key is (subject, code, term).
+ * The weekly meetings come along with it: they are what the student sees, and
+ * therefore what the student picks from.
  */
 router.post('/courses', async (req, res, next) => {
   try {
-    const { code, subjectCode, subjectName, units, description, schoolYear, semester, status, teacherId } = req.body as Record<string, string | number | undefined>;
+    const { code, subjectCode, subjectName, units, description, schoolYear, semester, status, teacherId, meetings } = req.body as Record<string, string | number | undefined>;
     const courseCode = text(code) || text(subjectCode);
     const name = text(subjectName);
     const year = text(schoolYear);
@@ -647,6 +722,9 @@ router.post('/courses', async (req, res, next) => {
     if (!['open', 'closed', 'archived'].includes(courseStatus)) return badRequest(res, 'Status must be open, closed or archived');
     const unitCount = units === undefined || units === '' ? 3 : Number(units);
     if (!Number.isFinite(unitCount) || unitCount < 0 || unitCount > 20) return badRequest(res, 'Units must be between 0 and 20');
+    // Validate the meetings before anything is written.
+    const parsed = meetings === undefined ? { meetings: [] as Meeting[] } : readMeetings(meetings);
+    if ('error' in parsed) return badRequest(res, parsed.error);
 
     const subject = await sql<{ id: number }>(
       `INSERT INTO subjects (code, name, units, description) VALUES (?, ?, ?, ?)
@@ -668,11 +746,13 @@ router.post('/courses', async (req, res, next) => {
       { replacements: [subject[0].id, text(teacherId) || null, courseCode, year, term, courseStatus], type: QueryTypes.SELECT },
     );
 
+    if (parsed.meetings.length) await replaceMeetings(course.id, parsed.meetings);
+
     await writeAuditLog(req, {
       action: 'Course created',
       targetType: 'Course',
       targetId: String(course.id),
-      newValue: { code: courseCode, subjectName: name, units: unitCount, schoolYear: year, semester: term, status: courseStatus, teacherId: text(teacherId) || null },
+      newValue: { code: courseCode, subjectName: name, units: unitCount, schoolYear: year, semester: term, status: courseStatus, teacherId: text(teacherId) || null, meetings: parsed.meetings },
     });
     res.status(201).json({ success: true, data: { id: course.id }, message: `${courseCode} opened for ${year} semester ${term}` });
   } catch (error) {
@@ -680,7 +760,7 @@ router.post('/courses', async (req, res, next) => {
   }
 });
 
-/** Change a course: its subject details, its instructor, or whether it is open. */
+/** Change a course: its subject details, its instructor, its meetings, or whether it is open. */
 router.put('/courses/:id', async (req, res, next) => {
   try {
     const id = text(req.params.id);
@@ -700,36 +780,51 @@ router.put('/courses/:id', async (req, res, next) => {
       patch.status = status;
     }
     if (body.teacherId !== undefined) patch.teacher_id = text(body.teacherId) || null;
-    if (!Object.keys(patch).length) {
-      // Nothing on the course itself changed — maybe just the subject details.
-      const subjectName = text(body.subjectName);
-      const units = body.units === undefined || body.units === '' ? undefined : Number(body.units);
-      if (subjectName || units !== undefined) {
-        await sql(
-          `UPDATE subjects SET name = COALESCE(NULLIF(?, ''), name), units = COALESCE(?, units) WHERE id = ?`,
-          { replacements: [subjectName, units ?? null, course.subject_id], type: QueryTypes.UPDATE },
-        );
-        await writeAuditLog(req, {
-          action: 'Course subject updated',
-          targetType: 'Course',
-          targetId: String(course.code),
-          newValue: { subjectName: subjectName || undefined, units },
-        });
-        return res.json({ success: true, message: 'Subject details updated' });
-      }
+
+    const previousMeetings = await sql<Record<string, unknown>>(
+      `SELECT sc.day_of_week, to_char(sc.start_time, 'HH24:MI') AS start_time, to_char(sc.end_time, 'HH24:MI') AS end_time,
+              COALESCE(r.room_number, '') AS room
+         FROM schedules sc LEFT JOIN rooms r ON r.id = sc.room_id
+        WHERE sc.course_id = ? ORDER BY sc.day_of_week ASC, sc.start_time ASC`,
+      { replacements: [id], type: QueryTypes.SELECT },
+    );
+
+    const meetings = body.meetings === undefined ? undefined : readMeetings(body.meetings);
+    if (meetings && 'error' in meetings) return badRequest(res, meetings.error);
+
+    const subjectName = text(body.subjectName);
+    const units = body.units === undefined || body.units === '' ? undefined : Number(body.units);
+    if (units !== undefined && (!Number.isFinite(units) || units < 0 || units > 20)) return badRequest(res, 'Units must be between 0 and 20');
+
+    if (!Object.keys(patch).length && meetings === undefined && !subjectName && units === undefined) {
       return badRequest(res, 'Nothing to update');
     }
 
-    await sql(`UPDATE courses SET ${Object.keys(patch).map((column) => `${column} = ?`).join(', ')} WHERE id = ?`, {
-      replacements: [...Object.values(patch), id],
-      type: QueryTypes.UPDATE,
-    });
+    if (Object.keys(patch).length) {
+      await sql(`UPDATE courses SET ${Object.keys(patch).map((column) => `${column} = ?`).join(', ')} WHERE id = ?`, {
+        replacements: [...Object.values(patch), id],
+        type: QueryTypes.UPDATE,
+      });
+    }
+    if (subjectName || units !== undefined) {
+      await sql(
+        `UPDATE subjects SET name = COALESCE(NULLIF(?, ''), name), units = COALESCE(?, units) WHERE id = ?`,
+        { replacements: [subjectName, units ?? null, course.subject_id], type: QueryTypes.UPDATE },
+      );
+    }
+    if (meetings !== undefined && !('error' in meetings)) await replaceMeetings(id, meetings.meetings);
+
     await writeAuditLog(req, {
       action: 'Course updated',
       targetType: 'Course',
       targetId: String(course.code),
-      previousValue: course,
-      newValue: patch,
+      previousValue: { ...course, meetings: previousMeetings },
+      newValue: {
+        ...patch,
+        ...(subjectName ? { subjectName } : {}),
+        ...(units !== undefined ? { units } : {}),
+        ...(meetings !== undefined && !('error' in meetings) ? { meetings: meetings.meetings } : {}),
+      },
     });
     res.json({ success: true, message: 'Course updated' });
   } catch (error) {

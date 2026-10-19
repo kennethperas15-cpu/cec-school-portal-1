@@ -615,4 +615,254 @@ router.delete('/records/:module/:id', authmiddlewareMiddleware, requireRoles('ad
   } catch (error) { next(error); }
 });
 
+/* ---------------------------------------------------------------------------
+ * Course offerings and the student's own study load.
+ *
+ * The registrar opens a course in Course Management: the subject, the
+ * instructor and the weekly meetings. That offering is what a student picks
+ * from — the courses the school has opened for the live term, each with the
+ * schedule it runs. Choosing one records a real enrollment in the school's own
+ * tables (`enrollments` for the term, `enrollment_items` per course), so the
+ * load the student sees is the load the registrar can see too.
+ *
+ * There is no invented approval step: opening a course for enrollment is the
+ * registrar's decision, and a student can only pick from what has been opened.
+ * A course they already hold stays on their load even after it closes.
+ * ------------------------------------------------------------------------- */
+
+/** `schedules.day_of_week` numbering: 1 is Monday … 6 is Saturday. */
+const WEEKDAYS = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+
+type LiveTerm = { schoolYear: string; semester: number; label: string };
+
+/**
+ * The live term, as the registrar's configuration has it. Two spellings live in
+ * `system_config` — the console's display year ("2026–2027") and the term key
+ * ("2026-2027") — so comparisons fold the dash family, exactly like elsewhere.
+ */
+const liveTerm = async (): Promise<LiveTerm> => {
+  const rows = await sql<{ config_key: string; config_value: string }>(
+    `SELECT config_key, config_value FROM system_config
+      WHERE config_key IN ('current_school_year', 'school_year', 'current_semester', 'semester')`,
+    { type: QueryTypes.SELECT },
+  );
+  const values = Object.fromEntries(rows.map((row) => [row.config_key, row.config_value]));
+  const semester = Number(values.current_semester);
+  const schoolYear = values.current_school_year || values.school_year || '2026–2027';
+  const displayYear = values.school_year || schoolYear;
+  const displaySemester = values.semester || `Semester ${semester}`;
+  return {
+    schoolYear,
+    semester: Number.isInteger(semester) && semester > 0 ? semester : 1,
+    label: `${displaySemester} AY ${displayYear}`,
+  };
+};
+
+/** The signed-in student's register row, or null for a non-student account. */
+const studentRowOf = async (userId: string): Promise<{ id: string; student_number: string } | null> => {
+  const rows = await sql<{ id: string; student_number: string }>(
+    'SELECT id, student_number FROM students WHERE user_id = ? LIMIT 1',
+    { replacements: [userId], type: QueryTypes.SELECT },
+  );
+  return rows[0] ?? null;
+};
+
+/** A weekly meeting as the portal renders it. */
+type CatalogMeeting = { day: string; dayOfWeek: number; start: string; end: string; room: string };
+
+type CatalogRow = {
+  id: number;
+  code: string;
+  school_year: string;
+  semester: number;
+  status: string;
+  subject_code: string | null;
+  subject_name: string | null;
+  units: string | number | null;
+  description: string | null;
+  teacher_first_name: string | null;
+  teacher_last_name: string | null;
+  meetings: { dayOfWeek: number | string; startTime: string; endTime: string; room: string | null }[] | null;
+  enrolled: boolean;
+};
+
+/**
+ * Every offering the school has put in front of a student, with the meetings it
+ * runs and whether this student already holds it. Filtered to the live term here
+ * rather than in SQL so the dash family is compared the same way everywhere.
+ */
+const catalogFor = async (studentId: string | null): Promise<{ term: LiveTerm; courses: Record<string, unknown>[] }> => {
+  const term = await liveTerm();
+  const rows = await sql<CatalogRow>(
+    `SELECT c.id, c.code, c.school_year, c.semester, c.status,
+            sub.code AS subject_code, sub.name AS subject_name, sub.units, sub.description,
+            tu.first_name AS teacher_first_name, tu.last_name AS teacher_last_name,
+            COALESCE((
+              SELECT json_agg(json_build_object(
+                       'dayOfWeek', sc.day_of_week,
+                       'startTime', to_char(sc.start_time, 'HH24:MI'),
+                       'endTime', to_char(sc.end_time, 'HH24:MI'),
+                       'room', COALESCE(r.room_number, '')
+                     ) ORDER BY sc.day_of_week ASC, sc.start_time ASC)
+                FROM schedules sc LEFT JOIN rooms r ON r.id = sc.room_id
+               WHERE sc.course_id = c.id
+            ), '[]'::json) AS meetings,
+            EXISTS (
+              SELECT 1 FROM enrollment_items ei
+                JOIN enrollments e ON e.id = ei.enrollment_id
+               WHERE ei.course_id = c.id AND e.student_id = ?
+                 AND ei.status <> 'rejected' AND e.status <> 'dropped'
+            ) AS enrolled
+       FROM courses c
+       LEFT JOIN subjects sub ON sub.id = c.subject_id
+       LEFT JOIN teachers t ON t.id = c.teacher_id
+       LEFT JOIN users tu ON tu.id = t.user_id
+      WHERE c.status <> 'archived'
+      ORDER BY c.code ASC
+      LIMIT 500`,
+    { replacements: [studentId ?? ''], type: QueryTypes.SELECT },
+  );
+
+  const courses = rows
+    .filter((row) => fold(row.school_year ?? '') === fold(term.schoolYear) && Number(row.semester) === term.semester)
+    .map((row) => {
+      const meetings: CatalogMeeting[] = (row.meetings ?? [])
+        .map((meeting) => ({
+          day: WEEKDAYS[Number(meeting.dayOfWeek)] ?? '',
+          dayOfWeek: Number(meeting.dayOfWeek),
+          start: meeting.startTime,
+          end: meeting.endTime,
+          room: meeting.room ?? '',
+        }))
+        .filter((meeting) => meeting.day !== '');
+      return {
+        id: row.id,
+        code: row.code,
+        title: row.subject_name ?? row.code,
+        subjectCode: row.subject_code ?? row.code,
+        units: row.units === null ? null : Number(row.units),
+        description: row.description,
+        instructor: [row.teacher_first_name, row.teacher_last_name].filter(Boolean).join(' '),
+        status: row.status,
+        open: row.status === 'open',
+        meetings,
+        enrolled: Boolean(row.enrolled),
+      };
+    });
+
+  return { term, courses };
+};
+
+/** What the school has opened for the live term, and what of it this student holds. */
+router.get('/course-catalog', authmiddlewareMiddleware, requireRoles('student'), async (req, res, next) => {
+  try {
+    const student = await studentRowOf(req.user?.id ?? '');
+    if (!student) { res.status(403).json({ success: false, message: 'Only a student account holds a study load' }); return; }
+    const { term, courses } = await catalogFor(student.id);
+    res.json({ success: true, data: { term: { ...term }, courses } });
+  } catch (error) { next(error); }
+});
+
+/** Take a course the school has opened for the live term. */
+router.post('/course-catalog/enroll', authmiddlewareMiddleware, requireRoles('student'), async (req, res, next) => {
+  try {
+    const student = await studentRowOf(req.user?.id ?? '');
+    if (!student) { res.status(403).json({ success: false, message: 'Only a student account holds a study load' }); return; }
+    const courseId = Number((req.body as { courseId?: unknown })?.courseId);
+    if (!Number.isInteger(courseId) || courseId <= 0) {
+      res.status(400).json({ success: false, message: 'A course id is required' });
+      return;
+    }
+
+    const rows = await sql<{ id: number; code: string; school_year: string; semester: number; status: string; subject_name: string | null }>(
+      `SELECT c.id, c.code, c.school_year, c.semester, c.status, sub.name AS subject_name
+         FROM courses c LEFT JOIN subjects sub ON sub.id = c.subject_id
+        WHERE c.id = ? LIMIT 1`,
+      { replacements: [courseId], type: QueryTypes.SELECT },
+    );
+    if (!rows.length) { res.status(404).json({ success: false, message: 'That course is not in the catalog' }); return; }
+    const course = rows[0];
+    if (course.status !== 'open') { res.status(409).json({ success: false, message: `${course.code} is not open for enrollment` }); return; }
+
+    const term = await liveTerm();
+    if (fold(course.school_year ?? '') !== fold(term.schoolYear) || Number(course.semester) !== term.semester) {
+      res.status(409).json({ success: false, message: `${course.code} belongs to another term` });
+      return;
+    }
+
+    // One enrollment row per student per term, with a line per course they took.
+    const [enrollment] = await sql<{ id: string }>(
+      `INSERT INTO enrollments (id, student_id, school_year, semester, status, submitted_at)
+       VALUES (?, ?, ?, ?, 'enrolled', NOW())
+       ON CONFLICT (student_id, school_year, semester)
+       DO UPDATE SET status = 'enrolled', updated_at = NOW()
+       RETURNING id`,
+      { replacements: [crypto.randomUUID(), student.id, term.schoolYear, term.semester], type: QueryTypes.SELECT },
+    );
+    await sql(
+      `INSERT INTO enrollment_items (enrollment_id, course_id, status) VALUES (?, ?, 'approved')
+       ON CONFLICT (enrollment_id, course_id) DO UPDATE SET status = 'approved'`,
+      { replacements: [enrollment.id, course.id], type: QueryTypes.INSERT },
+    );
+    await writeAuditLog(req, {
+      action: 'Course enrolled',
+      targetType: 'Course',
+      targetId: course.code,
+      newValue: {
+        studentId: student.student_number,
+        courseId: course.id,
+        subject: course.subject_name ?? course.code,
+        schoolYear: term.schoolYear,
+        semester: term.semester,
+      },
+    });
+    res.status(201).json({
+      success: true,
+      data: { courseId: course.id, enrolled: true },
+      message: `${course.code} is on your study load`,
+    });
+  } catch (error) { next(error); }
+});
+
+/** Drop a course from the student's own load. */
+router.delete('/course-catalog/enroll/:courseId', authmiddlewareMiddleware, requireRoles('student'), async (req, res, next) => {
+  try {
+    const student = await studentRowOf(req.user?.id ?? '');
+    if (!student) { res.status(403).json({ success: false, message: 'Only a student account holds a study load' }); return; }
+    const courseId = Number(req.params.courseId);
+    if (!Number.isInteger(courseId) || courseId <= 0) {
+      res.status(400).json({ success: false, message: 'A course id is required' });
+      return;
+    }
+
+    const rows = await sql<{ item_id: number; enrollment_id: string; code: string }>(
+      `SELECT ei.id AS item_id, e.id AS enrollment_id, c.code
+         FROM enrollments e
+         JOIN enrollment_items ei ON ei.enrollment_id = e.id
+         JOIN courses c ON c.id = ei.course_id
+        WHERE e.student_id = ? AND ei.course_id = ? LIMIT 1`,
+      { replacements: [student.id, courseId], type: QueryTypes.SELECT },
+    );
+    if (!rows.length) { res.status(404).json({ success: false, message: 'That course is not on your study load' }); return; }
+    const line = rows[0];
+
+    await sql('DELETE FROM enrollment_items WHERE id = ?', { replacements: [line.item_id], type: QueryTypes.DELETE });
+    const remaining = await sql<{ total: string | number }>(
+      'SELECT COUNT(*) AS total FROM enrollment_items WHERE enrollment_id = ?',
+      { replacements: [line.enrollment_id], type: QueryTypes.SELECT },
+    );
+    if (Number(remaining[0]?.total ?? 0) === 0) {
+      await sql('DELETE FROM enrollments WHERE id = ?', { replacements: [line.enrollment_id], type: QueryTypes.DELETE });
+    }
+
+    await writeAuditLog(req, {
+      action: 'Course dropped',
+      targetType: 'Course',
+      targetId: line.code,
+      previousValue: { studentId: student.student_number, courseId },
+    });
+    res.json({ success: true, data: { courseId, enrolled: false }, message: `${line.code} is off your study load` });
+  } catch (error) { next(error); }
+});
+
 export default router;
