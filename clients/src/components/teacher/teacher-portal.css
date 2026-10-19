@@ -1491,16 +1491,28 @@
   width: calc(100% - 240px);
   height: 60px !important;
   border-color: #e2e8f0 !important;
+  gap: 16px !important;
+  padding: 0 24px !important;
   background: #fff !important;
   box-shadow: none !important;
 }
 
 .role-dashboard-teacher .teacher-topbar-search {
+  width: 100%;
   max-width: 448px;
+  min-width: 180px;
+  flex: 1 1 448px;
 }
 
 .role-dashboard-teacher .teacher-topbar-search .command-trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  width: 100%;
   height: 40px;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 16px;
   border-color: transparent;
   border-radius: 999px;
   background: #f1f5f9;
@@ -1508,9 +1520,28 @@
   box-shadow: none;
 }
 
+.role-dashboard-teacher .teacher-topbar-search .command-trigger span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-dashboard-teacher .teacher-topbar-search .command-trigger kbd {
+  display: none;
+}
+
 .role-dashboard-teacher .teacher-topbar-search .command-trigger:hover {
   border-color: #e2e8f0;
   background: #fff;
+}
+
+.role-dashboard-teacher .dashboard-topbar > .dashboard-academic-period {
+  flex: 0 0 auto;
+  padding: 0 12px;
+  border-left: 1px solid #e2e8f0;
 }
 
 .role-dashboard-teacher .dashboard-academic-period {
@@ -1566,6 +1597,7 @@
   .role-dashboard-teacher .dashboard-topbar {
     width: 100%;
     height: 60px !important;
+    gap: 10px !important;
     padding: 0 16px !important;
   }
 
@@ -1576,7 +1608,16 @@
   }
 
   .role-dashboard-teacher .teacher-topbar-search {
-    max-width: none;
+    width: 40px;
+    min-width: 40px;
+    flex: 0 0 40px;
+  }
+
+  .role-dashboard-teacher .teacher-topbar-search .command-trigger {
+    width: 40px;
+    flex: 0 0 40px;
+    justify-content: center;
+    padding: 0;
   }
 }
 

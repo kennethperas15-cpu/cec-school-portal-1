@@ -142,7 +142,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
         </div>
         <span className="dashboard-role-badge" style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>{role.toUpperCase()}</span>
         {routeCrumb && role !== 'teacher' && <span className="dashboard-route-crumb" style={{ color: '#8a94a6', fontSize: 13 }}>{routeCrumb}</span>}
-        {role === 'teacher' && <div className="teacher-topbar-search"><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} /></div>}
+        {role === 'teacher' && <div className="teacher-topbar-search"><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} triggerLabel="Search students, classes, grades..." /></div>}
         {(role === 'admin' || role === 'teacher') && <span className="dashboard-academic-period">{role === 'teacher' && <CalendarDays aria-hidden="true" />}{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
         <div className="dashboard-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
           {role !== 'teacher' && <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} />}
