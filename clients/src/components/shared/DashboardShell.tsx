@@ -123,7 +123,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             <div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>{role.toUpperCase()} PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div>
           </>}
         </div>
-        <span className="dashboard-role-badge" style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>{role.toUpperCase()}</span>
+        {role !== 'teacher' && <span className="dashboard-role-badge" style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>{role.toUpperCase()}</span>}
         {routeCrumb && <span className="dashboard-route-crumb" style={{ color: '#8a94a6', fontSize: 13 }}>{routeCrumb}</span>}
         {role === 'admin' && <span className="dashboard-academic-period">{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
         <div className="dashboard-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
