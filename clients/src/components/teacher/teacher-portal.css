@@ -1576,9 +1576,102 @@
 }
 
 .role-dashboard-teacher .dashboard-sidebar {
+  position: sticky;
+  top: 0;
+  box-sizing: border-box;
+  height: 100vh;
+  min-height: 100vh !important;
   padding: 20px 12px !important;
   border-color: #e2e8f0 !important;
   box-shadow: none !important;
+}
+
+.role-dashboard-teacher .teacher-sidebar-close {
+  display: inline-grid;
+  place-items: center;
+}
+
+.role-dashboard-teacher .teacher-sidebar-tools {
+  display: grid;
+  gap: 12px;
+  padding: 10px 4px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.role-dashboard-teacher .teacher-sidebar-account {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-dashboard-teacher .teacher-sidebar-account > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.role-dashboard-teacher .teacher-sidebar-account strong,
+.role-dashboard-teacher .teacher-sidebar-account small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-dashboard-teacher .teacher-sidebar-account strong {
+  color: #172b47;
+  font-size: 13px;
+}
+
+.role-dashboard-teacher .teacher-sidebar-account small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.role-dashboard-teacher .teacher-sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-dashboard-teacher .teacher-sidebar-actions > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.role-dashboard-teacher .teacher-sidebar-actions .command-trigger {
+  width: 100%;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.role-dashboard-teacher .teacher-sidebar-theme {
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.role-dashboard-teacher .teacher-sidebar-open {
+  position: fixed;
+  z-index: 6;
+  bottom: 20px;
+  left: 20px;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 0;
+  border-radius: 14px;
+  background: #0b3d91;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(11, 61, 145, .28);
+  cursor: pointer;
 }
 
 .role-dashboard-teacher .dashboard-sidebar-status {

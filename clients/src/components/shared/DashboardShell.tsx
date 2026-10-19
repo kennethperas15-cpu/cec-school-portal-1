@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../../services/theme';
 import { useAcademicConfig } from '../../services/academicConfig';
 import { PhotoAvatar } from './PhotoAvatar';
@@ -10,7 +10,6 @@ import {
   BookOpen,
   CalendarCheck,
   CalendarDays,
-  ChevronDown,
   ClipboardList,
   CreditCard,
   GraduationCap,
@@ -104,8 +103,6 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   const { dark, toggle } = useTheme();
   const academicConfig = useAcademicConfig();
   const [collapsed, setCollapsed] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
   // Mobile: start shut, auto-close after each navigation so content is usable
   useEffect(() => {
     try {
@@ -113,25 +110,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     } catch { /* non-browser render */ }
   }, [active]);
 
-  useEffect(() => {
-    if (!profileOpen) return;
-    const dismiss = (event: PointerEvent) => {
-      if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) setProfileOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setProfileOpen(false);
-    };
-    document.addEventListener('pointerdown', dismiss);
-    window.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', dismiss);
-      window.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [profileOpen]);
-
   return (
     <div className={`role-dashboard role-dashboard-${role}${(role === 'admin' || role === 'teacher') && collapsed ? ' is-sidebar-collapsed' : ''}${dark ? ' cec-dark' : ''}`} style={{ minHeight: '100vh', background: dark ? '#0b1220' : '#f3f5f9', fontFamily: 'Inter,system-ui,sans-serif' }}>
       {(role === 'admin' || role === 'teacher') && !collapsed && <button type="button" className="dashboard-sidebar-backdrop" onClick={() => setCollapsed(true)} aria-label="Close navigation" />}
+      {role === 'teacher' && collapsed && <button type="button" className="teacher-sidebar-open" onClick={() => setCollapsed(false)} aria-label="Open teacher navigation"><Menu aria-hidden="true" /></button>}
+      {role !== 'teacher' && (
       <header className="dashboard-topbar" style={{ height: 68, background: '#fff', borderBottom: '1px solid #e5e9f0', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 14, position: 'sticky', top: 0, zIndex: 5 }}>
         <div className="dashboard-topbar-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}>
           <button type="button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? 'Open navigation' : 'Close navigation'} aria-expanded={!collapsed}>
@@ -141,46 +124,19 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           <div><div style={{ fontWeight: 800 }}>Cebu Eastern College</div><div style={{ fontSize: 10, color: '#8a94a6' }}>{role.toUpperCase()} PORTAL • {academicConfig.semester.toUpperCase()} {academicConfig.schoolYear}</div></div>
         </div>
         <span className="dashboard-role-badge" style={{ background: '#e8f1ff', color: '#1d5fc2', fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '5px 10px' }}>{role.toUpperCase()}</span>
-        {routeCrumb && role !== 'teacher' && <span className="dashboard-route-crumb" style={{ color: '#8a94a6', fontSize: 13 }}>{routeCrumb}</span>}
-        {role === 'teacher' && <div className="teacher-topbar-search"><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} triggerLabel="Search students, classes, grades..." /></div>}
-        {(role === 'admin' || role === 'teacher') && <span className="dashboard-academic-period">{role === 'teacher' && <CalendarDays aria-hidden="true" />}{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
+        {routeCrumb && <span className="dashboard-route-crumb" style={{ color: '#8a94a6', fontSize: 13 }}>{routeCrumb}</span>}
+        {role === 'admin' && <span className="dashboard-academic-period">{academicConfig.semester} • AY {academicConfig.schoolYear}</span>}
         <div className="dashboard-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          {role !== 'teacher' && <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} />}
+          <DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} />
           <NotificationCenter role={role} onNavigate={onNavigate} />
-          {role === 'teacher' ? (
-            <div className="teacher-profile-menu" ref={profileMenuRef}>
-              <button
-                type="button"
-                className="teacher-profile-trigger"
-                onClick={() => setProfileOpen((open) => !open)}
-                aria-expanded={profileOpen}
-                aria-haspopup="dialog"
-              >
-                <PhotoAvatar userId={photoUserId} name={userName} size={36} />
-                <span className="teacher-profile-copy"><strong>{userName}</strong><small>{userIdLine || 'Teacher account'}</small></span>
-                <ChevronDown aria-hidden="true" />
-              </button>
-              {profileOpen && (
-                <div className="teacher-profile-popover" role="dialog" aria-label="Teacher account options">
-                  <div className="teacher-profile-popover-heading">
-                    <strong>{userName}</strong>
-                    <span>{userIdLine || 'Teacher account'}</span>
-                  </div>
-                  <button type="button" onClick={toggle}>{dark ? 'Switch to light mode' : 'Switch to dark mode'}</button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button>
-              <span key={photoVersion}><PhotoAvatar userId={photoUserId} name={userName} size={36} /></span>
-              <button type="button" className="dashboard-logout" onClick={onLogout} aria-label="Log out" title="Log out"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>
-            </>
-          )}
+          <button type="button" className="theme-toggle" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '🌙'}</button>
+          <span key={photoVersion}><PhotoAvatar userId={photoUserId} name={userName} size={36} /></span>
+          <button type="button" className="dashboard-logout" onClick={onLogout} aria-label="Log out" title="Log out"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>
         </div>
       </header>
+      )}
       <div style={{ display: 'flex' }}>
-        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: role === 'teacher' || role === 'admin' ? 240 : 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{role === 'admin' && <><div className="dashboard-sidebar-brand"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Administrator Portal</span></div></div><div className="dashboard-sidebar-status">Active Administrator • AY {academicConfig.schoolYear}</div></>}{role === 'teacher' ? <><div className="dashboard-sidebar-brand"><div className="dashboard-sidebar-brand-identity"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Teacher Portal</span></div></div><button type="button" className="teacher-sidebar-close" onClick={() => setCollapsed(true)} aria-label="Close navigation"><X aria-hidden="true" /></button></div><div className="dashboard-sidebar-status">Active Teacher • {academicConfig.schoolYear}</div><nav className="teacher-shell-nav"><p className="teacher-shell-nav-label">Academic Menu</p>{groups.flatMap((group) => group.items).map((item) => { const Icon = TEACHER_NAV_ICONS[item.label] ?? LayoutDashboard; return <button type="button" aria-current={active === item.label ? 'page' : undefined} className={`teacher-shell-nav-item${active === item.label ? ' is-active' : ''}`} key={item.label} onClick={() => onNavigate(item.label)}><Icon aria-hidden="true" />{item.label}</button>; })}<div className="teacher-shell-nav-system"><p className="teacher-shell-nav-label">System</p><button type="button" className="teacher-shell-nav-item" onClick={onLogout}><LogOut aria-hidden="true" />Logout</button></div></nav></> : <nav className="dashboard-admin-nav">{groups.map((g) => (<div key={g.id} style={{ display: 'grid', gap: 4, marginTop: g.label ? 14 : 0 }}>{g.label ? <p className="dashboard-admin-nav-label">{g.label}</p> : null}{g.items.map((it) => { const Icon = ADMIN_NAV_ICONS[it.label] ?? LayoutDashboard; return (<button type="button" className={`dashboard-nav-item${active === it.label ? ' is-active' : ''}`} key={it.label} onClick={() => onNavigate(it.label)} aria-current={active === it.label ? 'page' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 0, borderRadius: 10, padding: '10px 12px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 500, fontSize: 13, fontFamily: 'inherit' }}><Icon aria-hidden="true" width={16} height={16} />{it.label}</button>); })}</div>))}<button type="button" className="dashboard-nav-item" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 0, borderRadius: 10, padding: '10px 12px', marginTop: 12, background: 'transparent', color: '#4a5872', cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' }}><LogOut aria-hidden="true" width={16} height={16} />Logout</button></nav>}{role !== 'teacher' && <div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><span key={photoVersion}><PhotoAvatar userId={photoUserId} name={userName} size={34} /></span><div><div style={{ fontWeight: 700, fontSize: 13 }}>{userName}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{userIdLine}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{role}</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div>}</aside>)}
+        {!collapsed && (<aside className="dashboard-sidebar" style={{ width: role === 'teacher' || role === 'admin' ? 240 : 320, background: '#fff', borderRight: '1px solid #e5e9f0', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 'calc(100vh - 68px)' }}>{role === 'admin' && <><div className="dashboard-sidebar-brand"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Administrator Portal</span></div></div><div className="dashboard-sidebar-status">Active Administrator • AY {academicConfig.schoolYear}</div></>}{role === 'teacher' ? <><div className="dashboard-sidebar-brand"><div className="dashboard-sidebar-brand-identity"><img src={`${BASE}cec-logo.png`} alt="Cebu Eastern College seal" width={40} height={40} /><div><strong>Cebu Eastern College</strong><span>Teacher Portal</span></div></div><button type="button" className="teacher-sidebar-close" onClick={() => setCollapsed(true)} aria-label="Close navigation"><X aria-hidden="true" /></button></div><div className="dashboard-sidebar-status">Active Teacher • {academicConfig.schoolYear}</div><div className="teacher-sidebar-tools"><div className="teacher-sidebar-account"><PhotoAvatar userId={photoUserId} name={userName} size={36} /><span><strong>{userName}</strong><small>{userIdLine || 'Teacher account'}</small></span></div><div className="teacher-sidebar-actions"><DashboardCommandMenu items={moduleItems} records={searchRecords} onNavigate={onNavigate} triggerLabel="Search students, classes, grades..." /><NotificationCenter role="teacher" onNavigate={onNavigate} /><button type="button" className="teacher-sidebar-theme" onClick={toggle}>{dark ? 'Switch to light mode' : 'Switch to dark mode'}</button></div></div><nav className="teacher-shell-nav"><p className="teacher-shell-nav-label">Academic Menu</p>{groups.flatMap((group) => group.items).map((item) => { const Icon = TEACHER_NAV_ICONS[item.label] ?? LayoutDashboard; return <button type="button" aria-current={active === item.label ? 'page' : undefined} className={`teacher-shell-nav-item${active === item.label ? ' is-active' : ''}`} key={item.label} onClick={() => onNavigate(item.label)}><Icon aria-hidden="true" />{item.label}</button>; })}<div className="teacher-shell-nav-system"><p className="teacher-shell-nav-label">System</p><button type="button" className="teacher-shell-nav-item" onClick={onLogout}><LogOut aria-hidden="true" />Logout</button></div></nav></> : <nav className="dashboard-admin-nav">{groups.map((g) => (<div key={g.id} style={{ display: 'grid', gap: 4, marginTop: g.label ? 14 : 0 }}>{g.label ? <p className="dashboard-admin-nav-label">{g.label}</p> : null}{g.items.map((it) => { const Icon = ADMIN_NAV_ICONS[it.label] ?? LayoutDashboard; return (<button type="button" className={`dashboard-nav-item${active === it.label ? ' is-active' : ''}`} key={it.label} onClick={() => onNavigate(it.label)} aria-current={active === it.label ? 'page' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 0, borderRadius: 10, padding: '10px 12px', background: active === it.label ? NAVY : 'transparent', color: active === it.label ? '#fff' : '#4a5872', cursor: 'pointer', fontWeight: active === it.label ? 700 : 500, fontSize: 13, fontFamily: 'inherit' }}><Icon aria-hidden="true" width={16} height={16} />{it.label}</button>); })}</div>))}<button type="button" className="dashboard-nav-item" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 0, borderRadius: 10, padding: '10px 12px', marginTop: 12, background: 'transparent', color: '#4a5872', cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' }}><LogOut aria-hidden="true" width={16} height={16} />Logout</button></nav>}{role !== 'teacher' && <div style={{ marginTop: 'auto', borderTop: '1px solid #eef1f6', paddingTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}><span key={photoVersion}><PhotoAvatar userId={photoUserId} name={userName} size={34} /></span><div><div style={{ fontWeight: 700, fontSize: 13 }}>{userName}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{userIdLine}</div><div style={{ fontSize: 12, color: '#8a94a6' }}>{role}</div></div><button onClick={onLogout} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: '#8a94a6', cursor: 'pointer' }}>Log out</button></div>}</aside>)}
         <main className="dashboard-main" style={{ flex: 1, padding: 24, minWidth: 0 }}>{children}</main>
       </div>
       {popup && <AlertPopup title={popup.title} message={popup.message} lines={popup.lines} onClose={onClosePopup} />}
