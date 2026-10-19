@@ -1,7 +1,7 @@
 # CEC School Portal — Module Flows (frontend → backend → database)
 
 Legend: **MySQL** = shared database (works across devices) · **Local**
-= browser `localStorage` (same-device demo layer, syncs when API is reachable).
+= browser `localStorage` (device-local cache; not a production database).
 API base `/api`. Roles: S student · T teacher · A admin.
 
 ## 1. Authentication
@@ -58,19 +58,29 @@ API base `/api`. Roles: S student · T teacher · A admin.
 
 ## 4. Grading (T)
 - **Grade Encoding**: assign roster students to a subject/section; encode
-  prelim, midterm, and final percentages; save each student's record to
-  `cec:t_grades_v2`. The student portal reads matching records by school ID
-  (or name) and computes the Philippine grade-point equivalent.
+  prelim, midterm, and final percentages. The dashboard loads the current
+  term from authenticated `GET /api/portal/records/grades`; the server scopes
+  reads to the signed-in faculty member. Saves upsert per-student records via
+  `POST /api/portal/records/grades`, and a per-account browser cache is kept
+  in `cec:t_grades_v2:<account>`. The student portal reads matching published
+  records by school ID and computes the Philippine grade-point equivalent.
 
 ## 5. Attendance (T)
 - **Class Roster**: add, edit, search, and remove student assignments in
-  `cec:t_roster_v2`.
+  the browser-local `cec:t_roster_v2` cache. The enrollment pipeline also
+  writes here; it is not teacher-account-scoped and does not sync across
+  devices.
 - **Attendance Tracker**: mark each rostered student Present, Absent, Late,
   or Excused by subject and date; duplicate sessions require confirmation.
-  Saved rows in `cec:t_attend_v2` feed the student attendance view.
-- Teacher roster, grades, and attendance are browser-local records shared by
-  the portal apps on the same browser/origin; they are not yet synced to the
-  server database.
+  Current-term records load from authenticated
+  `GET /api/portal/records/attendance` and save through
+  `POST /api/portal/records/attendance`. The per-account browser cache is
+  `cec:t_attend_v2:<account>`. The API restricts faculty reads to their own
+  submissions and student reads to their own school ID.
+- The dashboard's schedule and announcement panels use the published portal
+  services rather than old browser-only sample data. Server failures are
+  surfaced in the interface. Student academic pages read the authenticated
+  records API rather than another user's browser cache.
 
 ## 6. LMS
 - T: materials upload, assignment creation/checking queue, announcements,
@@ -122,6 +132,8 @@ API base `/api`. Roles: S student · T teacher · A admin.
 ## Cross-cutting
 - IDs: 7 digits everywhere (`2` S · `3` T · `4` A), validated on entry,
   auto-migrated on login; login accepts ID or school email.
-- Offline: every flow works browser-local and syncs to MySQL when reachable.
+- Offline behavior is module-specific. Teacher roster edits are device-local;
+  academic records can display the account-scoped cache while the API is
+  unreachable, but publication requires a successful API request.
 - Defense accounts: `registrar@cec.edu.ph` / `main.admin@` (Admin123),
   `j.santos@` / `h.quibol@` (Teacher123).

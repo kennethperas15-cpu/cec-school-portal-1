@@ -11,31 +11,31 @@ export type PortalNotification = {
   target: string;
 };
 
-const seeds: Record<NotificationRole, PortalNotification[]> = {
-  student: [
-    { id: 'student-enrollment', title: 'Enrollment application approved', detail: 'Your BSIT 3rd Year application is ready for registration.', category: 'Enrollment', timestamp: 'Today, 9:42 AM', read: false, target: 'Status Tracker' },
-    { id: 'student-grade', title: 'New grade posted', detail: 'A midterm grade is available in Database Systems.', category: 'Academic', timestamp: 'Yesterday', read: false, target: 'Grades / Report Card' },
-    { id: 'student-balance', title: 'Payment deadline reminder', detail: 'Your outstanding balance is due on October 12, 2024.', category: 'Finance', timestamp: 'Monday', read: true, target: 'Payment Portal' },
-  ],
-  teacher: [
-    { id: 'teacher-grades', title: 'Grade submission deadline tomorrow', detail: '18 grade entries still need review before the deadline.', category: 'Academic', timestamp: 'Today, 8:30 AM', read: false, target: 'Grade Encoding' },
-    { id: 'teacher-message', title: 'New student message', detail: 'Juan Dela Cruz asked about the midterm coverage.', category: 'Communication', timestamp: 'Yesterday', read: false, target: 'Messaging' },
-    { id: 'teacher-exam', title: 'Exam scheduled', detail: 'Midterm Exam — DB Systems is scheduled for October 18.', category: 'Academic', timestamp: 'Monday', read: true, target: 'Exam Creation' },
-  ],
-  admin: [
-    { id: 'admin-enrollment', title: '3 enrollment applications need review', detail: 'Open the approval queue to review recent applications.', category: 'Enrollment', timestamp: 'Today, 10:05 AM', read: false, target: 'Enrollment Approval' },
-    { id: 'admin-security', title: 'Faculty credentials expiring soon', detail: '4 faculty credentials need attention before October 31.', category: 'System', timestamp: 'Today, 7:15 AM', read: false, target: 'Credentials' },
-    { id: 'admin-backup', title: 'Backup completed successfully', detail: 'The scheduled database backup completed without errors.', category: 'System', timestamp: 'Today, 2:00 AM', read: true, target: 'Backup & Restore' },
-  ],
+const emptyNotifications: Record<NotificationRole, PortalNotification[]> = {
+  student: [],
+  teacher: [],
+  admin: [],
 };
+
+const legacyDemoIds = new Set([
+  'student-enrollment', 'student-grade', 'student-balance',
+  'teacher-grades', 'teacher-message', 'teacher-exam',
+  'admin-enrollment', 'admin-security', 'admin-backup',
+]);
 
 const storageKey = (role: NotificationRole) => `cec:notifications:${role}`;
 const readNotifications = (role: NotificationRole) => {
   try {
     const saved = localStorage.getItem(storageKey(role));
-    return saved ? JSON.parse(saved) as PortalNotification[] : seeds[role];
+    if (!saved) return emptyNotifications[role];
+    const parsed: unknown = JSON.parse(saved);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is PortalNotification =>
+        !!item && typeof item === 'object' && typeof item.id === 'string' && !legacyDemoIds.has(item.id),
+      )
+      : emptyNotifications[role];
   } catch {
-    return seeds[role];
+    return emptyNotifications[role];
   }
 };
 

@@ -3,6 +3,8 @@ import QRCode from 'qrcode';
 import { useCollection, uid, genSchoolId } from '../../services/crud';
 import { useTheme } from '../../services/theme';
 import { portalApi } from '../../services/portal';
+import { describeApiError } from '../../services/api';
+import { fetchAcademicRecords, fold, type AttendanceRow, type GradeEntryRow } from '../../services/records';
 import { percentToPoint, formatPoint, averagePercent, gwa } from '../../services/grading';
 import { pushNotification } from '../../services/notify';
 import { useLiveAnnouncements } from '../../hooks/useLiveAnnouncements';
@@ -576,31 +578,14 @@ const capacityOf = (offering: Offering): number | null => {
   return Number.isFinite(cap) && cap > 0 ? cap : null;
 };
 
-// Teacher-recorded attendance (cec:t_attend_v2), matched to the student by name.
-const readTeacherAttendance = (names: string[]): { id: string; name: string; role: string }[] => {
-  try {
-    const raw = localStorage.getItem('cec:t_attend_v2');
-    const rows = raw ? (JSON.parse(raw) as { id: string; student: string; date: string; status: string; section?: string }[]) : [];
-    return rows
-      .filter((r) => r.student && names.includes(r.student.trim().toLowerCase()))
-      .map((r) => ({ id: r.id, name: `${r.date}${r.section ? ` • ${r.section}` : ''}`, role: r.status }));
-  } catch { return []; }
-};
-
 export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('home');
   const [collapsed, setCollapsed] = useState(false);
-  const [, setTeacherRecordsRevision] = useState(0);
-  useEffect(() => {
-    const refreshTeacherRecords = (event: StorageEvent) => {
-      if (event.key && ['cec:t_grades_v2', 'cec:t_attend_v2'].includes(event.key)) {
-        setTeacherRecordsRevision((revision) => revision + 1);
-      }
-    };
-    window.addEventListener('storage', refreshTeacherRecords);
-    return () => window.removeEventListener('storage', refreshTeacherRecords);
-  }, []);
+  const [teacherGrades, setTeacherGrades] = useState<{ id: string; student: string; studentId: string; prelim: string; midterm: string; final: string }[]>([]);
+  const [teacherAttendance, setTeacherAttendance] = useState<Rec[]>([]);
+  const [academicRecordsLoading, setAcademicRecordsLoading] = useState(true);
+  const [academicRecordsError, setAcademicRecordsError] = useState('');
   // Mobile: start shut, auto-close after each navigation so content is usable
   useEffect(() => {
     try {
@@ -609,6 +594,52 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   }, [active]);
   const { dark, toggle } = useTheme();
   const academicConfig = useAcademicConfig();
+  useEffect(() => {
+    let activeRequest = true;
+    setTeacherGrades([]);
+    setTeacherAttendance([]);
+    setAcademicRecordsError('');
+    setAcademicRecordsLoading(true);
+    void Promise.allSettled([
+      fetchAcademicRecords<GradeEntryRow>('grades'),
+      fetchAcademicRecords<AttendanceRow>('attendance'),
+    ]).then(([gradeResult, attendanceResult]) => {
+      if (!activeRequest) return;
+      const errors: string[] = [];
+      const currentTerm = (record: { schoolYear: string; semester: string }) =>
+        fold(record.schoolYear) === fold(academicConfig.schoolYear) &&
+        fold(record.semester) === fold(academicConfig.semester);
+      if (gradeResult.status === 'fulfilled') {
+        setTeacherGrades(gradeResult.value.filter(currentTerm).flatMap((record) =>
+          record.entries.map((entry, index) => ({
+            id: `${record.itemId}:${index}`,
+            student: record.studentName,
+            studentId: record.studentId,
+            prelim: entry.prelim,
+            midterm: entry.midterm,
+            final: entry.final,
+          })),
+        ));
+      } else {
+        errors.push(describeApiError(gradeResult.reason, 'Loading your grades'));
+      }
+      if (attendanceResult.status === 'fulfilled') {
+        setTeacherAttendance(attendanceResult.value.filter(currentTerm).flatMap((record) =>
+          record.entries.map((entry, index) => ({
+            id: `${record.itemId}:${index}`,
+            name: `${entry.date}${entry.course ? ` • ${entry.course}` : ''}`,
+            role: entry.status,
+          })),
+        ));
+      } else {
+        errors.push(describeApiError(attendanceResult.reason, 'Loading your attendance'));
+      }
+      setAcademicRecordsError(errors.join(' '));
+    }).finally(() => {
+      if (activeRequest) setAcademicRecordsLoading(false);
+    });
+    return () => { activeRequest = false; };
+  }, [currentUser?.id, academicConfig.schoolYear, academicConfig.semester]);
   // Identity comes straight from the signed-in school account; edits persist locally.
   const [profile, setProfile] = useState(() => {
     try {
@@ -719,14 +750,9 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   const route = GROUPS.flatMap((g) => g.items).find((i) => i.label === active)?.route ?? 's_dashboard';
   const moduleItems = ['Dashboard', ...GROUPS.flatMap((g) => g.items.map((item) => item.label))];
   const navigate = (label: string) => setActive(moduleItems.includes(label) ? label : 'Dashboard');
-  const profileMatchesAccount = !currentUser?.id || profile.id === currentUser.id;
-  const identityNames = [currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '', profileMatchesAccount ? profile.name : ''].filter(Boolean).map((value) => value.trim().toLowerCase());
-  const identityIds = [currentUser?.id, profileMatchesAccount ? profile.id : ''].filter(Boolean).map((value) => String(value).trim().toLowerCase());
-  // Attendance flows in from the teacher's Daily Attendance (cec:t_attend_v2),
-  // matched to this student, alongside any records saved in the student layer.
   const scopedAttendance = [
     ...(attendance.list as Rec[]).map((a) => ({ id: a.id, name: a.name, role: a.role })),
-    ...readTeacherAttendance(identityNames),
+    ...teacherAttendance,
   ];
   const searchRecords = [
     { title: profile.name || 'My profile', detail: `${profile.id || 'No school ID yet'} • ${profile.course || 'Program not set'} • ${profile.email || '—'}`, target: 'Profile Management' },
@@ -745,15 +771,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
 
   const render = () => {
     if (active === 'Dashboard') {
-      let allOfficial: { id: string; student?: string; studentId?: string; prelim: string; midterm: string; final: string }[] = [];
-      try {
-        const raw = localStorage.getItem('cec:t_grades_v2');
-        allOfficial = raw ? JSON.parse(raw) : [];
-      } catch { allOfficial = []; }
-      const official = allOfficial.filter((grade) => {
-        if (grade.studentId && identityIds.includes(grade.studentId.trim().toLowerCase())) return true;
-        return !!grade.student && identityNames.includes(grade.student.trim().toLowerCase());
-      });
+      const official = teacherGrades;
       const gradedPoints = official.map((g) => averagePercent([g.prelim, g.midterm, g.final])).filter((average): average is number => average !== null).map((average) => percentToPoint(average).point);
       const liveGwa = gwa(gradedPoints);
       const peso = (s: string) => parseAmount(s);
@@ -826,6 +844,7 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           : { title: nextClass ? `Next class: ${nextClass.offering.subject}` : 'You are all caught up', detail: nextClass ? `${nextClass.dayLabel} • ${nextClass.offering.schedule} • ${nextClass.offering.room}` : 'No enrollment, document, payment, or assignment tasks are currently recorded.', actionLabel: nextClass ? 'View schedule' : 'View academic records', target: nextClass ? 'Class Schedule' : 'Grades / Report Card', tone: 'clear' as const };
       return (
         <>
+        {academicRecordsError && <div role="alert" style={{ ...box, borderColor: '#f0c36d', color: '#704d08' }}>Academic records could not be refreshed. {academicRecordsError}</div>}
         <RoleDashboardHome
           role="student"
           name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Student'}
@@ -834,8 +853,8 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
           priority={priority}
           liveMetrics={[
             { label: 'Enrollment status', value: latestApp ? latestApp.role.replace(/ •.*$/, '') : 'Application needed', detail: latestApp ? `${latestApp.name} • ${academicConfig.semester} ${academicConfig.schoolYear}` : 'Start an online application or visit the registrar' },
-            { label: 'Current average', value: liveGwa === null ? '—' : formatPoint(liveGwa), detail: liveGwa === null ? 'No grade records match your student account yet' : `PH grade point average • ${gradedPoints.length} matched record${gradedPoints.length === 1 ? '' : 's'}` },
-            { label: 'Attendance', value: attendanceCount ? `${Math.round((attendancePresent / attendanceCount) * 100)}%` : '—', detail: attendanceCount ? `${attendancePresent} present across ${attendanceCount} records linked to your account` : 'No student-linked attendance records yet' },
+            { label: 'Current average', value: liveGwa === null ? '—' : formatPoint(liveGwa), detail: academicRecordsLoading ? 'Loading your grades…' : liveGwa === null ? 'No grade records released for this term' : `PH grade point average • ${gradedPoints.length} matched record${gradedPoints.length === 1 ? '' : 's'}` },
+            { label: 'Attendance', value: attendanceCount ? `${Math.round((attendancePresent / attendanceCount) * 100)}%` : '—', detail: academicRecordsLoading ? 'Loading your attendance…' : attendanceCount ? `${attendancePresent} present across ${attendanceCount} records linked to your account` : 'No student-linked attendance records yet' },
             { label: 'Outstanding balance', value: assessed <= 0 ? '—' : remaining <= 0 ? 'Fully paid' : `₱${remaining.toLocaleString()}`, detail: assessed <= 0 ? 'No assessment recorded for this student' : `Paid ₱${paid.toLocaleString()} of ₱${assessed.toLocaleString()} in student billing records` },
           ]}
         />
@@ -857,19 +876,13 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     }
     if (active === 'Password Recovery') return <PasswordRecovery identifier={currentUser?.email || profile.id} email={profile.email} onNotify={onNotify} />;
     if (active === 'Grades / Report Card') {
-      let allOfficial: { id: string; student?: string; studentId?: string; prelim: string; midterm: string; final: string }[] = [];
-      try {
-        const raw = localStorage.getItem('cec:t_grades_v2');
-        allOfficial = raw ? JSON.parse(raw) : [];
-      } catch { allOfficial = []; }
-      const profileMatchesAccount = !currentUser?.id || profile.id === currentUser.id;
-      const names = [currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '', profileMatchesAccount ? profile.name : ''].filter(Boolean).map((value) => value.trim().toLowerCase());
-      const ids = [currentUser?.id, profileMatchesAccount ? profile.id : ''].filter(Boolean).map((value) => String(value).trim().toLowerCase());
-      const official = allOfficial.filter((grade) => (grade.studentId && ids.includes(grade.studentId.trim().toLowerCase())) || (grade.student && names.includes(grade.student.trim().toLowerCase())));
+      const official = teacherGrades;
       const pts = official.map((g) => averagePercent([g.prelim, g.midterm, g.final])).filter((avg): avg is number => avg !== null).map((avg) => percentToPoint(avg).point);
       const myGwa = gwa(pts);
       return (<section style={card}><h1 style={{ margin: 0 }}>Grades / Report Card — PH 1.00–5.00{myGwa !== null && <span style={{ fontSize: 15 }}> • GWA: <strong>{formatPoint(myGwa)}</strong></span>}</h1>
-        {!official.length && <div style={box}>No grades encoded yet — waiting for teacher grade encoding.</div>}
+        {academicRecordsError && <div role="alert" style={{ ...box, borderColor: '#f0c36d', color: '#704d08' }}>Grades could not be refreshed. {academicRecordsError}</div>}
+        {academicRecordsLoading && <div role="status" style={box}>Loading grades for your account…</div>}
+        {!academicRecordsLoading && !official.length && <div style={box}>No grades released for this term.</div>}
         {!!official.length && <div style={{ ...box, padding: 0 }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Student</th><th style={{ padding: 12 }}>Average</th><th style={{ padding: 12 }}>Point</th><th style={{ padding: 12 }}>Equivalent</th><th style={{ padding: 12 }}>Remarks</th></tr></thead><tbody>{official.map((g) => { const avg = averagePercent([g.prelim, g.midterm, g.final]); const gp = avg === null ? null : percentToPoint(avg); return <tr key={g.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{g.student}</td><td style={{ padding: 12 }}>{avg === null ? '—' : `${avg.toFixed(1)}%`}</td><td style={{ padding: 12, fontWeight: 800 }}>{gp ? formatPoint(gp.point) : '—'}</td><td style={{ padding: 12 }}>{gp ? gp.equivalent : '—'}</td><td style={{ padding: 12 }}><span style={{ background: gp && gp.remarks === 'PASSED' ? '#dcfce7' : '#fee2e2', color: gp && gp.remarks === 'PASSED' ? '#15803d' : '#b91c1c', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>{gp ? gp.remarks : '—'}</span></td></tr>; })}</tbody></table></div>}
         <div style={{ ...box, padding: 0, marginTop: 14 }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><thead><tr style={{ background: '#f8fafc', textAlign: 'left' }}><th style={{ padding: 12 }}>Code</th><th style={{ padding: 12 }}>Subject</th><th style={{ padding: 12 }}>Status</th><th style={{ padding: 12 }}>Actions</th></tr></thead><tbody>{subjects.list.map((s) => <tr key={s.id} style={{ borderTop: '1px solid #eef1f6' }}><td style={{ padding: 12 }}>{s.id}</td><td style={{ padding: 12 }}>{s.name}</td><td style={{ padding: 12 }}>{s.role}</td><td style={{ padding: 12 }}><button style={ghost} onClick={() => onNotify(`${s.id} report viewed (Read)`)}>View</button> <button style={{ ...ghost, color: '#b91c1c' }} onClick={() => { subjects.remove(s.id); onNotify('Subject dropped (Delete)'); }}>Drop</button></td></tr>)}</tbody></table></div><Footer /></section>);
     }
@@ -906,7 +919,11 @@ export const StudentDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     }
     if (active === 'Attendance Records') {
       const rows = scopedAttendance.filter((a) => a.name.toLowerCase().includes(attFilter.toLowerCase()));
-      return (<section style={card}><h1 style={{ margin: 0 }}>Attendance Records</h1><input style={{ ...inp, marginTop: 14, maxWidth: 400 }} placeholder="Filter by date or section..." value={attFilter} onChange={(e) => setAttFilter(e.target.value)} /><div style={box}>{rows.length ? rows.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><span>{a.name}</span><strong>{a.role}</strong></div>) : <div style={{ fontSize: 13, color: '#6b7890' }}>No attendance records yet — your teachers record attendance in Daily Attendance and it appears here automatically.</div>}</div><Footer /></section>);
+      return (<section style={card}><h1 style={{ margin: 0 }}>Attendance Records</h1>
+        {academicRecordsError && <div role="alert" style={{ ...box, borderColor: '#f0c36d', color: '#704d08' }}>Attendance could not be refreshed. {academicRecordsError}</div>}
+        {academicRecordsLoading && <div role="status" style={box}>Loading attendance for your account…</div>}
+        <input style={{ ...inp, marginTop: 14, maxWidth: 400 }} placeholder="Filter by date or section..." value={attFilter} onChange={(e) => setAttFilter(e.target.value)} />
+        <div style={box}>{rows.length ? rows.map((a) => <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f6' }}><span>{a.name}</span><strong>{a.role}</strong></div>) : !academicRecordsLoading && <div style={{ fontSize: 13, color: '#6b7890' }}>No attendance records released for this term.</div>}</div><Footer /></section>);
     }
     if (active === 'Online Enrollment') {
       return (<section style={card}><h1 style={{ margin: 0 }}>Online Enrollment</h1>

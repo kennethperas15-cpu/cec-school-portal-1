@@ -4,12 +4,19 @@ import { AttendanceTracker, type TeacherAttendance } from './AttendanceTracker/A
 import { ClassRoster, type TeacherStudent } from './ClassRoster/ClassRoster';
 import { GradeEncode, type TeacherGrade } from './GradeEncode/GradeEncode';
 import { useAcademicConfig } from '../../services/academicConfig';
+import { describeApiError } from '../../services/api';
+import { fetchAnnouncements, type LiveAnnouncement } from '../../services/announcements';
 import {
+  fetchAcademicRecords,
+  fold,
   groupByStudent,
   publishStudentRecords,
   subjectCodeOf,
+  type AttendanceRow,
   type AcademicRecordModule,
+  type GradeEntryRow,
 } from '../../services/records';
+import { fetchTimetables, DAY_NAMES, type TimetableRecord } from '../../services/schedule';
 import { ClassroomBridge } from '../shared/ClassroomBridge';
 import { FacultyTimetable } from './FacultyTimetable';
 import './teacher-portal.css';
@@ -60,6 +67,9 @@ const readRecords = <T,>(key: string): T[] => {
   }
 };
 
+const scopedStorageKey = (key: string, identity: string): string =>
+  `${key}:${encodeURIComponent(identity.trim().toLowerCase() || 'unidentified')}`;
+
 const persistRecords = <T,>(key: string, records: T[]): boolean => {
   try {
     localStorage.setItem(key, JSON.stringify(records));
@@ -75,37 +85,132 @@ const localDate = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
-type TeacherSchedule = { id: string; title: string; when: string; where: string };
-type TeacherPost = { id: string; title: string; body: string };
-
 export type { TeacherAttendance, TeacherGrade, TeacherStudent };
 
 export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
   const [active, setActive] = useState('Dashboard');
   const [expanded, setExpanded] = useState('home');
-  const [roster, setRoster] = useState<TeacherStudent[]>(() => readRecords(ROSTER_KEY));
-  const [grades, setGrades] = useState<TeacherGrade[]>(() => readRecords(GRADES_KEY));
-  const [attendance, setAttendance] = useState<TeacherAttendance[]>(() => readRecords(ATTENDANCE_KEY));
   const academicConfig = useAcademicConfig();
   const name = `${currentUser?.firstName ?? ''} ${currentUser?.lastName ?? ''}`.trim() || 'Teacher';
   const userId = currentUser?.schoolId || currentUser?.id || '';
+  const storageIdentity = currentUser?.id || currentUser?.schoolId || currentUser?.email || '';
+  const storageKeys = {
+    roster: ROSTER_KEY,
+    grades: scopedStorageKey(GRADES_KEY, storageIdentity),
+    attendance: scopedStorageKey(ATTENDANCE_KEY, storageIdentity),
+  };
+  const [roster, setRoster] = useState<TeacherStudent[]>(() => readRecords(storageKeys.roster));
+  const [grades, setGrades] = useState<TeacherGrade[]>(() => readRecords(storageKeys.grades));
+  const [attendance, setAttendance] = useState<TeacherAttendance[]>(() => readRecords(storageKeys.attendance));
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [recordsError, setRecordsError] = useState('');
+  const [timetables, setTimetables] = useState<TimetableRecord[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleError, setScheduleError] = useState('');
+  const [announcements, setAnnouncements] = useState<LiveAnnouncement[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [announcementsError, setAnnouncementsError] = useState('');
 
   useEffect(() => {
     const refresh = () => {
-      setRoster(readRecords(ROSTER_KEY));
-      setGrades(readRecords(GRADES_KEY));
-      setAttendance(readRecords(ATTENDANCE_KEY));
+      setRoster(readRecords(storageKeys.roster));
+      setGrades(readRecords(storageKeys.grades));
+      setAttendance(readRecords(storageKeys.attendance));
     };
+    refresh();
     window.addEventListener('storage', refresh);
     window.addEventListener(RECORDS_UPDATED, refresh);
     return () => {
       window.removeEventListener('storage', refresh);
       window.removeEventListener(RECORDS_UPDATED, refresh);
     };
-  }, []);
+  }, [storageKeys.attendance, storageKeys.grades, storageKeys.roster]);
+
+  useEffect(() => {
+    let activeRequest = true;
+    setRecordsLoading(true);
+    void Promise.allSettled([
+      fetchAcademicRecords<GradeEntryRow>('grades'),
+      fetchAcademicRecords<AttendanceRow>('attendance'),
+    ]).then(([gradeResult, attendanceResult]) => {
+      if (!activeRequest) return;
+      const errors: string[] = [];
+      const isCurrentTerm = (record: { schoolYear: string; semester: string }) =>
+        fold(record.schoolYear) === fold(academicConfig.schoolYear) &&
+        fold(record.semester) === fold(academicConfig.semester);
+
+      if (gradeResult.status === 'fulfilled') {
+        const next = gradeResult.value.filter(isCurrentTerm).flatMap((record) =>
+          record.entries.map((entry, index) => ({
+            id: `${record.itemId}:${index}`,
+            student: record.studentName,
+            studentId: record.studentId,
+            course: entry.course,
+            prelim: entry.prelim,
+            midterm: entry.midterm,
+            final: entry.final,
+          })),
+        );
+        setGrades(next);
+        persistRecords(storageKeys.grades, next);
+      } else {
+        errors.push(describeApiError(gradeResult.reason, 'Loading posted grades'));
+      }
+
+      if (attendanceResult.status === 'fulfilled') {
+        const next = attendanceResult.value.filter(isCurrentTerm).flatMap((record) =>
+          record.entries.map((entry, index) => ({
+            id: `${record.itemId}:${index}`,
+            student: record.studentName,
+            studentId: record.studentId,
+            date: entry.date,
+            section: entry.course,
+            status: entry.status,
+          })),
+        );
+        setAttendance(next);
+        persistRecords(storageKeys.attendance, next);
+      } else {
+        errors.push(describeApiError(attendanceResult.reason, 'Loading posted attendance'));
+      }
+      setRecordsError(errors.join(' '));
+    }).finally(() => {
+      if (activeRequest) setRecordsLoading(false);
+    });
+    return () => { activeRequest = false; };
+  }, [academicConfig.schoolYear, academicConfig.semester, storageKeys.attendance, storageKeys.grades]);
+
+  const loadTimetables = async () => {
+    setScheduleLoading(true);
+    try {
+      setTimetables(await fetchTimetables());
+      setScheduleError('');
+    } catch (error) {
+      setScheduleError(describeApiError(error, 'Loading your published schedule'));
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const loadAnnouncements = async () => {
+    setAnnouncementsLoading(true);
+    try {
+      setAnnouncements(await fetchAnnouncements('teacher'));
+      setAnnouncementsError('');
+    } catch (error) {
+      setAnnouncementsError(describeApiError(error, 'Loading school announcements'));
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadTimetables();
+    void loadAnnouncements();
+  }, [userId, name, academicConfig.schoolYear, academicConfig.semester]);
 
   const persistRoster = (next: TeacherStudent[]) => {
-    if (persistRecords(ROSTER_KEY, next)) setRoster(next);
+    if (persistRecords(storageKeys.roster, next)) setRoster(next);
     else onNotify('Could not save the class roster. Check browser storage and try again.');
   };
 
@@ -146,44 +251,54 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
   };
 
   const persistGrades = (next: TeacherGrade[]) => {
-    if (!persistRecords(GRADES_KEY, next)) {
+    if (!persistRecords(storageKeys.grades, next)) {
       onNotify('Could not save grades. Check browser storage and try again.');
       return;
     }
     const before = groupByStudent(grades, (row) => row.studentId || row.student);
     const after = groupByStudent(next, (row) => row.studentId || row.student);
     setGrades(next);
-    const changed = [...after.entries()]
-      .filter(([key, rows]) => JSON.stringify(before.get(key) ?? []) !== JSON.stringify(rows))
-      .map(([key, rows]) => ({
-        studentId: key,
-        studentName: rows[0]?.student ?? '',
-        entries: rows.map((row) => ({
-          code: subjectCodeOf(row.course),
-          course: row.course,
-          prelim: row.prelim,
-          midterm: row.midterm,
-          final: row.final,
-        })),
-      }));
+    const changedKeys = new Set([...before.keys(), ...after.keys()]);
+    const changed = [...changedKeys]
+      .filter((key) => JSON.stringify(before.get(key) ?? []) !== JSON.stringify(after.get(key) ?? []))
+      .map((key) => {
+        const rows = after.get(key) ?? [];
+        const previousRows = before.get(key) ?? [];
+        return {
+          studentId: key,
+          studentName: rows[0]?.student ?? previousRows[0]?.student ?? '',
+          entries: rows.map((row) => ({
+            code: subjectCodeOf(row.course),
+            course: row.course,
+            prelim: row.prelim,
+            midterm: row.midterm,
+            final: row.final,
+          })),
+        };
+      });
     void publishRecords('grades', changed);
   };
 
   const persistAttendance = (next: TeacherAttendance[]) => {
-    if (!persistRecords(ATTENDANCE_KEY, next)) {
+    if (!persistRecords(storageKeys.attendance, next)) {
       onNotify('Could not save attendance. Check browser storage and try again.');
       return;
     }
     const before = groupByStudent(attendance, (row) => row.studentId || row.student);
     const after = groupByStudent(next, (row) => row.studentId || row.student);
     setAttendance(next);
-    const changed = [...after.entries()]
-      .filter(([key, rows]) => JSON.stringify(before.get(key) ?? []) !== JSON.stringify(rows))
-      .map(([key, rows]) => ({
-        studentId: key,
-        studentName: rows[0]?.student ?? '',
-        entries: rows.map((row) => ({ date: row.date, course: row.section ?? '', status: row.status })),
-      }));
+    const changedKeys = new Set([...before.keys(), ...after.keys()]);
+    const changed = [...changedKeys]
+      .filter((key) => JSON.stringify(before.get(key) ?? []) !== JSON.stringify(after.get(key) ?? []))
+      .map((key) => {
+        const rows = after.get(key) ?? [];
+        const previousRows = before.get(key) ?? [];
+        return {
+          studentId: key,
+          studentName: rows[0]?.student ?? previousRows[0]?.student ?? '',
+          entries: rows.map((row) => ({ date: row.date, course: row.section ?? '', status: row.status })),
+        };
+      });
     void publishRecords('attendance', changed);
   };
 
@@ -210,8 +325,19 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     { label: 'Satisfactory (80–89)', count: gradeAverages.filter((mark) => mark >= 80 && mark < 90).length, color: 'satisfactory' },
     { label: 'Needs support (<80)', count: gradeAverages.filter((mark) => mark < 80).length, color: 'support' },
   ];
-  const schedule = readRecords<TeacherSchedule>('cec:t_sched_v2');
-  const posts = readRecords<TeacherPost>('cec:t_posts_v2');
+  const schedule = timetables
+    .filter((record) =>
+      fold(record.schoolYear) === fold(academicConfig.schoolYear) &&
+      fold(record.semester) === fold(academicConfig.semester),
+    )
+    .flatMap((record) => record.entries
+      .filter((entry) => fold(entry.instructor) === fold(name))
+      .map((entry) => ({ ...entry, section: record.section })))
+    .sort((left, right) => {
+      const dayOrder = DAY_NAMES.indexOf(left.day as (typeof DAY_NAMES)[number]) -
+        DAY_NAMES.indexOf(right.day as (typeof DAY_NAMES)[number]);
+      return dayOrder || left.start.localeCompare(right.start);
+    });
   const recentAttendance = [...attendance].sort((left, right) => right.date.localeCompare(left.date)).slice(0, 4);
   const attendanceRate = attendance.length
     ? Math.round((attendanceCounts.Present / attendance.length) * 100)
@@ -265,10 +391,12 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
       );
     }
     if (active === 'Grade Encoding') {
-      return <GradeEncode roster={roster} grades={grades} onSave={persistGrades} />;
+      if (recordsLoading) return <div className="teacher-page"><div className="teacher-empty" role="status">Loading your saved grades…</div></div>;
+      return <>{recordsError && <div className="teacher-sync-warning" role="alert">{recordsError}</div>}<GradeEncode roster={roster} grades={grades} onSave={persistGrades} /></>;
     }
     if (active === 'Attendance Tracker') {
-      return <AttendanceTracker roster={roster} attendance={attendance} onSave={persistAttendance} />;
+      if (recordsLoading) return <div className="teacher-page"><div className="teacher-empty" role="status">Loading your saved attendance…</div></div>;
+      return <>{recordsError && <div className="teacher-sync-warning" role="alert">{recordsError}</div>}<AttendanceTracker roster={roster} attendance={attendance} onSave={persistAttendance} /></>;
     }
 
     const classes = courses.map((course) => ({
@@ -278,6 +406,7 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
     const totalBandCount = gradeBands.reduce((sum, band) => sum + band.count, 0);
     return (
       <div className="teacher-page teacher-home">
+        {recordsError && <div className="teacher-sync-warning" role="alert">Some academic records could not be refreshed from the server. Device-saved data may be out of date. {recordsError}</div>}
         <header className="teacher-home-hero">
           <div className="teacher-home-hero-copy">
             <span className="teacher-home-period">{academicConfig.semester} • AY {academicConfig.schoolYear}</span>
@@ -303,7 +432,7 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
             <div><h2>My classes</h2><p>Open a roster, encode marks, or record attendance for a class.</p></div>
             <button type="button" className="teacher-text-button" onClick={() => navigate('Class Roster')}>View all classes <span aria-hidden="true">→</span></button>
           </div>
-          {classes.length ? <div className="teacher-class-grid">{classes.slice(0, 4).map((course) => (
+          {classes.length ? <div className="teacher-class-grid">{classes.map((course) => (
             <article className="teacher-class-card" key={course.name}>
               <div className="teacher-class-topline"><span className="teacher-course-badge">{course.name}</span><span>{course.students} student{course.students === 1 ? '' : 's'}</span></div>
               <h3>{course.name}</h3>
@@ -335,15 +464,21 @@ export const TeacherDashboard = ({ currentUser, onNotify, onLogout }: Props) => 
         </div>
         <div className="teacher-home-columns teacher-home-bottom">
           <section className="teacher-panel teacher-home-panel">
-            <div className="teacher-panel-heading"><div><h2>Upcoming schedule</h2><p>Class times saved in your portal.</p></div><span className="teacher-count">{schedule.length}</span></div>
-            {schedule.length ? <div className="teacher-activity-list">{schedule.slice(0, 4).map((item) => <article className="teacher-activity-item" key={item.id}><span className="teacher-activity-marker">◷</span><div><strong>{item.title}</strong><p>{item.when}{item.where ? ` • ${item.where}` : ''}</p></div></article>)}</div> : <div className="teacher-empty">No schedule has been added yet.</div>}
+            <div className="teacher-panel-heading"><div><h2>Upcoming schedule</h2><p>Published classes assigned to you this term.</p></div><button type="button" className="teacher-text-button" onClick={() => navigate('Class Schedule')}>Open schedule <span aria-hidden="true">→</span></button></div>
+            {scheduleLoading ? <div className="teacher-empty" role="status">Loading published schedule…</div>
+              : scheduleError ? <div className="teacher-empty" role="alert">{scheduleError}<button type="button" className="teacher-button" onClick={() => void loadTimetables()}>Retry</button></div>
+                : schedule.length ? <div className="teacher-activity-list">{schedule.slice(0, 4).map((item) => <article className="teacher-activity-item" key={`${item.id}-${item.section}`}><span className="teacher-activity-marker">◷</span><div><strong>{item.code || item.title || 'Class'} — {item.section}</strong><p>{item.day}, {item.start}–{item.end}{item.room ? ` • ${item.room}` : ''}</p></div></article>)}</div>
+                  : <div className="teacher-empty">No published classes are assigned to you for this term.</div>}
           </section>
           <section className="teacher-panel teacher-home-panel">
-            <div className="teacher-panel-heading"><div><h2>Recent activity</h2><p>Latest attendance records and announcements.</p></div></div>
-            {recentAttendance.length || posts.length ? <div className="teacher-activity-list">
+            <div className="teacher-panel-heading"><div><h2>Recent activity</h2><p>Your latest attendance records and published announcements.</p></div></div>
+            {(recentAttendance.length || announcements.length) && <div className="teacher-activity-list">
               {recentAttendance.map((record) => <article className="teacher-activity-item" key={record.id}><span className={`teacher-activity-marker ${record.status.toLowerCase()}`}>✓</span><div><strong>{record.student} — {record.status}</strong><p>{record.section || 'Class attendance'} • {record.date}</p></div><button type="button" onClick={() => navigate('Attendance Tracker')}>View</button></article>)}
-              {posts.slice(0, 2).map((post) => <article className="teacher-activity-item" key={post.id}><span className="teacher-activity-marker">✦</span><div><strong>{post.title}</strong><p>{post.body || 'Teacher announcement'}</p></div></article>)}
-            </div> : <div className="teacher-empty">Your saved class activity and announcements will appear here.</div>}
+              {announcements.slice(0, 2).map((post) => <article className="teacher-activity-item" key={post.id}><span className="teacher-activity-marker">✦</span><div><strong>{post.title}</strong><p>{post.content}</p></div></article>)}
+            </div>}
+            {announcementsLoading && <div className="teacher-empty" role="status">Loading school announcements…</div>}
+            {announcementsError && <div className="teacher-empty" role="alert">{announcementsError}<button type="button" className="teacher-button" onClick={() => void loadAnnouncements()}>Retry</button></div>}
+            {!recentAttendance.length && !announcements.length && !announcementsLoading && !announcementsError && <div className="teacher-empty">No recent attendance records or announcements.</div>}
           </section>
         </div>
       </div>
