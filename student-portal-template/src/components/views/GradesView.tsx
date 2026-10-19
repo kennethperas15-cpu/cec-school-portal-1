@@ -42,7 +42,11 @@ export const GradesView = () => {
   }, [termChoice, terms]);
 
   const records = useMemo(() => inTerm(gradeRecords, activeTerm), [gradeRecords, activeTerm]);
-  const courses = publishedCourses.length ? publishedCourses : store.courses;
+  const courses = store.selfCourses.length
+    ? store.selfCourses
+    : publishedCourses.length
+      ? publishedCourses
+      : store.courses;
   const marks = useMemo(() => courseMarks(records, courses), [records, courses]);
   const marksByCode = useMemo(() => new Map(marks.map((row) => [key(row.code), row])), [marks]);
 

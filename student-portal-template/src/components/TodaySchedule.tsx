@@ -57,7 +57,7 @@ export const TodaySchedule = ({ slots, onRemove, onOpenSchedule, publishedBy }: 
             <CalendarDays className="h-5 w-5" />
           </span>
           <p className="max-w-sm text-sm leading-relaxed text-slate-500">
-            No classes scheduled for today. The timetable is published by the registrar — open{' '}
+            No classes scheduled for today. Open{' '}
             <span className="font-semibold text-slate-700">&lsquo;Class Schedule&rsquo;</span> to see the week ahead.
           </p>
           <button type="button" className="btn-primary" onClick={onOpenSchedule}>

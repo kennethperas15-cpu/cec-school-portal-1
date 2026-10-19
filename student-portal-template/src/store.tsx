@@ -102,6 +102,8 @@ type Store = AppState & {
   refreshTimetables: () => Promise<void>;
   /** The published document for this student's own section, when there is one. */
   myTimetable: TimetableItem | null;
+  /** The week rebuilt from the courses this student enrolled in themselves. */
+  selfTimetable: TimetableItem | null;
   /** Its meetings in the dashboard's slot shape — empty when nothing is published. */
   mySlots: ScheduleSlot[];
   /** The published subjects of that section, shaped like the local course list. */
@@ -495,7 +497,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         })),
     );
     const sectionTimetable = pickTimetable(timetables, period, state.profile.section);
-    const myTimetable: TimetableItem | null =
+    /**
+     * The student's own week, rebuilt from the courses they enrolled in. It is a
+     * timetable only when at least one of those courses has a meeting set; a load
+     * with no meeting anywhere keeps the registrar's published timetable (or
+     * nothing) on screen and says so.
+     */
+    const selfTimetable: TimetableItem | null =
       selfEntries.length && period
         ? {
             schoolYear: period.schoolYear,
@@ -509,7 +517,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
             publishedAt: '',
             itemId: 'self-enrollment',
           }
-        : sectionTimetable;
+        : null;
+    const myTimetable: TimetableItem | null = selfTimetable ?? sectionTimetable;
     const mySlots = myTimetable ? toSlots(myTimetable.entries, myTimetable.section) : [];
     // Same published meetings, shaped like the local course list so the enrolled
     // courses page and the dashboard counters report the registrar's load.
@@ -565,6 +574,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       timetableError,
       refreshTimetables,
       myTimetable,
+      selfTimetable,
       mySlots,
       publishedCourses,
 
@@ -583,7 +593,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       refreshCatalog,
       availableCourses: catalog.filter((course) => course.open && !course.enrolled),
       selfCourses,
-      loadIsSelfEnrolled: selfEntries.length > 0,
+      loadIsSelfEnrolled: selfCourses.length > 0,
       enrollingId,
       enrollCourse,
       dropCourse,

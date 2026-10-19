@@ -131,7 +131,12 @@ export const App = () => {
     [store.mySlots, store.schedule, q],
   );
   // The registrar's published load, when there is one, *is* the student's load.
-  const load = store.publishedCourses.length ? store.publishedCourses : store.courses;
+  const selfLoad = store.selfCourses.length > 0;
+  const load = store.selfCourses.length
+    ? store.selfCourses
+    : store.publishedCourses.length
+      ? store.publishedCourses
+      : store.courses;
   const visibleCourses = useMemo(
     () => load.filter((course) => match(course.code, course.title, course.instructor, course.section, course.kind)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,8 +155,17 @@ export const App = () => {
    * local record, so the dashboard and Class Schedule never disagree.
    */
   const publishedUnits = store.myTimetable ? totalUnitsOf(store.myTimetable.entries) : null;
-  const units = publishedUnits && publishedUnits.units > 0 ? publishedUnits.units : totalUnits(store.courses);
-  const courseCount = store.publishedCourses.length || store.courses.length;
+  /*
+   * A course the student enrolled in themselves counts even before its meeting
+   * is set, so the counters never read zero over a real load.
+   */
+  const units =
+    publishedUnits && publishedUnits.units > 0
+      ? publishedUnits.units
+      : store.selfCourses.length
+        ? totalUnits(store.selfCourses)
+        : totalUnits(store.courses);
+  const courseCount = store.publishedCourses.length || store.selfCourses.length || store.courses.length;
   /*
    * Official records win when they exist: the dashboard counters report the
    * instructors' posted marks and attendance, not this browser's own log.
@@ -276,7 +290,8 @@ export const App = () => {
           <CourseLoad
             courses={visibleCourses}
             grades={store.grades}
-            published={store.publishedCourses.length > 0}
+            published={!selfLoad && store.publishedCourses.length > 0}
+            self={selfLoad}
             onAdd={() => setModal('course')}
             onRemove={store.removeCourse}
           />

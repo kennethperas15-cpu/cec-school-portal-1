@@ -51,7 +51,11 @@ export const AttendanceView = () => {
   const [page, setPage] = useState(1);
   const [termChoice, setTermChoice] = useState('');
 
-  const courses = publishedCourses.length ? publishedCourses : store.courses;
+  const courses = store.selfCourses.length
+    ? store.selfCourses
+    : publishedCourses.length
+      ? publishedCourses
+      : store.courses;
   const terms = useMemo(() => termOptions(attendanceDocs), [attendanceDocs]);
   const activeTerm = useMemo(() => {
     if (termChoice) {

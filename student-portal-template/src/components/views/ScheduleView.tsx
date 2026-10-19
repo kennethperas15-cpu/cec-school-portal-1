@@ -78,7 +78,7 @@ const ListByDay = ({ entries, today }: { entries: ScheduleEntry[]; today: Day | 
 
 export const ScheduleView = () => {
   const store = useStore();
-  const { timetables, period, profile, timetableLoading, timetableError, myTimetable, loadIsSelfEnrolled } = store;
+  const { timetables, period, profile, timetableLoading, timetableError, selfTimetable, selfCourses } = store;
 
   const [sectionChoice, setSectionChoice] = useState('');
   const [termChoice, setTermChoice] = useState('');
@@ -89,9 +89,10 @@ export const ScheduleView = () => {
    * A student who enrolled in courses through the portal holds their own load —
    * those courses, with the meetings they run — so that is the record here. The
    * registrar's published timetable for a section is the alternative for a
-   * student who was enrolled by the office instead.
+   * student who was enrolled by the office instead. A self-enrolled course with
+   * no meeting yet produces no week, which the subtitle below says plainly.
    */
-  const ownLoad = loadIsSelfEnrolled ? myTimetable : null;
+  const ownLoad = selfTimetable;
 
   const terms = useMemo(() => {
     const published = termOptions(timetables);
@@ -193,12 +194,16 @@ export const ScheduleView = () => {
             </h1>
             <p className="mt-1.5 text-[13px] font-medium text-slate-500">
               {record
-                ? loadIsSelfEnrolled
+                ? ownLoad
                   ? `Your own enrolled load for ${termLabel(record)} • ${record.entries.length} meeting${
                       record.entries.length === 1 ? '' : 's'
                     } a week`
                   : `Published timetable for ${termLabel(record)} • Section ${record.section}`
-                : 'Your timetable is published by the registrar — nothing has been published for you yet.'}
+                : selfCourses.length
+                  ? `You are enrolled in ${selfCourses.length} course${
+                      selfCourses.length === 1 ? '' : 's'
+                    }, but no weekly meeting is set yet — the week appears here once the registrar's office sets it.`
+                  : 'Your timetable is published by the registrar — nothing has been published for you yet.'}
             </p>
             {store.user?.schoolId && (
               <p className="mt-2 text-[11px] font-semibold text-slate-400">SID: {store.user.schoolId}</p>
@@ -327,18 +332,24 @@ export const ScheduleView = () => {
             </span>
             <div className="max-w-md text-center">
               <p className="text-sm font-semibold text-slate-700">
-                {timetables.length
-                  ? activeSection
-                    ? `Nothing is published for ${activeSection} in this term yet.`
-                    : 'Pick your section to see its published timetable.'
-                  : 'The registrar has not published any class timetable yet.'}
+                {selfCourses.length
+                  ? `You are enrolled in ${selfCourses.length} course${
+                      selfCourses.length === 1 ? '' : 's'
+                    } with no weekly meeting set yet.`
+                  : timetables.length
+                    ? activeSection
+                      ? `Nothing is published for ${activeSection} in this term yet.`
+                      : 'Pick your section to see its published timetable.'
+                    : 'The registrar has not published any class timetable yet.'}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                {timetables.length
-                  ? sections.length
-                    ? `Sections published so far: ${sections.map((section) => section.section).join(', ')}. Keep your program, year and section up to date in Settings.`
-                    : 'No section has a published timetable in this term.'
-                  : 'As soon as the registrar publishes a section timetable it appears here — with the rooms, instructors and units exactly as recorded.'}
+                {selfCourses.length
+                  ? 'They are on Enrolled Courses, and the week appears here as soon as the registrar’s office sets each meeting.'
+                  : timetables.length
+                    ? sections.length
+                      ? `Sections published so far: ${sections.map((section) => section.section).join(', ')}. Keep your program, year and section up to date in Settings.`
+                      : 'No section has a published timetable in this term.'
+                    : 'As soon as the registrar publishes a section timetable it appears here — with the rooms, instructors and units exactly as recorded.'}
               </p>
             </div>
           </div>
