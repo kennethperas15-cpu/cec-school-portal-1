@@ -52,6 +52,60 @@ const refreshSessionFor = async (userId: string) => {
 };
 
 /**
+ * The school mailbox a new account is issued: the initials of the given name and
+ * the surname — `Kenneth Bryan` + `Peras` becomes `kb.peras@cec.edu.ph`.
+ *
+ * Two accounts can land on the same initials and surname, so the caller resolves
+ * it against the users table with `uniqueSchoolEmail` rather than trusting it to
+ * be free.
+ */
+export const schoolEmailLocalPart = (firstName: string, lastName: string): string => {
+  const clean = (value: string) =>
+    (value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s.-]/g, '');
+
+  const initials = clean(firstName)
+    .split(/[\s.-]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .replace(/[^a-z0-9]/g, '');
+  const surname = clean(lastName).replace(/[^a-z0-9]/g, '');
+
+  return `${initials || 'student'}.${surname || 'cec'}`;
+};
+
+/**
+ * The same local part, with a number appended only when it is already taken.
+ *
+ * The mailbox is the login, and users.email is unique, so two people with the
+ * same initials and surname (kb.peras) cannot share it: the second becomes
+ * kb.peras2@cec.edu.ph. Only suffixes 2..99 count as ours — an unrelated mailbox
+ * that merely starts with the same letters (kb.perasagain@cec.edu.ph) is left
+ * alone.
+ */
+export const uniqueSchoolEmail = async (localPart: string): Promise<string> => {
+  const base = localPart.toLowerCase();
+  const rows = await sql<{ email: string }>(
+    'SELECT email FROM users WHERE LOWER(email) LIKE ?',
+    { replacements: [`${base}%@cec.edu.ph`], type: QueryTypes.SELECT }
+  );
+  const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const ours = new RegExp(`^${escaped}\\d*@cec\\.edu\\.ph$`);
+  const taken = new Set(
+    rows.map((row) => row.email.toLowerCase()).filter((email) => ours.test(email))
+  );
+  for (let attempt = 1; attempt < 100; attempt++) {
+    const candidate = attempt === 1 ? `${base}@cec.edu.ph` : `${base}${attempt}@cec.edu.ph`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  throw new Error('Could not issue a school email — please try again');
+};
+
+/**
  * The credentials email a student receives once their enrollment is approved:
  * the school account, the assigned student ID and the temporary password, with
  * the sign-in address and a reminder to change it.
@@ -159,8 +213,7 @@ export const authService = {
     if (!role.length) throw new Error('Requested account role is not configured');
 
     const userId = crypto.randomUUID();
-    const schoolEmail = `${firstName}.${lastName}.${userId.slice(0, 6)}@cec.edu.ph`
-      .toLowerCase().replace(/[^a-z0-9.@]/g, '');
+    const schoolEmail = await uniqueSchoolEmail(schoolEmailLocalPart(firstName, lastName));
     const temporaryPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     const applicationId = crypto.randomUUID();
@@ -436,8 +489,7 @@ export const authService = {
     );
     if (taken.length) throw new Error('A school account already exists for that email or staff ID');
     const userId = crypto.randomUUID();
-    const schoolEmail = `${firstName}.${lastName}.${userId.slice(0, 6)}@cec.edu.ph`
-      .toLowerCase().replace(/[^a-z0-9.@]/g, '');
+    const schoolEmail = await uniqueSchoolEmail(schoolEmailLocalPart(firstName, lastName));
     const temporaryPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     await sequelize.transaction(async (transaction) => {
@@ -756,12 +808,7 @@ export const authService = {
 
     const application = applications[0];
     const userId = crypto.randomUUID();
-    const localPart = `${application.first_name}.${application.last_name}`
-      .toLowerCase()
-      .replace(/[^a-z0-9.]/g, '')
-      .replace(/\.+/g, '.')
-      .replace(/^\.|\.$/g, '');
-    const schoolEmail = `${localPart || 'student'}.${userId.slice(0, 6)}@cec.edu.ph`;
+    const schoolEmail = await uniqueSchoolEmail(schoolEmailLocalPart(application.first_name, application.last_name));
     const role = await sql<{ id: number }>(
       'SELECT id FROM roles WHERE name = ? LIMIT 1',
       { replacements: [application.requested_role], type: QueryTypes.SELECT }

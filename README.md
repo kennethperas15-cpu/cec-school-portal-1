@@ -35,7 +35,11 @@ the portal.
 
 * School IDs are **7 digits and assigned, never generated randomly**:
   students `2xxxxxx`, teachers `3xxxxxx`, administrators `4xxxxxx`.
-* An account's username is its CEC email: `firstname.lastname.<id6>@cec.edu.ph`.
+* An account's username is its CEC email, built from the name: the initials of the
+  given name and the surname — `Kenneth Bryan Peras` becomes `kb.peras@cec.edu.ph`.
+  A number is appended only when that mailbox is already taken (`kb.peras2@…`),
+  because the address is the login and is unique. Accounts issued before this rule
+  keep the older `firstname.lastname.<id6>@cec.edu.ph` address, which still works.
 * Accounts are issued with a temporary password and the holder is expected to
   change it after signing in. Login is school-accounts only — there is no Google
   sign-in and no role picker; the role comes from the account.

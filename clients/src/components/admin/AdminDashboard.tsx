@@ -255,7 +255,7 @@ export const AdminDashboard = ({ currentUser, onNotify, onLogout }: Props) => {
     if (active === 'Announcements') return <AnnouncementsPage onNotify={onNotify} />;
     if (active === 'Grades Management') return <GradesPage onNotify={onNotify} />;
     if (active === 'Attendance Management') return <AttendancePage onNotify={onNotify} />;
-    if (active === 'Enrollment Management') return <EnrollmentPage onNotify={onNotify} />;
+    if (active === 'Enrollment Management') return <EnrollmentPage onNotify={onNotify} onNavigate={navigate} />;
     if (active === 'Class Schedule') return <ClassSchedulePage onNotify={onNotify} onNavigate={navigate} />;
     if (active === 'Study Load Builder') {
       const DAYS = ['M', 'T', 'W', 'TH', 'F', 'S'];

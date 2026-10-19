@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { QueryTypes } from 'sequelize';
 import { sql } from '../config/sql.js';
 import { sequelize } from '../config/database.js';
-import { authService, sendAccountCredentials } from '../services/auth.service.js';
+import { authService, schoolEmailLocalPart, sendAccountCredentials, uniqueSchoolEmail } from '../services/auth.service.js';
 import { writeAuditLog } from '../services/audit.service.js';
 import { authmiddlewareMiddleware } from '../middleware/auth.middleware.js';
 import { requireRoles } from '../middleware/rbac.middleware.js';
@@ -401,9 +401,10 @@ router.put('/config/:key', async (req, res, next) => {
  * Register a walk-in student: the registrar's own enrollment.
  *
  * The pupil is recorded and the account issued in one step — student number
- * reserved, school email in the firstname.lastname.<id6>@cec.edu.ph shape the
- * portal uses, and a temporary password returned for the registrar to hand over
- * (email delivery is not configured on this deployment).
+ * reserved, school email in the initials.surname@cec.edu.ph shape the portal uses
+ * (a number is appended only when that mailbox is already taken), and a
+ * temporary password returned for the registrar to hand over (email delivery is
+ * not configured on this deployment).
  */
 router.post('/students', async (req, res, next) => {
   try {
@@ -434,8 +435,7 @@ router.post('/students', async (req, res, next) => {
 
     const studentNumber = await authService.reserveStudentId();
     const userId = crypto.randomUUID();
-    const localPart = `${first}.${last}`.toLowerCase().replace(/[^a-z0-9.]/g, '').replace(/\.+/g, '.').replace(/^\.|\.$/g, '');
-    const schoolEmail = `${localPart || 'student'}.${userId.slice(0, 6)}@cec.edu.ph`;
+    const schoolEmail = await uniqueSchoolEmail(schoolEmailLocalPart(first, last));
     const temporaryPassword = `Cec2026-${crypto.randomBytes(3).toString('hex')}`;
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 

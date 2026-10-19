@@ -142,7 +142,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
               <div>
                 <div>
                   <h2 className="authm-title">Sign In to CEC Portal</h2>
-                  <p className="authm-sub">Sign in with your 7-digit student ID or your CEC email (firstname.lastname.id@cec.edu.ph).</p>
+                  <p className="authm-sub">Sign in with your 7-digit student ID or your CEC email (kb.peras@cec.edu.ph).</p>
                 </div>
                 <form onSubmit={handleSignIn}>
                   <div className="authm-field">
@@ -155,7 +155,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
                         required
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="2212779 or juan.delacruz.307588@cec.edu.ph"
+                        placeholder="2212779 or kb.peras@cec.edu.ph"
                         autoComplete="username"
                         className="authm-input"
                       />
@@ -218,7 +218,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialTab = 'signin', onL
                           required
                           value={identifier}
                           onChange={(e) => setIdentifier(e.target.value.replace(/[^A-Za-z0-9@._-]/g, '').slice(0, 64))}
-                          placeholder="e.g. 2414807 or juan.delacruz.307588@cec.edu.ph"
+                          placeholder="e.g. 2414807 or kb.peras@cec.edu.ph"
                           autoComplete="username"
                           className="authm-input"
                         />
